@@ -102,10 +102,9 @@ export interface ActiveExecution {
   opportunityId: string;
   title: string;
   ticketType: TicketType;
-  capitalKrw: number;
-  expectedProfitKrw: number;
-  pricingVersion: number;
-  resultPlan: "success" | "safe_stop";
+  capitalKrw: number | null;
+  capitalUsdt: number | null;
+  expectedProfitKrw: number | null;
   status: ExecutionStatus;
   progress: number;
   stepIndex: number;
