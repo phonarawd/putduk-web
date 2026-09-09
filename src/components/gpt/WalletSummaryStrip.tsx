@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { emptyTrial, getHomeRead, getTrialState, getWalletBuckets, hasMoneyValues, readMoney, readTrialState, type MoneyRead } from "@/lib/api";
+import { hasMoneyValues, loadMoneyRead, type MoneyRead } from "@/lib/api";
 import { formatMoneyPrimary, formatMoneySecondary } from "@/lib/gpt/format";
 
 export function WalletSummaryStrip() {
@@ -10,25 +10,25 @@ export function WalletSummaryStrip() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([getHomeRead(), getWalletBuckets(), getTrialState()]).then(([home, buckets, trial]) => {
-      if (cancelled) return;
-      const trialState = trial.status === "fulfilled" ? readTrialState(trial.value) : emptyTrial();
-      const next = readMoney(
-        home.status === "fulfilled" ? home.value : null,
-        buckets.status === "fulfilled" ? buckets.value : null,
-        trialState,
-      );
-      setMoney(next);
-      setReady(true);
-    });
+    loadMoneyRead()
+      .then((next) => {
+        if (cancelled) return;
+        setMoney(next);
+        setReady(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setMoney(null);
+        setReady(true);
+      });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  if (!ready || !money) return null;
+  if (!ready) return null;
 
-  if (!hasMoneyValues(money)) {
+  if (!money || !hasMoneyValues(money)) {
     return (
       <section className="plain-notice">
         <strong>아직 표시할 금액이 없어요.</strong>
@@ -41,16 +41,16 @@ export function WalletSummaryStrip() {
     <section className="route-wallet-strip">
       <div>
         <span>내 예치</span>
-        <strong>{formatMoneyPrimary(money.principalUsdt, money.principalKrw)}</strong>
+        <strong>{formatMoneyPrimary(money.principalUsdt, money.principalKrw) ?? "아직 표시할 금액이 없어요"}</strong>
         {formatMoneySecondary(money.principalUsdt, money.principalKrw) ? (
           <small>{formatMoneySecondary(money.principalUsdt, money.principalKrw)}</small>
         ) : null}
       </div>
-      {money.trialPrincipalUsdt ? (
+      {money.trialPrincipalKrw != null || money.trialPrincipalUsdt != null ? (
         <div>
           <span>체험 원금 · 출금 불가</span>
           <strong>
-            {formatMoneyPrimary(money.trialPrincipalUsdt, money.trialPrincipalKrw)}
+            {formatMoneyPrimary(money.trialPrincipalUsdt, money.trialPrincipalKrw) ?? "아직 표시할 금액이 없어요"}
             {formatMoneySecondary(money.trialPrincipalUsdt, money.trialPrincipalKrw)
               ? ` · ${formatMoneySecondary(money.trialPrincipalUsdt, money.trialPrincipalKrw)}`
               : ""}
@@ -65,13 +65,13 @@ export function WalletSummaryStrip() {
       {money.lockedUsdt != null || money.lockedKrw != null ? (
         <div>
           <span>진행 중 잠금</span>
-          <strong>{formatMoneyPrimary(money.lockedUsdt, money.lockedKrw)}</strong>
+          <strong>{formatMoneyPrimary(money.lockedUsdt, money.lockedKrw) ?? "아직 표시할 금액이 없어요"}</strong>
         </div>
       ) : null}
       {money.practiceUsdt != null || money.practiceKrw != null ? (
         <div>
           <span>연습 · 사용 불가</span>
-          <strong>{formatMoneyPrimary(money.practiceUsdt, money.practiceKrw)}</strong>
+          <strong>{formatMoneyPrimary(money.practiceUsdt, money.practiceKrw) ?? "아직 표시할 금액이 없어요"}</strong>
         </div>
       ) : null}
     </section>

@@ -82,7 +82,7 @@ export function PreflightModal() {
             다시 보기
           </button>
           <button id="preflightConfirm" className="modal-primary" type="button" onClick={confirmStart}>
-            이 기회로 수익 벌기
+            이 기회에 참여하기
           </button>
         </div>
       </section>

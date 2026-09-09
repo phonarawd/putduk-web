@@ -29,6 +29,7 @@ export interface OpportunityView extends Opportunity {
   fresh: boolean;
   affordable: boolean;
   requiredUsdt: number | null;
+  requiredCapitalUsdt: string | null;
   expectedUsdt: number | null;
   bucket: FeedBucket | null;
   trialEligible: boolean;
@@ -40,11 +41,12 @@ export interface Trade {
   tradeId: string;
   opportunityId: string;
   title: string;
-  capitalKrw: number;
+  capitalKrw: number | null;
   expectedProfitKrw?: number;
-  settledProfitKrw: number;
+  settledProfitKrw: number | null;
+  settledProfitUsdt?: number | null;
   pricingVersion?: number;
-  status: TradeStatus;
+  status: TradeStatus | string;
   createdAt: string;
 }
 
@@ -126,7 +128,7 @@ export interface GptState {
   gender: Gender;
   phone: string;
   kycStatus: "not_started" | "verified";
-  principalUsdt: number;
+  principalUsdt: number | null;
   principalKrw: number | null;
   lockedUsdt: number | null;
   lockedKrw: number | null;
@@ -145,6 +147,7 @@ export interface GptState {
   quoteVersion: number;
   lastRefreshAt: number;
   trades: Trade[];
+  recordsError: boolean;
   pending: PendingLock | null;
   deposits: DepositRecord[];
   withdrawals: WithdrawalRecord[];

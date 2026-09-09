@@ -6,8 +6,8 @@ import { useAppSurface } from "@/lib/gpt/useAppSurface";
 
 const NAV_ITEMS = [
   { key: "home", label: "홈", path: "/", icon: "⌂" },
-  { key: "work", label: "기회", path: "/work", icon: "✓" },
-  { key: "ai", label: "퍼뜩AI", path: "/ai", icon: null },
+  { key: "work", label: "기록", path: "/work", icon: "✓" },
+  { key: "ai", label: "퍼뜩", path: "/ai", icon: null },
   { key: "invite", label: "초대", path: "/invite", icon: "＋" },
   { key: "me", label: "나", path: "/me", icon: "●" },
 ] as const;

@@ -19,7 +19,7 @@ export function OpportunitySection() {
   let statusText = "참여 가능";
   let showStart = true;
   let startDisabled = false;
-  let startLabel = "이 기회로 수익 벌기";
+  let startLabel = "이 기회에 참여하기";
   let showCapitalCta = false;
 
   if (!selected.id) {

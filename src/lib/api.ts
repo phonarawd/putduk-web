@@ -70,6 +70,42 @@ function pickNumberFrom(rows: Array<Record<string, unknown> | null>, keys: strin
   return null;
 }
 
+function pickStringFrom(rows: Array<Record<string, unknown> | null>, keys: string[]): string | null {
+  const aliases = withSnake(keys);
+  for (const row of rows) {
+    const found = pickString(row, aliases);
+    if (found) return found;
+  }
+  return null;
+}
+
+export function mergeApiRows(...values: unknown[]): Record<string, unknown> | null {
+  const out: Record<string, unknown> = {};
+  let any = false;
+  for (const value of values) {
+    const row = asRecord(value);
+    if (!row) continue;
+    any = true;
+    for (const [key, item] of Object.entries(row)) {
+      if (item !== undefined) out[key] = item;
+    }
+  }
+  return any ? out : null;
+}
+
+const AUTH_NO_REFRESH = new Set([
+  "/api/v1/auth/login",
+  "/api/v1/auth/refresh",
+  "/api/v1/auth/signup/classic",
+  "/api/v1/auth/signup/classic/verify",
+  "/api/v1/auth/find-id",
+  "/api/v1/auth/password-reset/request",
+  "/api/v1/auth/password-reset/complete",
+  "/api/v1/auth/email/resend",
+]);
+
+type ApiInit = RequestInit & { skipRefresh?: boolean };
+
 function asImageUrl(value: string | null): string | null {
   if (!value) return null;
   if (value.startsWith("data:image")) return value;
@@ -139,22 +175,33 @@ async function readErrorMessage(res: Response): Promise<string> {
   }
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = new Headers(init?.headers);
-  const isForm = typeof FormData !== "undefined" && init?.body instanceof FormData;
-  if (init?.body != null && !isForm && !headers.has("Content-Type")) {
+export async function apiFetch<T>(path: string, init?: ApiInit): Promise<T> {
+  const { skipRefresh, ...requestInit } = init ?? {};
+  const headers = new Headers(requestInit.headers);
+  const isForm = typeof FormData !== "undefined" && requestInit.body instanceof FormData;
+  if (requestInit.body != null && !isForm && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
-      ...init,
+      ...requestInit,
       credentials: "include",
+      cache: "no-store",
       headers,
     });
   } catch {
     throw new Error("연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.");
+  }
+
+  if (res.status === 401 && !skipRefresh && !AUTH_NO_REFRESH.has(path)) {
+    try {
+      await apiFetch("/api/v1/auth/refresh", { method: "POST", skipRefresh: true });
+      return apiFetch<T>(path, { ...init, skipRefresh: true });
+    } catch {
+      /* 원래 거절을 보여 준다 */
+    }
   }
 
   if (!res.ok) {
@@ -184,7 +231,7 @@ export function login(identifier: string, password: string, turnstileToken?: str
   return apiFetch("/api/v1/auth/login", {
     method: "POST",
     body: JSON.stringify({
-      identifier,
+      identifier: identifier.trim(),
       password,
       ...(turnstileToken ? { turnstileToken } : {}),
     }),
@@ -235,19 +282,47 @@ export function signup(body: {
   return apiFetch("/api/v1/auth/signup/classic", {
     method: "POST",
     body: JSON.stringify({
-      username: body.username,
-      email: body.email,
+      username: body.username.trim(),
+      email: body.email.trim().toLowerCase(),
       password: body.password,
       passwordConfirm: body.passwordConfirm,
-      declaredName: body.declaredName,
+      declaredName: body.declaredName.trim(),
       birthDate: body.birthDate,
       turnstileToken: body.turnstileToken,
       termsAcceptedAt: body.termsAcceptedAt,
       privacyAcceptedAt: body.privacyAcceptedAt,
-      marketingConsent: body.marketingConsent === true,
+      ...(body.marketingConsent === true ? { marketingConsent: true } : {}),
       ...(body.referralCode ? { referralCode: body.referralCode } : {}),
       ...(body.phoneE164 ? { phoneE164: body.phoneE164 } : {}),
     }),
+  });
+}
+
+export function resendSignupEmail(email: string, turnstileToken: string) {
+  return apiFetch("/api/v1/auth/email/resend", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim().toLowerCase(), turnstileToken }),
+  });
+}
+
+export function findId(email: string, turnstileToken: string) {
+  return apiFetch("/api/v1/auth/find-id", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim().toLowerCase(), turnstileToken }),
+  });
+}
+
+export function requestPasswordReset(email: string, turnstileToken: string) {
+  return apiFetch("/api/v1/auth/password-reset/request", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim().toLowerCase(), turnstileToken }),
+  });
+}
+
+export function completePasswordReset(token: string, newPassword: string) {
+  return apiFetch("/api/v1/auth/password-reset/complete", {
+    method: "POST",
+    body: JSON.stringify({ token, newPassword }),
   });
 }
 
@@ -338,15 +413,48 @@ export function getOpportunity(id: string) {
   return apiFetch(`/api/v1/opportunities/${id}`);
 }
 
-export function participateOpportunity(id: string) {
-  return apiFetch(`/api/v1/opportunities/${id}/participate`, {
+export function preflightOpportunity(id: string) {
+  return apiFetch<unknown>(`/api/v1/opportunities/${id}/preflight`, {
     method: "POST",
     body: JSON.stringify({}),
   });
 }
 
+export function participateOpportunity(
+  id: string,
+  body: { amountUsdt: string; idempotencyKey: string; preflightToken: string },
+) {
+  return apiFetch(`/api/v1/opportunities/${id}/participate`, {
+    method: "POST",
+    body: JSON.stringify({
+      amountUsdt: body.amountUsdt,
+      idempotencyKey: body.idempotencyKey,
+      preflightToken: body.preflightToken,
+    }),
+  });
+}
+
 export function getHomeRead() {
   return apiFetch<unknown>("/api/v1/me/home-read");
+}
+
+export function getHomeMoneyRead() {
+  return apiFetch<unknown>("/api/v1/me/home-money-read");
+}
+
+export function approxCurrentFx(body: {
+  principalUsdt?: string;
+  withdrawableProfitUsdt?: string;
+  expectedProfitUsdt?: string;
+}) {
+  const payload: Record<string, string> = {};
+  if (body.principalUsdt) payload.principalUsdt = body.principalUsdt;
+  if (body.withdrawableProfitUsdt) payload.withdrawableProfitUsdt = body.withdrawableProfitUsdt;
+  if (body.expectedProfitUsdt) payload.expectedProfitUsdt = body.expectedProfitUsdt;
+  return apiFetch<unknown>("/api/v1/me/current-fx/approx", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getTrialState() {
@@ -361,12 +469,27 @@ export function getTrade(id: string) {
   return apiFetch(`/api/v1/trades/${id}`);
 }
 
+export function executeTradeTick(id: string) {
+  return apiFetch<unknown>(`/api/v1/trades/${id}/execute-tick`, { method: "POST" });
+}
+
 export function getWalletBuckets() {
   return apiFetch<unknown>("/api/v1/wallet/buckets");
 }
 
-export function getHomeMoneyRead() {
-  return getHomeRead();
+export function readPreflightToken(data: unknown): string | null {
+  const row = asRecord(data);
+  return pickString(row, ["preflightToken"]) || pickString(nest(row, "preflight"), ["preflightToken"]);
+}
+
+export function readParticipateTradeId(data: unknown): string | null {
+  const row = asRecord(data);
+  return pickString(row, ["tradeId"]) || pickString(nest(row, "trade"), ["tradeId", "id"]);
+}
+
+export function readFoundUsername(data: unknown): string | null {
+  const row = asRecord(data);
+  return pickString(row, ["username"]) || pickString(sessionUser(data), ["username"]);
 }
 
 export function getMyDepositAddress() {
@@ -525,6 +648,7 @@ export async function streamPeotteokChat(input: {
     res = await fetch(`${API_BASE}/api/v1/me/peotteok/chat`, {
       method: "POST",
       credentials: "include",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
@@ -605,11 +729,12 @@ export type TrialGrantStatus = "active" | "failed_fx" | "none";
 
 export type TrialState = {
   grantStatus: TrialGrantStatus;
-  trialPrincipalUsdt: number;
-  trialLockedUsdt: number;
+  trialPrincipalUsdt: number | null;
+  trialLockedUsdt: number | null;
   welcomeTargetKrw: number | null;
   grantAmountUsdt: number | null;
   grantAmountKrw: number | null;
+  trialPrincipalKrwApprox: number | null;
   maxParticipations: number | null;
   participationsUsed: number | null;
   participationsRemaining: number | null;
@@ -629,6 +754,7 @@ export type LiveOpportunity = {
   bucket: FeedBucket | null;
   trialEligible: boolean;
   imageUrl: string | null;
+  requiredCapitalUsdt: string | null;
   requiredUsdt: number | null;
   requiredKrw: number | null;
   expectedUsdt: number | null;
@@ -640,7 +766,7 @@ export type LiveOpportunity = {
 };
 
 export type MoneyRead = {
-  principalUsdt: number;
+  principalUsdt: number | null;
   principalKrw: number | null;
   lockedUsdt: number | null;
   lockedKrw: number | null;
@@ -648,20 +774,20 @@ export type MoneyRead = {
   profitKrw: number | null;
   practiceUsdt: number | null;
   practiceKrw: number | null;
-  trialPrincipalUsdt: number;
-  trialLockedUsdt: number;
+  trialPrincipalUsdt: number | null;
+  trialLockedUsdt: number | null;
   trialPrincipalKrw: number | null;
-  fxKrwPerUsdt: number | null;
 };
 
 export function emptyTrial(): TrialState {
   return {
     grantStatus: "none",
-    trialPrincipalUsdt: 0,
-    trialLockedUsdt: 0,
+    trialPrincipalUsdt: null,
+    trialLockedUsdt: null,
     welcomeTargetKrw: null,
     grantAmountUsdt: null,
     grantAmountKrw: null,
+    trialPrincipalKrwApprox: null,
     maxParticipations: null,
     participationsUsed: null,
     participationsRemaining: null,
@@ -723,7 +849,7 @@ function bucketLabel(row: Record<string, unknown>): string {
 }
 
 function bucketKrw(row: Record<string, unknown>): number | null {
-  return pickNumber(row, ["amountKrw", "krw", "availableKrw", "balanceKrw"]);
+  return pickNumber(row, withSnake(["amountKrwApprox", "amountKrw", "krw", "availableKrw", "balanceKrw"]));
 }
 
 function bucketUsdt(row: Record<string, unknown>): number | null {
@@ -746,11 +872,12 @@ export function readTrialState(data: unknown): TrialState {
   const inner = nest(row, "trial") || nest(row, "trialState") || row;
   return {
     grantStatus: asGrantStatus(inner ? inner.grantStatus ?? inner.grant_status : null),
-    trialPrincipalUsdt: pickNumber(inner, withSnake(["trialPrincipalUsdt"])) ?? 0,
-    trialLockedUsdt: pickNumber(inner, withSnake(["trialLockedUsdt"])) ?? 0,
+    trialPrincipalUsdt: pickNumber(inner, withSnake(["trialPrincipalUsdt"])),
+    trialLockedUsdt: pickNumber(inner, withSnake(["trialLockedUsdt"])),
     welcomeTargetKrw: pickNumber(inner, withSnake(["welcomeTargetKrw"])),
     grantAmountUsdt: pickNumber(inner, withSnake(["grantAmountUsdt"])),
     grantAmountKrw: pickNumber(inner, withSnake(["grantAmountKrw"])),
+    trialPrincipalKrwApprox: pickNumber(inner, withSnake(["trialPrincipalKrwApprox"])),
     maxParticipations: pickNumber(inner, withSnake(["maxParticipations"])),
     participationsUsed: pickNumber(inner, withSnake(["participationsUsed"])),
     participationsRemaining: pickNumber(inner, withSnake(["participationsRemaining"])),
@@ -765,7 +892,7 @@ export function readTrialState(data: unknown): TrialState {
 
 export function trialGrantKrw(trial: TrialState): number | null {
   if (trial.grantStatus !== "active") return null;
-  return trial.grantAmountKrw ?? trial.welcomeTargetKrw;
+  return trial.grantAmountKrw ?? trial.welcomeTargetKrw ?? trial.trialPrincipalKrwApprox;
 }
 
 function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | null {
@@ -775,16 +902,10 @@ function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | nul
   const id = pickString(row, ["id", "opportunityId"]);
   if (!id) return null;
   const title = pickString(row, ["asset_label", "assetLabel", "title", "label", "name"]) || "기회";
-  const asset = (pickString(row, ["asset", "currency", "unit"]) || "").toUpperCase();
   const amountRows = [row, nest(row, "quote"), nest(row, "pricing"), nest(row, "amounts")];
-  let requiredUsdt = pickNumberFrom(amountRows, ["requiredUsdt", "amountUsdt", "minUsdt", "entryUsdt", "requiredAmountUsdt", "usdtRequired"]);
-  let requiredKrw = pickNumberFrom(amountRows, ["requiredKrw", "amountKrw", "minKrw", "entryKrw"]);
-  if (requiredUsdt == null && (asset.includes("USDT") || asset === "USD")) {
-    requiredUsdt = pickNumberFrom(amountRows, ["required", "amount", "price", "minAmount"]);
-  }
-  if (requiredKrw == null && (asset.includes("KRW") || asset === "KRW")) {
-    requiredKrw = pickNumberFrom(amountRows, ["required", "amount", "price", "minAmount"]);
-  }
+  const requiredCapitalUsdt = pickStringFrom(amountRows, ["requiredCapitalUsdt"]);
+  const requiredUsdt = pickNumberFrom(amountRows, ["requiredCapitalUsdt", "requiredUsdt"]);
+  const requiredKrw = pickNumberFrom(amountRows, ["requiredCapitalKrwApprox"]);
   const trialEligible =
     row.trial_eligible === true ||
     row.trialEligible === true ||
@@ -797,10 +918,11 @@ function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | nul
     bucket: asBucket(row.bucket),
     trialEligible,
     imageUrl: pickImageUrl(row),
+    requiredCapitalUsdt,
     requiredUsdt,
     requiredKrw,
-    expectedUsdt: pickNumberFrom(amountRows, ["expectedUsdt", "expectedProfitUsdt", "profitUsdt"]),
-    expectedKrw: pickNumberFrom(amountRows, ["expectedKrw", "expectedProfitKrw", "expectedProfitKrwApprox", "profitKrw"]),
+    expectedUsdt: pickNumberFrom(amountRows, ["expectedProfitUsdt", "expectedUsdt"]),
+    expectedKrw: pickNumberFrom(amountRows, ["expectedProfitKrwApprox", "expectedKrw"]),
     lowMarket: pickString(row, ["lowMarket", "buyVenue", "fromMarket", "partnerLabel", "partner"]) || "",
     highMarket: pickString(row, ["highMarket", "sellVenue", "toMarket"]) || "",
     seats: pickNumberFrom(amountRows, ["seats", "remainingSeats", "openSeats"]),
@@ -828,28 +950,30 @@ export function readOpportunity(data: unknown, trialIds: string[] = []): LiveOpp
   );
 }
 
-export function readPrincipalUsdt(data: unknown): number {
+export function readPrincipalUsdt(data: unknown): number | null {
   const row = asRecord(data);
   const feed = nest(row, "listFeed") || nest(row, "feed") || row;
-  return pickNumber(row, ["principalUsdt"]) ?? pickNumber(feed, ["principalUsdt"]) ?? 0;
+  return pickNumber(row, ["principalUsdt"]) ?? pickNumber(feed, ["principalUsdt"]);
 }
 
 export function readMoney(home: unknown, buckets: unknown, trial?: TrialState | null): MoneyRead {
   const money = moneyRoot(home);
+  const bucketRoot = asRecord(buckets);
+  const sources = [money, bucketRoot, nest(bucketRoot, "wallet"), moneyRoot(buckets)];
   const trialState = trial ?? emptyTrial();
   const read: MoneyRead = {
-    principalUsdt: readPrincipalUsdt(home),
-    principalKrw: pickNumber(money, ["principalKrw", "workingPrincipalKrw"]),
-    lockedUsdt: pickNumber(money, ["lockedUsdt", "holdUsdt"]),
-    lockedKrw: pickNumber(money, ["lockedKrw", "holdKrw"]),
-    profitKrw: pickNumber(money, ["profitKrw", "withdrawableProfitKrw", "availableProfitKrw"]),
-    profitUsdt: pickNumber(money, ["profitUsdt", "availableProfitUsdt", "withdrawableUsdt", "usdtProfit"]),
-    practiceUsdt: pickNumber(money, ["practiceUsdt"]),
-    practiceKrw: pickNumber(money, ["practiceKrw", "practice"]),
-    trialPrincipalUsdt: trialState.trialPrincipalUsdt,
-    trialLockedUsdt: trialState.trialLockedUsdt,
-    trialPrincipalKrw: trialGrantKrw(trialState),
-    fxKrwPerUsdt: pickNumber(money, ["fxKrwPerUsdt", "usdtKrw", "fxRate", "krwPerUsdt"]),
+    principalUsdt: pickNumberFrom(sources, ["principalUsdt"]) ?? readPrincipalUsdt(home),
+    principalKrw: pickNumberFrom(sources, ["principalKrwApprox", "principalKrw"]),
+    lockedUsdt: pickNumberFrom(sources, ["lockedUsdt"]),
+    lockedKrw: pickNumberFrom(sources, ["lockedKrwApprox", "lockedKrw"]),
+    profitUsdt: pickNumberFrom(sources, ["profitUsdt", "withdrawableProfitUsdt"]),
+    profitKrw: pickNumberFrom(sources, ["profitKrwApprox", "withdrawableProfitKrwApprox", "profitKrw"]),
+    practiceUsdt: pickNumberFrom(sources, ["practiceUsdt"]),
+    practiceKrw: pickNumberFrom(sources, ["practiceKrwApprox", "practiceKrw"]),
+    trialPrincipalUsdt: pickNumberFrom(sources, ["trialPrincipalUsdt"]) ?? trialState.trialPrincipalUsdt,
+    trialLockedUsdt: pickNumberFrom(sources, ["trialLockedUsdt"]) ?? trialState.trialLockedUsdt,
+    trialPrincipalKrw:
+      pickNumberFrom(sources, ["trialPrincipalKrwApprox"]) ?? trialGrantKrw(trialState),
   };
 
   for (const item of asList(buckets)) {
@@ -877,7 +1001,7 @@ export function readMoney(home: unknown, buckets: unknown, trial?: TrialState | 
       continue;
     }
     if (isPrincipalName(label)) {
-      if (read.principalUsdt === 0 && usdt != null) read.principalUsdt = usdt;
+      if (read.principalUsdt == null && usdt != null) read.principalUsdt = usdt;
       if (read.principalKrw == null && krw != null) read.principalKrw = krw;
     }
   }
@@ -885,9 +1009,48 @@ export function readMoney(home: unknown, buckets: unknown, trial?: TrialState | 
   return read;
 }
 
+export async function fillMissingKrw(money: MoneyRead): Promise<MoneyRead> {
+  const needPrincipal = money.principalKrw == null && money.principalUsdt != null;
+  const needProfit = money.profitKrw == null && money.profitUsdt != null;
+  if (!needPrincipal && !needProfit) return money;
+  try {
+    const approx = await approxCurrentFx({
+      ...(needPrincipal && money.principalUsdt != null ? { principalUsdt: String(money.principalUsdt) } : {}),
+      ...(needProfit && money.profitUsdt != null ? { withdrawableProfitUsdt: String(money.profitUsdt) } : {}),
+    });
+    const row = asRecord(approx);
+    return {
+      ...money,
+      principalKrw: money.principalKrw ?? pickNumber(row, withSnake(["principalKrwApprox"])),
+      profitKrw: money.profitKrw ?? pickNumber(row, withSnake(["withdrawableProfitKrwApprox"])),
+    };
+  } catch {
+    return money;
+  }
+}
+
+export async function loadMoneyRead(): Promise<MoneyRead> {
+  const [home, homeMoney, buckets, trial] = await Promise.allSettled([
+    getHomeRead(),
+    getHomeMoneyRead(),
+    getWalletBuckets(),
+    getTrialState(),
+  ]);
+  const trialState = trial.status === "fulfilled" ? readTrialState(trial.value) : emptyTrial();
+  const money = readMoney(
+    mergeApiRows(
+      homeMoney.status === "fulfilled" ? homeMoney.value : null,
+      home.status === "fulfilled" ? home.value : null,
+    ),
+    buckets.status === "fulfilled" ? buckets.value : null,
+    trialState,
+  );
+  return fillMissingKrw(money);
+}
+
 export function hasMoneyValues(money: MoneyRead): boolean {
   return (
-    money.principalUsdt !== 0 ||
+    money.principalUsdt != null ||
     money.principalKrw != null ||
     money.lockedUsdt != null ||
     money.lockedKrw != null ||
@@ -895,9 +1058,51 @@ export function hasMoneyValues(money: MoneyRead): boolean {
     money.practiceUsdt != null ||
     money.practiceKrw != null ||
     money.profitUsdt != null ||
-    money.trialPrincipalUsdt !== 0 ||
-    money.trialLockedUsdt !== 0
+    money.trialPrincipalUsdt != null ||
+    money.trialLockedUsdt != null ||
+    money.trialPrincipalKrw != null
   );
+}
+
+export function readTrades(data: unknown): Array<{
+  tradeId: string;
+  opportunityId: string;
+  title: string;
+  capitalKrw: number | null;
+  settledProfitKrw: number | null;
+  settledProfitUsdt: number | null;
+  status: string;
+  createdAt: string;
+}> {
+  return asList(data).flatMap((item) => {
+    const raw = asRecord(item);
+    if (!raw) return [];
+    const row = nest(raw, "trade") || raw;
+    const tradeId = pickString(row, ["tradeId", "id"]);
+    if (!tradeId) return [];
+    return [
+      {
+        tradeId,
+        opportunityId: pickString(row, ["opportunityId"]) || "",
+        title: pickString(row, ["title", "label", "name"]) || "기록",
+        capitalKrw: pickNumber(row, withSnake(["capitalKrwApprox", "settledCapitalKrwApprox"])),
+        settledProfitKrw: pickNumber(row, withSnake(["settledProfitKrwApprox", "profitKrwApprox"])),
+        settledProfitUsdt: pickNumber(row, withSnake(["settledProfitUsdt", "profitUsdt"])),
+        status: pickString(row, ["status", "state"]) || "",
+        createdAt: pickString(row, ["createdAt", "occurredAt", "date"]) || "",
+      },
+    ];
+  });
+}
+
+export function readTradeStatus(data: unknown): string {
+  const row = asRecord(data);
+  return pickString(row, ["status", "state"]) || pickString(nest(row, "trade"), ["status", "state"]) || "";
+}
+
+export function tradeIsOpen(status: string): boolean {
+  const value = status.toLowerCase();
+  return value === "running" || value === "pending" || value === "in_progress" || value === "open" || value === "active";
 }
 
 export function readDepositAddress(data: unknown): { address: string; network: string | null } | null {

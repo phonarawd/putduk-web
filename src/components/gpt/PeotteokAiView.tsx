@@ -161,7 +161,7 @@ export function PeotteokAiView() {
               }}
             >
               <label className="sr-only" htmlFor="aiInput">
-                퍼뜩AI에게 질문
+                퍼뜩에게 질문
               </label>
               <textarea
                 id="aiInput"

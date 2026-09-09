@@ -109,7 +109,7 @@ export function AmbassadorMoment() {
   const title = showTrust
     ? "필요한 금액만 잠기고, 조건이 달라지면 안전하게 멈춰요."
     : "좋은 조건은 오래 머물지 않아요. 지금 비교해 보세요.";
-  const action = showTrust ? "퍼뜩AI에게 물어보기" : "지금 기회 보기";
+  const action = showTrust ? "퍼뜩에게 물어보기" : "지금 기회 보기";
 
   return (
     <button

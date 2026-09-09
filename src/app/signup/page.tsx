@@ -6,11 +6,15 @@ import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { TurnstileBox, hasTurnstileSiteKey, preloadTurnstile } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
-import { birthDateFromPrefix, googleRedirectUrl, isAdultBirthDate, isIsoDate, signup, startGoogle, toE164 } from "@/lib/api";
+import { birthDateFromPrefix, isAdultBirthDate, isIsoDate, signup, toE164 } from "@/lib/api";
 import { validBirthday, validEmail, validPhone, validUsername } from "@/lib/gpt/validate";
 import { MSG, toastFromError } from "@/lib/messages";
 
 preloadTurnstile();
+
+function passwordPoints(value: string) {
+  return Array.from(value).length;
+}
 
 export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   const router = useRouter();
@@ -53,15 +57,18 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!validUsername(username)) {
+    const nextUsername = username.trim();
+    const nextEmail = email.trim().toLowerCase();
+    const nextName = displayName.trim();
+    if (!validUsername(nextUsername)) {
       showToast(MSG.usernameNeed, "warning");
       return;
     }
-    if (!validEmail(email)) {
+    if (!validEmail(nextEmail)) {
       showToast(MSG.emailNeed, "warning");
       return;
     }
-    if (password.length < 8) {
+    if (passwordPoints(password) < 8) {
       showToast(MSG.passwordShort, "warning");
       return;
     }
@@ -69,7 +76,7 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
       showToast(MSG.passwordMismatch, "warning");
       return;
     }
-    if (!displayName.trim() || !validBirthday(birthday)) {
+    if (!nextName || nextName.length > 60 || !validBirthday(birthday)) {
       showToast(MSG.nameBirthNeed, "warning");
       return;
     }
@@ -99,21 +106,21 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
     const usedToken = challengeToken;
     try {
       await signup({
-        username,
-        email,
+        username: nextUsername,
+        email: nextEmail,
         password,
         passwordConfirm,
-        declaredName: displayName.trim(),
+        declaredName: nextName,
         birthDate,
         turnstileToken: usedToken,
         termsAcceptedAt,
         privacyAcceptedAt,
-        marketingConsent: benefitNews,
+        marketingConsent: benefitNews || undefined,
         referralCode: referralCode.trim() || undefined,
         phoneE164: phone ? toE164(phone) : undefined,
       });
       dropUsedToken();
-      submitClassicSignupProfile({ displayName, email, birthday, gender: "", phone, benefitNews });
+      submitClassicSignupProfile({ displayName: nextName, email: nextEmail, birthday, gender: "", phone, benefitNews });
       router.push("/auth/verify-email");
       showToast(MSG.signupOk, "success");
     } catch (error: unknown) {
@@ -125,29 +132,10 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
     }
   }
 
-  async function onGoogle() {
-    if (!requiredTerms) {
-      showToast(MSG.termsNeed, "warning");
-      return;
-    }
-    try {
-      const data = await startGoogle();
-      const url = googleRedirectUrl(data);
-      if (!url) {
-        showToast(MSG.googleUrlFail, "error");
-        return;
-      }
-      window.location.href = url;
-    } catch (error: unknown) {
-      const payload = toastFromError(error, MSG.googleStartFail);
-      showToast(payload.message, payload.kind);
-    }
-  }
-
   return (
     <RouteScreen>
       <section className="form-page-card wide-form-card">
-        <RouteTop kicker="새 리셀러 시작" title="회원가입" copy="필요한 정보만 입력하면 내 리셀러 ID가 준비돼요." backPath="/login" />
+        <RouteTop kicker="새 시작" title="회원가입" copy="필요한 정보만 입력하면 바로 시작할 수 있어요." backPath="/login" />
         <form className="stack-form" data-form="signup" noValidate onSubmit={onSubmit}>
           <div className="form-grid two">
             <label className="form-field">
@@ -214,7 +202,7 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
               <input
                 name="displayName"
                 autoComplete="name"
-                placeholder="데스크에 보일 이름"
+                placeholder="화면에 보일 이름"
                 required
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
@@ -301,12 +289,6 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
             회원가입
           </button>
         </form>
-        <div className="or-line">
-          <span>또는</span>
-        </div>
-        <button className="google-button" type="button" onClick={onGoogle}>
-          <span aria-hidden="true">G</span>구글로 계속하기
-        </button>
         <p className="auth-switch">
           이미 계정이 있으신가요?{" "}
           <button type="button" onClick={() => router.push("/login")}>

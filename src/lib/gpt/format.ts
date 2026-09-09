@@ -31,20 +31,16 @@ export function formatSignedUsdt(value: number): string {
 
 export function formatMoneyPrimary(usdt: number | null, krw: number | null): string | null {
   if (krw != null) return formatKrw(krw);
-  if (usdt === 0) return formatKrw(0);
-  if (usdt != null) return formatUsdt(usdt);
   return null;
 }
 
-export function formatMoneySecondary(usdt: number | null, krw: number | null): string | null {
-  if (krw != null && usdt != null) return formatUsdt(usdt);
+export function formatMoneySecondary(usdt: number | null, _krw: number | null): string | null {
+  if (usdt != null) return formatUsdt(usdt);
   return null;
 }
 
 export function formatSignedMoneyPrimary(usdt: number | null, krw: number | null): string | null {
   if (krw != null) return formatSignedKrw(krw);
-  if (usdt === 0) return formatSignedKrw(0);
-  if (usdt != null) return formatSignedUsdt(usdt);
   return null;
 }
 

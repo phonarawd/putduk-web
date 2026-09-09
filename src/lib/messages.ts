@@ -22,15 +22,24 @@ export const MSG = {
   signupFail: "😥 가입을 마치지 못했어요. 입력한 정보를 다시 확인해 주세요.",
   signupBusy: "⏳ 지금은 가입과 로그인을 받을 수 없어요. 잠시 뒤 다시 시도해 주세요.",
   usernameNeed: "⚠️ 아이디는 영문 소문자로 시작하는 4~20자로 입력해 주세요.",
+  usernameReserved: "⚠️ 이 아이디는 쓸 수 없어요. 다른 아이디를 입력해 주세요.",
   usernameTaken: "⚠️ 이미 쓰는 아이디예요. 다른 아이디를 입력해 주세요.",
   emailNeed: "⚠️ 이메일을 정확하게 입력해 주세요.",
   passwordMismatch: "⚠️ 비밀번호 확인이 서로 달라요.",
   profileNeed: "⚠️ 이름, 생년월일 앞자리와 성별을 알려 주세요.",
   nameBirthNeed: "⚠️ 이름과 생년월일 앞자리를 알려 주세요.",
+  nameInvalid: "⚠️ 이름을 다시 확인해 주세요.",
   ageNeed: "⚠️ 만 19세 이상만 가입할 수 있어요.",
   phoneNeed: "⚠️ 휴대폰 번호를 다시 확인해 주세요.",
   termsNeed: "⚠️ 이용약관과 개인정보 처리방침에 동의해 주세요.",
   challengeNeed: "🙏 아래 확인을 마친 뒤 다시 눌러 주세요.",
+  challengeRetry: "🙏 확인을 다시 한 뒤 눌러 주세요.",
+  findIdOk: "📬 가입한 이메일로 아이디를 확인해 드렸어요.",
+  resetRequestOk: "📬 비밀번호를 바꿀 수 있는 메일을 보냈어요.",
+  resetOk: "✅ 새 비밀번호로 저장했어요. 로그인해 주세요.",
+  resendOk: "📬 인증 메일을 다시 보냈어요.",
+  moneyPreparing: "준비 중",
+  referralWait: "잠시 기다려 주세요.",
   profileSaved: "✅ 내 정보를 저장했어요.",
   profileSaveFail: "😥 정보를 저장하지 못했어요. 다시 시도해 주세요.",
   verifyNeed: "⚠️ 메일 안의 인증 링크로 들어와 주세요.",
@@ -71,6 +80,7 @@ export const MSG = {
   participateOk: "🎉 참여 신청이 접수됐어요.",
   participateFail: "😥 참여 신청을 보내지 못했어요. 다시 시도해 주세요.",
   participateBusy: "⏳ 지금 진행 중인 일이 끝난 뒤 다음 기회를 시작할 수 있어요.",
+  participateNeedAmount: "⚠️ 아직 참여 금액을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.",
   noOpportunity: "🔎 아직 확인할 기회가 없어요.",
   notEnoughMoney: "💳 지금은 이 기회에 참여할 금액이 부족해요.",
   noTickets: "⚠️ 남은 참여 횟수가 없어요.",
@@ -93,12 +103,20 @@ export const MSG = {
 const TECHNICAL_RE = /unauthorized|forbidden|not found|internal server|bad request|network error|request failed|invalid token|api error|timeout|econn|fetch|exception|payload|endpoint|stack|sql|jwt|oauth|status|http\/|error code|\b\d{3}\b/i;
 
 function mapKnownCode(text: string): string | null {
-  if (/TURNSTILE/i.test(text)) return MSG.challengeNeed;
+  if (/TURNSTILE_UNAVAILABLE/i.test(text)) return MSG.signupBusy;
+  if (/TURNSTILE_FAILED/i.test(text)) return MSG.challengeRetry;
   if (/TERMS_REQUIRED/i.test(text)) return MSG.termsNeed;
   if (/PASSWORD_TOO_SHORT/i.test(text)) return MSG.passwordShort;
   if (/PASSWORD_PWNED/i.test(text)) return MSG.passwordPwned;
+  if (/PASSWORD_CONFIRM_MISMATCH/i.test(text)) return MSG.passwordMismatch;
+  if (/USERNAME_RESERVED/i.test(text)) return MSG.usernameReserved;
   if (/USERNAME_INVALID_FORMAT/i.test(text)) return MSG.usernameNeed;
   if (/USERNAME_TAKEN/i.test(text)) return MSG.usernameTaken;
+  if (/EMAIL_INVALID/i.test(text)) return MSG.emailNeed;
+  if (/DECLARED_NAME_INVALID/i.test(text)) return MSG.nameInvalid;
+  if (/BIRTH_DATE_TOO_YOUNG/i.test(text)) return MSG.ageNeed;
+  if (/BIRTH_DATE_INVALID/i.test(text)) return MSG.nameBirthNeed;
+  if (/REFERRAL_POOL_WAIT/i.test(text)) return MSG.referralWait;
   if (/AUTH_REQUIRED/i.test(text)) return MSG.loginNeed;
   if (/SIGNUP_LINK_INVALID/i.test(text)) return MSG.verifyLinkBad;
   return null;

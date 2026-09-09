@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { AmbassadorHero, AmbassadorMoment } from "@/components/gpt/AmbassadorVisual";
 import { OpportunitySection } from "@/components/gpt/OpportunitySection";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
-import { hasMoneyValues, trialGrantKrw } from "@/lib/api";
+import { trialGrantKrw } from "@/lib/api";
 import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { principalSuggestion } from "@/lib/gpt/opportunities";
@@ -97,7 +97,7 @@ function HomeWorkspace() {
           </span>
           <span className="ask-ai-copy">
             <small>내 자본과 오늘 일을 아는 개인 AI</small>
-            <strong>퍼뜩AI에게 물어보기</strong>
+            <strong>퍼뜩에게 물어보기</strong>
             <em id="homeAiSuggestion">{principalSuggestion(state, selected)}</em>
           </span>
           <span className="ask-ai-arrow" aria-hidden="true">
@@ -159,45 +159,57 @@ function ProfileCapitalCard() {
   const profitUsdt = state.profitUsdt;
   const profitKrw = state.profitKrw;
   const grantKrw = trialGrantKrw(state.trial);
+  const trialUsdt = state.trial.trialPrincipalUsdt;
+  const fxPending = state.trial.grantStatus === "failed_fx";
+  const trialActive = state.trial.grantStatus === "active";
   const principalPrimary = formatMoneyPrimary(state.principalUsdt, state.principalKrw);
   const principalSecondary = formatMoneySecondary(state.principalUsdt, state.principalKrw);
-  const trialPrimary = formatMoneyPrimary(state.trial.trialPrincipalUsdt, grantKrw);
-  const trialSecondary = formatMoneySecondary(state.trial.trialPrincipalUsdt, grantKrw);
-  const ready =
-    state.deskReady &&
-    hasMoneyValues({
-      principalUsdt: state.principalUsdt,
-      principalKrw: state.principalKrw,
-      lockedUsdt: state.lockedUsdt,
-      lockedKrw: state.lockedKrw,
-      profitUsdt: state.profitUsdt,
-      profitKrw: state.profitKrw,
-      practiceUsdt: state.practiceUsdt,
-      practiceKrw: state.practiceKrw,
-      trialPrincipalUsdt: state.trial.trialPrincipalUsdt,
-      trialLockedUsdt: state.trial.trialLockedUsdt,
-      trialPrincipalKrw: grantKrw,
-      fxKrwPerUsdt: null,
-    });
+  const trialPrimary = formatMoneyPrimary(trialUsdt, grantKrw);
+  const trialSecondary = formatMoneySecondary(trialUsdt, grantKrw);
+  const ready = state.deskReady;
+  const heroIsTrial = trialActive && principalPrimary == null;
   return (
     <article className="capital-card">
       <div className="summary-label">
-        <span>내 예치</span>
+        <span>{heroIsTrial || fxPending ? "체험 원금 · 출금 불가" : "내 예치"}</span>
       </div>
-      <strong id="availableCapital">{ready ? principalPrimary ?? "아직 표시할 금액이 없어요" : "아직 표시할 금액이 없어요"}</strong>
-      {ready && principalSecondary ? <small id="availableUsdt">{principalSecondary}</small> : <small>본인 예치만 보여 드려요</small>}
-      {ready && state.trial.grantStatus === "active" ? (
+      <strong id="availableCapital">
+        {!ready
+          ? "금액을 확인하고 있어요"
+          : fxPending
+            ? "준비 중"
+            : heroIsTrial
+              ? trialPrimary ?? "아직 표시할 금액이 없어요"
+              : principalPrimary ?? "아직 표시할 금액이 없어요"}
+      </strong>
+      {ready && !fxPending && heroIsTrial && trialSecondary ? (
+        <small id="availableUsdt">{trialSecondary}</small>
+      ) : ready && !heroIsTrial && principalSecondary ? (
+        <small id="availableUsdt">{principalSecondary}</small>
+      ) : (
+        <small>{fxPending ? "환율이 준비되면 원화로 보여 드려요" : "본인 예치와 체험은 따로 보여 드려요"}</small>
+      )}
+      {ready && trialActive && !heroIsTrial ? (
         <div className="capital-card-bottom">
           <span>체험 원금 · 출금 불가</span>
           <b>
-            {trialPrimary}
+            {trialPrimary ?? "아직 표시할 금액이 없어요"}
             {trialSecondary ? ` · ${trialSecondary}` : ""}
+          </b>
+        </div>
+      ) : null}
+      {ready && heroIsTrial && principalPrimary ? (
+        <div className="capital-card-bottom">
+          <span>내 예치</span>
+          <b>
+            {principalPrimary}
+            {principalSecondary ? ` · ${principalSecondary}` : ""}
           </b>
         </div>
       ) : null}
       <div className="capital-card-bottom">
         <span>출금 가능 수익</span>
-        <b id="settledProfit">{ready ? formatSignedMoneyPrimary(profitUsdt, profitKrw) ?? "아직 표시할 금액이 없어요" : "아직 표시할 금액이 없어요"}</b>
+        <b id="settledProfit">{ready ? formatSignedMoneyPrimary(profitUsdt, profitKrw) ?? "아직 표시할 금액이 없어요" : "금액을 확인하고 있어요"}</b>
       </div>
     </article>
   );

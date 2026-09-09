@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { CSSProperties } from "react";
 import { GenderSelect } from "@/components/gpt/GenderSelect";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
-import { formatIssued, formatMoneyPrimary, formatMoneySecondary, formatSignedKrw, formatSignedMoneyPrimary, formatTime } from "@/lib/gpt/format";
+import { formatIssued, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
-import { opportunityById } from "@/lib/gpt/opportunities";
-import { emptyTrial, getHomeRead, getTrialState, getWalletBuckets, hasMoneyValues, readMoney, readTrialState, type MoneyRead } from "@/lib/api";
+import { hasMoneyValues, loadMoneyRead, type MoneyRead } from "@/lib/api";
 
 const MENU_ITEMS = [
   { icon: "₩", title: "입금", small: "운용 자본 넣기", path: "/wallet/deposit" },
@@ -20,7 +18,6 @@ const MENU_ITEMS = [
   { icon: "⚙", title: "설정", small: "내 데스크 환경", path: "/me/settings" },
   { icon: "★", title: "혜택", small: "현재 받을 혜택", path: "/me/benefits" },
   { icon: "🎉", title: "이벤트", small: "지금 진행 중인 이벤트", path: "/me/events" },
-  { icon: "◆", title: "내 등급", small: "계정별 하루 기회", path: "/me/membership" },
   { icon: "?", title: "고객지원", small: "도움이 필요할 때", path: "/me/support" },
   { icon: "§", title: "약관과 정보", small: "정책과 고지", path: "/legal" },
   { icon: "₮", title: "테더 준비", small: "트론 전송 안내", path: "/wallet/usdt-guide" },
@@ -33,23 +30,23 @@ export default function MePage() {
   const [moneyReady, setMoneyReady] = useState(false);
 
   useEffect(() => {
-    Promise.allSettled([getHomeRead(), getWalletBuckets(), getTrialState()]).then(([home, buckets, trial]) => {
-      const next = readMoney(
-        home.status === "fulfilled" ? home.value : null,
-        buckets.status === "fulfilled" ? buckets.value : null,
-        trial.status === "fulfilled" ? readTrialState(trial.value) : emptyTrial(),
-      );
-      setMoney(next);
-      setMoneyReady(true);
-    });
+    loadMoneyRead()
+      .then((next) => {
+        setMoney(next);
+        setMoneyReady(true);
+      })
+      .catch(() => {
+        setMoney(null);
+        setMoneyReady(true);
+      });
   }, []);
 
-  const principalUsdt = money?.principalUsdt ?? 0;
+  const principalUsdt = money?.principalUsdt ?? null;
   const profitUsdt = money?.profitUsdt ?? null;
   const profitKrw = money?.profitKrw ?? null;
   const practiceUsdt = money?.practiceUsdt ?? null;
   const practiceKrw = money?.practiceKrw ?? null;
-  const trialPrincipal = money?.trialPrincipalUsdt ?? 0;
+  const trialVisible = money?.trialPrincipalUsdt != null || money?.trialPrincipalKrw != null;
 
   return (
     <WorkspaceView>
@@ -83,7 +80,7 @@ export default function MePage() {
             <div className="wallet-overview-head">
               <div>
                 <span>내 운용 지갑</span>
-                <strong id="profileTotal">{moneyReady ? formatMoneyPrimary(principalUsdt, money?.principalKrw ?? null) : ""}</strong>
+                <strong id="profileTotal">{moneyReady ? formatMoneyPrimary(principalUsdt, money?.principalKrw ?? null) ?? "아직 표시할 금액이 없어요" : ""}</strong>
               </div>
             </div>
             {moneyReady && money && hasMoneyValues(money) ? (
@@ -94,13 +91,13 @@ export default function MePage() {
                     <b id="profileCapital">{formatMoneyPrimary(principalUsdt, money.principalKrw)}</b>
                     {formatMoneySecondary(principalUsdt, money.principalKrw) ? <small>{formatMoneySecondary(principalUsdt, money.principalKrw)}</small> : null}
                   </div>
-                  {trialPrincipal ? (
+                  {trialVisible ? (
                     <div>
                       <span>체험 원금 · 출금 불가</span>
                       <b>
-                        {formatMoneyPrimary(trialPrincipal, money.trialPrincipalKrw)}
-                        {formatMoneySecondary(trialPrincipal, money.trialPrincipalKrw)
-                          ? ` · ${formatMoneySecondary(trialPrincipal, money.trialPrincipalKrw)}`
+                        {formatMoneyPrimary(money.trialPrincipalUsdt, money.trialPrincipalKrw) ?? "아직 표시할 금액이 없어요"}
+                        {formatMoneySecondary(money.trialPrincipalUsdt, money.trialPrincipalKrw)
+                          ? ` · ${formatMoneySecondary(money.trialPrincipalUsdt, money.trialPrincipalKrw)}`
                           : ""}
                       </b>
                     </div>
@@ -131,7 +128,9 @@ export default function MePage() {
           </article>
         </section>
 
-        <MyRecords />
+        <button className="text-action route-wide-action" type="button" onClick={() => router.push("/work")}>
+          기록 보기
+        </button>
 
         <section className="me-menu" aria-label="나의 메뉴">
           {MENU_ITEMS.map((item) => (
@@ -149,7 +148,7 @@ export default function MePage() {
               <img src="/putduk-mark.svg" alt="" />
             </span>
             <div>
-              <strong>퍼뜩AI에게 묻기</strong>
+              <strong>퍼뜩에게 묻기</strong>
               <small>내 상황으로 질문</small>
             </div>
             <i>→</i>
@@ -191,77 +190,5 @@ export default function MePage() {
         </button>
       </section>
     </WorkspaceView>
-  );
-}
-
-// 예전 GPT "기록" 뷰의 끝난 정산 목록. /work 가 "기회"로 바뀌면서 이 안으로 옮겼다.
-function MyRecords() {
-  const router = useRouter();
-  const { state } = useGpt();
-  const trades = state.trades;
-
-  return (
-    <>
-      <div className="section-title-row">
-        <div>
-          <span className="view-kicker">끝난 매칭과 정산</span>
-          <h2>내 기록</h2>
-        </div>
-        <span className="view-count">{trades.length}건</span>
-      </div>
-      <section className="record-summary" aria-label="정산 요약">
-        <div>
-          <span>누적 수익</span>
-          <strong id="recordProfit">
-            {formatSignedMoneyPrimary(state.profitUsdt, state.profitKrw) ?? "아직 표시할 금액이 없어요"}
-          </strong>
-        </div>
-        <div>
-          <span>진행 중 잠금</span>
-          <strong id="recordLocked">
-            {formatMoneyPrimary(state.lockedUsdt, state.lockedKrw) ?? "아직 표시할 금액이 없어요"}
-          </strong>
-        </div>
-        <button type="button" onClick={() => router.push("/wallet/history")}>
-          입출금 내역 보기
-        </button>
-      </section>
-      <div id="historyList" className="history-list" aria-live="polite">
-        {trades.length === 0 ? (
-          <div className="history-empty">
-            <span aria-hidden="true">✓</span>
-            <strong>첫 기록을 준비하고 있어요</strong>
-            <p>기회를 확인하면 완료 결과가 여기에 모여요.</p>
-          </div>
-        ) : (
-          trades.map((trade) => {
-            const opportunity = opportunityById(trade.opportunityId, state.feed);
-            const success = trade.status === "success";
-            return (
-              <article className="history-row" key={trade.tradeId}>
-                <span
-                  className="history-symbol"
-                  style={{ "--row-one": opportunity.artOne, "--row-two": opportunity.artTwo } as CSSProperties}
-                >
-                  {opportunity.symbol}
-                </span>
-                <div className="history-main">
-                  <strong>{trade.title}</strong>
-                  <small>
-                    {success ? "정산 완료" : "가격 움직임 · 안전 중단"} · {formatTime(trade.createdAt)}
-                  </small>
-                </div>
-                <div className="history-result">
-                  <strong className={success ? "" : "is-safe"}>
-                    {success ? formatSignedKrw(trade.settledProfitKrw) : "잠금 반환"}
-                  </strong>
-                  <small>{success ? "지갑 반영" : "원금·기회 반환"}</small>
-                </div>
-              </article>
-            );
-          })
-        )}
-      </div>
-    </>
   );
 }

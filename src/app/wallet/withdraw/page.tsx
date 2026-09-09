@@ -7,17 +7,12 @@ import { RouteTop } from "@/components/gpt/RouteTop";
 import { WalletSummaryStrip } from "@/components/gpt/WalletSummaryStrip";
 import { useGpt } from "@/lib/gpt/GptContext";
 import {
-  emptyTrial,
-  getHomeRead,
   getKycStatus,
-  getTrialState,
-  getWalletBuckets,
   getWithdrawStepUpPolicy,
+  loadMoneyRead,
   newIdempotencyKey,
   readKycVerified,
-  readMoney,
   readStepUpMethod,
-  readTrialState,
   requestWithdraw,
   startWithdrawStepUp,
   verifyWithdrawStepUp,
@@ -44,14 +39,9 @@ export default function WalletWithdrawPage() {
     getKycStatus()
       .then((data) => setVerified(readKycVerified(data)))
       .catch(() => setVerified(false));
-    Promise.allSettled([getHomeRead(), getWalletBuckets(), getTrialState()]).then(([home, buckets, trial]) => {
-      const money = readMoney(
-        home.status === "fulfilled" ? home.value : null,
-        buckets.status === "fulfilled" ? buckets.value : null,
-        trial.status === "fulfilled" ? readTrialState(trial.value) : emptyTrial(),
-      );
-      setProfitUsdt(money.profitUsdt);
-    });
+    loadMoneyRead()
+      .then((money) => setProfitUsdt(money.profitUsdt))
+      .catch(() => setProfitUsdt(null));
     getWithdrawStepUpPolicy()
       .then((data) => setStepMethod(readStepUpMethod(data)))
       .catch(() => setStepMethod(null));

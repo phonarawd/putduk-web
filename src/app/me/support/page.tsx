@@ -79,7 +79,7 @@ export default function MeSupportPage() {
         </form>
       </section>
       <button className="text-action route-wide-action" type="button" onClick={() => router.push("/ai")}>
-        퍼뜩AI에게 먼저 물어보기
+        퍼뜩에게 먼저 물어보기
       </button>
     </RouteScreen>
   );

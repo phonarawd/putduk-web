@@ -18,24 +18,36 @@ import {
 import { useRouter } from "next/navigation";
 import {
   emptyTrial,
+  executeTradeTick,
+  fillMissingKrw,
+  getHomeMoneyRead,
   getHomeRead,
   getOpportunity,
   getSession,
   getTrialState,
   getWalletBuckets,
   listOpportunities,
+  listTrades,
   logout as logoutSession,
+  mergeApiRows,
+  newIdempotencyKey,
   participateOpportunity,
+  preflightOpportunity,
   readListFeed,
   readMoney,
   readOpportunity,
+  readParticipateTradeId,
   readPeotteokConversationId,
   readPeotteokDone,
+  readPreflightToken,
+  readTrades,
+  readTradeStatus,
   readTrialState,
   sessionDisplayName,
   sessionEmail,
   sessionUsername,
   streamPeotteokChat,
+  tradeIsOpen,
 } from "@/lib/api";
 import { MSG, toastFromError, type ToastKind } from "@/lib/messages";
 import { conversationGreeting, evidenceFromDeepLink } from "./ai";
@@ -191,20 +203,27 @@ export function GptProvider({ children }: { children: ReactNode }) {
   const selected = useMemo(() => selectedOpportunity(state), [state]);
 
   const reloadDesk = useCallback(async () => {
-    const [home, opps, trial, buckets] = await Promise.allSettled([
+    const [home, homeMoney, opps, trial, buckets, trades] = await Promise.allSettled([
       getHomeRead(),
+      getHomeMoneyRead(),
       listOpportunities(),
       getTrialState(),
       getWalletBuckets(),
+      listTrades(),
     ]);
     const homeVal = home.status === "fulfilled" ? home.value : null;
+    const homeMoneyVal = homeMoney.status === "fulfilled" ? homeMoney.value : null;
     const oppVal = opps.status === "fulfilled" ? opps.value : null;
     const trialVal = trial.status === "fulfilled" ? readTrialState(trial.value) : emptyTrial();
     const bucketVal = buckets.status === "fulfilled" ? buckets.value : null;
+    const tradeRows = trades.status === "fulfilled" ? readTrades(trades.value) : [];
     const feed = readListFeed(homeVal, trialVal.trialEligibleOpportunityIds);
     let fallback = feed.length ? feed : readListFeed(oppVal, trialVal.trialEligibleOpportunityIds);
-    const focus = fallback.find((item) => item.trialEligible) ?? fallback[0];
-    if (focus && (focus.requiredUsdt == null || !focus.imageUrl)) {
+    const focus =
+      fallback.find((item) => trialVal.trialEligibleOpportunityIds.includes(item.id)) ||
+      fallback.find((item) => item.trialEligible) ||
+      fallback[0];
+    if (focus && (focus.requiredCapitalUsdt == null || focus.requiredKrw == null || !focus.imageUrl)) {
       try {
         const parsed = readOpportunity(await getOpportunity(focus.id), trialVal.trialEligibleOpportunityIds);
         if (parsed) {
@@ -213,6 +232,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
               ? {
                   ...item,
                   ...parsed,
+                  requiredCapitalUsdt: parsed.requiredCapitalUsdt ?? item.requiredCapitalUsdt,
                   requiredUsdt: parsed.requiredUsdt ?? item.requiredUsdt,
                   requiredKrw: parsed.requiredKrw ?? item.requiredKrw,
                   imageUrl: parsed.imageUrl ?? item.imageUrl,
@@ -226,11 +246,13 @@ export function GptProvider({ children }: { children: ReactNode }) {
         /* 목록 값은 유지 */
       }
     }
-    const money = readMoney(homeVal ?? oppVal, bucketVal, trialVal);
+    const money = await fillMissingKrw(readMoney(mergeApiRows(homeMoneyVal, homeVal, oppVal), bucketVal, trialVal));
     setStoreState((prev) => ({
       ...prev,
       trial: trialVal,
       feed: fallback,
+      trades: trades.status === "fulfilled" ? tradeRows : prev.trades,
+      recordsError: trades.status === "rejected",
       principalUsdt: money.principalUsdt,
       principalKrw: money.principalKrw,
       lockedUsdt: money.lockedUsdt,
@@ -240,7 +262,9 @@ export function GptProvider({ children }: { children: ReactNode }) {
       practiceUsdt: money.practiceUsdt,
       practiceKrw: money.practiceKrw,
       deskReady: true,
-      selectedId: fallback.some((item) => item.id === prev.selectedId) ? prev.selectedId : fallback[0]?.id || "",
+      selectedId: fallback.some((item) => item.id === prev.selectedId)
+        ? prev.selectedId
+        : focus?.id || fallback[0]?.id || "",
       lastRefreshAt: Date.now(),
     }));
   }, []);
@@ -263,7 +287,11 @@ export function GptProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (cancelled) return;
-        setStoreState((prev) => (prev.loggedIn ? { ...prev, loggedIn: false, deskReady: false, feed: [], trial: emptyTrial() } : prev));
+        setStoreState((prev) =>
+          prev.loggedIn
+            ? { ...prev, loggedIn: false, deskReady: false, feed: [], trades: [], recordsError: false, trial: emptyTrial() }
+            : prev,
+        );
       })
       .finally(() => {
         if (!cancelled) setSessionReady(true);
@@ -571,10 +599,40 @@ export function GptProvider({ children }: { children: ReactNode }) {
       showToast(MSG.noOpportunity, "warning");
       return;
     }
+    if (!opportunity.requiredCapitalUsdt) {
+      setPreflightOpen(false);
+      showToast(MSG.participateNeedAmount, "warning");
+      return;
+    }
     setPreflightOpen(false);
-    participateOpportunity(opportunity.id)
-      .then(() => {
+    const amountUsdt = opportunity.requiredCapitalUsdt;
+    const idempotencyKey = newIdempotencyKey();
+    preflightOpportunity(opportunity.id)
+      .then((preflight) => {
+        const preflightToken = readPreflightToken(preflight);
+        if (!preflightToken) {
+          throw new Error(MSG.participateFail);
+        }
+        return participateOpportunity(opportunity.id, {
+          amountUsdt,
+          idempotencyKey,
+          preflightToken,
+        });
+      })
+      .then(async (result) => {
         showToast(MSG.participateOk, "success");
+        const tradeId = readParticipateTradeId(result);
+        if (tradeId) {
+          try {
+            for (let i = 0; i < 8; i += 1) {
+              const tick = await executeTradeTick(tradeId);
+              const status = readTradeStatus(tick);
+              if (status && !tradeIsOpen(status)) break;
+            }
+          } catch {
+            /* 참여는 이미 접수됨 */
+          }
+        }
         return reloadDesk();
       })
       .catch((error: unknown) => {

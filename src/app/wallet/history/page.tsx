@@ -9,11 +9,18 @@ import { getLedgerJournals, readJournals, type JournalRow } from "@/lib/api";
 
 export default function WalletHistoryPage() {
   const [rows, setRows] = useState<JournalRow[] | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     getLedgerJournals()
-      .then((data) => setRows(readJournals(data)))
-      .catch(() => setRows([]));
+      .then((data) => {
+        setFailed(false);
+        setRows(readJournals(data));
+      })
+      .catch(() => {
+        setFailed(true);
+        setRows([]);
+      });
   }, []);
 
   return (
@@ -24,6 +31,11 @@ export default function WalletHistoryPage() {
         {rows == null ? (
           <div className="plain-notice">
             <strong>기록을 확인하고 있어요.</strong>
+          </div>
+        ) : failed ? (
+          <div className="plain-notice">
+            <strong>내역을 가져오지 못했어요.</strong>
+            <p>잠시 후 다시 확인해 주세요.</p>
           </div>
         ) : rows.length === 0 ? (
           <div className="plain-notice">

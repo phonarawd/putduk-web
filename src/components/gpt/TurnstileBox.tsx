@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAAEqx5cACAFpdDpz2";
 const SCRIPT_ID = "cf-turnstile-script";
 const SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
@@ -28,7 +28,7 @@ declare global {
 }
 
 type Props = {
-  action: "signup" | "login";
+  action: "signup" | "login" | "find-id" | "password-reset" | "email-resend";
   onToken: (token: string) => void;
   resetNonce?: number;
 };

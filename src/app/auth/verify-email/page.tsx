@@ -3,9 +3,12 @@
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
+import { TurnstileBox, hasTurnstileSiteKey, preloadTurnstile } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
-import { verifyClassicSignup } from "@/lib/api";
+import { resendSignupEmail, verifyClassicSignup } from "@/lib/api";
 import { MSG, toastFromError } from "@/lib/messages";
+
+preloadTurnstile();
 
 export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verify-email">) {
   const router = useRouter();
@@ -18,6 +21,8 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
     "";
   const [typedToken, setTypedToken] = useState("");
   const [busy, setBusy] = useState(false);
+  const [challengeToken, setChallengeToken] = useState("");
+  const [challengeReset, setChallengeReset] = useState(0);
   const token = linkToken || typedToken;
   const startedLinkRef = useRef("");
 
@@ -35,6 +40,33 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
       navigateAfterAuth("/");
     } catch (error: unknown) {
       const payload = toastFromError(error, MSG.verifyFail);
+      showToast(payload.message, payload.kind);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onResend() {
+    if (busy) return;
+    if (!state.email) {
+      showToast(MSG.emailNeed, "warning");
+      return;
+    }
+    if (hasTurnstileSiteKey() && !challengeToken) {
+      showToast(MSG.challengeNeed, "warning");
+      return;
+    }
+    setBusy(true);
+    const usedToken = challengeToken;
+    try {
+      await resendSignupEmail(state.email, usedToken);
+      setChallengeToken("");
+      setChallengeReset((value) => value + 1);
+      showToast(MSG.resendOk, "success");
+    } catch (error: unknown) {
+      setChallengeToken("");
+      setChallengeReset((value) => value + 1);
+      const payload = toastFromError(error, MSG.genericError);
       showToast(payload.message, payload.kind);
     } finally {
       setBusy(false);
@@ -62,7 +94,7 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
         <p>
           <b>{state.email || "입력한 이메일"}</b>에서 인증 링크를 눌러 주세요.
           <br />
-          링크를 누르면 데스크를 바로 열 수 있어요.
+          링크를 누르면 바로 이어서 시작할 수 있어요.
         </p>
         {!linkToken ? (
           <label className="form-field">
@@ -73,6 +105,14 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
         <button className="form-primary" type="button" disabled={busy} onClick={() => void verifyWith(token)}>
           인증을 마쳤어요
         </button>
+        {state.email ? (
+          <>
+            <TurnstileBox action="email-resend" onToken={setChallengeToken} resetNonce={challengeReset} />
+            <button className="route-back-link" type="button" disabled={busy} onClick={() => void onResend()}>
+              인증 메일 다시 받기
+            </button>
+          </>
+        ) : null}
         <button className="route-back-link" type="button" onClick={() => router.push("/signup")}>
           이메일 다시 입력하기
         </button>
