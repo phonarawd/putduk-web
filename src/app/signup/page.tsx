@@ -2,15 +2,15 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GenderSelect } from "@/components/gpt/GenderSelect";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
-import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
+import { TurnstileBox, hasTurnstileSiteKey, preloadTurnstile } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
-import { birthDateFromPrefix, googleRedirectUrl, signup, startGoogle } from "@/lib/api";
-import type { Gender } from "@/lib/gpt/types";
+import { birthDateFromPrefix, googleRedirectUrl, isAdultBirthDate, isIsoDate, signup, startGoogle, toE164 } from "@/lib/api";
 import { validBirthday, validEmail, validPhone, validUsername } from "@/lib/gpt/validate";
 import { MSG, toastFromError } from "@/lib/messages";
+
+preloadTurnstile();
 
 export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   const router = useRouter();
@@ -24,12 +24,32 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [birthday, setBirthday] = useState("");
-  const [gender, setGender] = useState<Gender>("");
   const [phone, setPhone] = useState("");
-  const [inviteCode, setInviteCode] = useState(ref);
+  const [referralCode, setReferralCode] = useState(ref);
   const [requiredTerms, setRequiredTerms] = useState(false);
+  const [termsAcceptedAt, setTermsAcceptedAt] = useState("");
+  const [privacyAcceptedAt, setPrivacyAcceptedAt] = useState("");
   const [benefitNews, setBenefitNews] = useState(false);
   const [challengeToken, setChallengeToken] = useState("");
+  const [challengeReset, setChallengeReset] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  function dropUsedToken() {
+    setChallengeToken("");
+    setChallengeReset((value) => value + 1);
+  }
+
+  function onRequiredTerms(checked: boolean) {
+    setRequiredTerms(checked);
+    if (checked) {
+      const at = new Date().toISOString();
+      setTermsAcceptedAt(at);
+      setPrivacyAcceptedAt(at);
+    } else {
+      setTermsAcceptedAt("");
+      setPrivacyAcceptedAt("");
+    }
+  }
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -49,15 +69,24 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
       showToast(MSG.passwordMismatch, "warning");
       return;
     }
-    if (!displayName.trim() || !validBirthday(birthday) || !gender) {
-      showToast(MSG.profileNeed, "warning");
+    if (!displayName.trim() || !validBirthday(birthday)) {
+      showToast(MSG.nameBirthNeed, "warning");
+      return;
+    }
+    const birthDate = birthDateFromPrefix(birthday);
+    if (!isIsoDate(birthDate)) {
+      showToast(MSG.nameBirthNeed, "warning");
+      return;
+    }
+    if (!isAdultBirthDate(birthDate)) {
+      showToast(MSG.ageNeed, "warning");
       return;
     }
     if (phone && !validPhone(phone)) {
       showToast(MSG.phoneNeed, "warning");
       return;
     }
-    if (!requiredTerms) {
+    if (!requiredTerms || !termsAcceptedAt || !privacyAcceptedAt) {
       showToast(MSG.termsNeed, "warning");
       return;
     }
@@ -65,6 +94,9 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
       showToast(MSG.challengeNeed, "warning");
       return;
     }
+    if (busy) return;
+    setBusy(true);
+    const usedToken = challengeToken;
     try {
       await signup({
         username,
@@ -72,18 +104,24 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
         password,
         passwordConfirm,
         declaredName: displayName.trim(),
-        birthDate: birthDateFromPrefix(birthday),
-        gender,
-        phone: phone || undefined,
-        inviteCode: inviteCode.trim() || undefined,
-        turnstileToken: challengeToken || undefined,
+        birthDate,
+        turnstileToken: usedToken,
+        termsAcceptedAt,
+        privacyAcceptedAt,
+        marketingConsent: benefitNews,
+        referralCode: referralCode.trim() || undefined,
+        phoneE164: phone ? toE164(phone) : undefined,
       });
-      submitClassicSignupProfile({ displayName, email, birthday, gender, phone, benefitNews });
+      dropUsedToken();
+      submitClassicSignupProfile({ displayName, email, birthday, gender: "", phone, benefitNews });
       router.push("/auth/verify-email");
       showToast(MSG.signupOk, "success");
     } catch (error: unknown) {
-      const payload = toastFromError(error, MSG.signupFail);
+      dropUsedToken();
+      const payload = toastFromError(error, MSG.genericError);
       showToast(payload.message, payload.kind);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -199,8 +237,6 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
             </label>
           </div>
 
-          <GenderSelect value={gender} onChange={setGender} group="signup" />
-
           <div className="form-grid two">
             <label className="form-field">
               <span>
@@ -220,10 +256,10 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
                 초대 코드 <em>선택</em>
               </span>
               <input
-                name="inviteCode"
+                name="referralCode"
                 placeholder="추천 코드를 입력해 주세요"
-                value={inviteCode}
-                onChange={(event) => setInviteCode(event.target.value)}
+                value={referralCode}
+                onChange={(event) => setReferralCode(event.target.value)}
               />
             </label>
           </div>
@@ -234,7 +270,7 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
                 name="requiredTerms"
                 type="checkbox"
                 checked={requiredTerms}
-                onChange={(event) => setRequiredTerms(event.target.checked)}
+                onChange={(event) => onRequiredTerms(event.target.checked)}
               />
               <span>
                 <b>필수</b> 이용약관·개인정보 처리방침에 동의해요
@@ -260,8 +296,8 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
               </span>
             </label>
           </div>
-          <TurnstileBox onToken={setChallengeToken} />
-          <button className="form-primary" type="submit">
+          <TurnstileBox action="signup" onToken={setChallengeToken} resetNonce={challengeReset} />
+          <button className="form-primary" type="submit" disabled={busy}>
             회원가입
           </button>
         </form>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
-import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
+import { TurnstileBox, hasTurnstileSiteKey, preloadTurnstile } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
 import {
   googleCallback,
@@ -16,6 +16,8 @@ import {
 } from "@/lib/api";
 import { MSG, toastFromError } from "@/lib/messages";
 
+preloadTurnstile();
+
 export default function LoginPage() {
   const router = useRouter();
   const { markPasswordAuth, markGoogleAuth, navigateAfterAuth, showToast } = useGpt();
@@ -23,6 +25,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [challengeToken, setChallengeToken] = useState("");
+  const [challengeReset, setChallengeReset] = useState(0);
 
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get("code");
@@ -57,12 +60,17 @@ export default function LoginPage() {
     }
     if (busy) return;
     setBusy(true);
+    const usedToken = challengeToken;
     try {
-      await login(loginId, password, challengeToken || undefined);
+      await login(loginId, password, usedToken || undefined);
+      setChallengeToken("");
+      setChallengeReset((value) => value + 1);
       markPasswordAuth();
       showToast(MSG.loginOk, "success");
       navigateAfterAuth("/");
     } catch (error: unknown) {
+      setChallengeToken("");
+      setChallengeReset((value) => value + 1);
       const payload = toastFromError(error, MSG.loginFail);
       showToast(payload.message, payload.kind);
     } finally {
@@ -115,7 +123,7 @@ export default function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
               />
             </label>
-            <TurnstileBox onToken={setChallengeToken} />
+            <TurnstileBox action="login" onToken={setChallengeToken} resetNonce={challengeReset} />
             <button className="form-primary" type="submit" disabled={busy}>
               로그인
             </button>

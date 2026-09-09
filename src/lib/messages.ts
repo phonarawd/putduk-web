@@ -12,6 +12,7 @@ export const MSG = {
   loginFail: "⚠️ 입력한 정보를 다시 확인해 주세요.",
   loginIdNeed: "⚠️ 아이디 또는 이메일을 입력해 주세요.",
   passwordShort: "⚠️ 비밀번호는 8자 이상 입력해 주세요.",
+  passwordPwned: "⚠️ 이 비밀번호는 사용할 수 없어요. 다른 비밀번호를 입력해 주세요.",
   logoutOk: "👋 로그아웃했어요. 다음에 또 만나요.",
   logoutFail: "😥 로그아웃하지 못했어요. 다시 시도해 주세요.",
   googleStartFail: "😥 구글 로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.",
@@ -21,9 +22,12 @@ export const MSG = {
   signupFail: "😥 가입을 마치지 못했어요. 입력한 정보를 다시 확인해 주세요.",
   signupBusy: "⏳ 지금은 가입과 로그인을 받을 수 없어요. 잠시 뒤 다시 시도해 주세요.",
   usernameNeed: "⚠️ 아이디는 영문 소문자로 시작하는 4~20자로 입력해 주세요.",
+  usernameTaken: "⚠️ 이미 쓰는 아이디예요. 다른 아이디를 입력해 주세요.",
   emailNeed: "⚠️ 이메일을 정확하게 입력해 주세요.",
   passwordMismatch: "⚠️ 비밀번호 확인이 서로 달라요.",
   profileNeed: "⚠️ 이름, 생년월일 앞자리와 성별을 알려 주세요.",
+  nameBirthNeed: "⚠️ 이름과 생년월일 앞자리를 알려 주세요.",
+  ageNeed: "⚠️ 만 19세 이상만 가입할 수 있어요.",
   phoneNeed: "⚠️ 휴대폰 번호를 다시 확인해 주세요.",
   termsNeed: "⚠️ 이용약관과 개인정보 처리방침에 동의해 주세요.",
   challengeNeed: "🙏 아래 확인을 마친 뒤 다시 눌러 주세요.",
@@ -88,13 +92,25 @@ export const MSG = {
 
 const TECHNICAL_RE = /unauthorized|forbidden|not found|internal server|bad request|network error|request failed|invalid token|api error|timeout|econn|fetch|exception|payload|endpoint|stack|sql|jwt|oauth|status|http\/|error code|\b\d{3}\b/i;
 
+function mapKnownCode(text: string): string | null {
+  if (/TURNSTILE/i.test(text)) return MSG.challengeNeed;
+  if (/TERMS_REQUIRED/i.test(text)) return MSG.termsNeed;
+  if (/PASSWORD_TOO_SHORT/i.test(text)) return MSG.passwordShort;
+  if (/PASSWORD_PWNED/i.test(text)) return MSG.passwordPwned;
+  if (/USERNAME_INVALID_FORMAT/i.test(text)) return MSG.usernameNeed;
+  if (/USERNAME_TAKEN/i.test(text)) return MSG.usernameTaken;
+  if (/AUTH_REQUIRED/i.test(text)) return MSG.loginNeed;
+  if (/SIGNUP_LINK_INVALID/i.test(text)) return MSG.verifyLinkBad;
+  return null;
+}
+
 export function userFacingError(error: unknown, fallback: string = MSG.genericError): string {
   const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
   const text = raw.trim();
   if (!text) return fallback;
-  if (/TURNSTILE/i.test(text)) return MSG.signupBusy;
-  if (/AUTH_REQUIRED/i.test(text)) return MSG.loginNeed;
-  if (/SIGNUP_LINK_INVALID/i.test(text)) return MSG.verifyLinkBad;
+  const known = mapKnownCode(text);
+  if (known) return known;
+  if (/^[A-Z][A-Z0-9_]+$/.test(text)) return MSG.genericError;
   if (TECHNICAL_RE.test(text) && !/[가-힣]/.test(text)) return fallback;
   if (text === fallback) return fallback;
   return text;

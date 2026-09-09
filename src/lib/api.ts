@@ -51,8 +51,19 @@ function nest(row: Record<string, unknown> | null, key: string): Record<string, 
   return row ? asRecord(row[key]) : null;
 }
 
+function extractErrorToken(row: Record<string, unknown> | null, text: string): string {
+  const code = pickString(row, ["code", "errorCode"]);
+  if (code) return code;
+  if (row && Array.isArray(row.message)) {
+    const parts = row.message.map(String);
+    const token = parts.find((part) => /^[A-Z][A-Z0-9_]+$/.test(part));
+    if (token) return token;
+    return parts.join(" ");
+  }
+  return pickString(row, ["message", "error", "detail"]) || text;
+}
+
 function toUserMessage(message: string, status?: number): string {
-  if (/TURNSTILE/i.test(message)) return "지금은 가입과 로그인을 받을 수 없어요. 잠시 뒤 다시 시도해 주세요.";
   if (/AUTH_REQUIRED|UNAUTHORIZED|INVALID_TOKEN|TOKEN_EXPIRED/i.test(message)) return "로그인이 필요해요.";
   if (/SIGNUP_LINK_INVALID/i.test(message)) return "인증 링크가 올바르지 않아요. 메일 속 링크를 다시 열어 주세요.";
   if (/INVALID_CREDENTIAL|INVALID_PASSWORD|LOGIN_FAILED|BAD_CREDENTIAL/i.test(message)) {
@@ -63,14 +74,11 @@ function toUserMessage(message: string, status?: number): string {
   if (status === 401) return "로그인이 필요해요.";
   if (status === 403) return "이 작업을 할 수 없어요. 다시 로그인해 주세요.";
   if (status === 404) return "아직 준비 중인 기능이에요.";
-  if (status === 409) return "입력한 정보를 다시 확인해 주세요.";
-  if (status === 422 || status === 400) return "입력한 정보를 다시 확인해 주세요.";
   if (status === 429) return "요청이 많아요. 잠시 후 다시 시도해 주세요.";
   if (status != null && status >= 500) return "잠시 문제가 생겼어요. 다시 시도해 주세요.";
   if (/unauthorized|forbidden|not found|internal server|bad request|network error|request failed|invalid token|api error|timeout/i.test(message)) {
     return "잠시 문제가 생겼어요. 다시 시도해 주세요.";
   }
-  if (/^[A-Z0-9_]+$/.test(message)) return "잠시 문제가 생겼어요. 다시 시도해 주세요.";
   return message;
 }
 
@@ -81,10 +89,12 @@ async function readErrorMessage(res: Response): Promise<string> {
     try {
       const json = JSON.parse(text) as unknown;
       const row = asRecord(json);
-      const message = pickString(row, ["message", "error", "detail"]);
-      const raw = Array.isArray(row?.message) ? row.message.map(String).join(" ") : message || "";
+      const raw = extractErrorToken(row, text);
+      if (/^[A-Z][A-Z0-9_]+$/.test(raw)) return raw;
       return toUserMessage(raw, res.status);
     } catch {
+      const trimmed = text.trim();
+      if (/^[A-Z][A-Z0-9_]+$/.test(trimmed)) return trimmed;
       return toUserMessage(text, res.status);
     }
   } catch {
@@ -151,6 +161,26 @@ export function birthDateFromPrefix(prefix: string): string {
   return `${year}-${prefix.slice(2, 4)}-${prefix.slice(4, 6)}`;
 }
 
+export function isIsoDate(isoDate: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return false;
+  const year = Number(isoDate.slice(0, 4));
+  const month = Number(isoDate.slice(5, 7));
+  const day = Number(isoDate.slice(8, 10));
+  const birth = new Date(year, month - 1, day);
+  return birth.getFullYear() === year && birth.getMonth() === month - 1 && birth.getDate() === day;
+}
+
+export function isAdultBirthDate(isoDate: string, minAge = 19): boolean {
+  if (!isIsoDate(isoDate)) return false;
+  const year = Number(isoDate.slice(0, 4));
+  const month = Number(isoDate.slice(5, 7));
+  const day = Number(isoDate.slice(8, 10));
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age -= 1;
+  return age >= minAge;
+}
+
 export function signup(body: {
   username: string;
   email: string;
@@ -158,17 +188,28 @@ export function signup(body: {
   passwordConfirm: string;
   declaredName: string;
   birthDate: string;
-  gender?: string;
-  phone?: string;
-  inviteCode?: string;
-  turnstileToken?: string;
+  turnstileToken: string;
+  termsAcceptedAt: string;
+  privacyAcceptedAt: string;
+  marketingConsent?: boolean;
+  referralCode?: string;
+  phoneE164?: string;
 }) {
-  const { turnstileToken, ...fields } = body;
   return apiFetch("/api/v1/auth/signup/classic", {
     method: "POST",
     body: JSON.stringify({
-      ...fields,
-      ...(turnstileToken ? { turnstileToken } : {}),
+      username: body.username,
+      email: body.email,
+      password: body.password,
+      passwordConfirm: body.passwordConfirm,
+      declaredName: body.declaredName,
+      birthDate: body.birthDate,
+      turnstileToken: body.turnstileToken,
+      termsAcceptedAt: body.termsAcceptedAt,
+      privacyAcceptedAt: body.privacyAcceptedAt,
+      marketingConsent: body.marketingConsent === true,
+      ...(body.referralCode ? { referralCode: body.referralCode } : {}),
+      ...(body.phoneE164 ? { phoneE164: body.phoneE164 } : {}),
     }),
   });
 }
