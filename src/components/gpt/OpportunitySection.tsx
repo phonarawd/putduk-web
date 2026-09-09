@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
+import { TrialCardArt } from "@/components/gpt/TrialCardArt";
 import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 
@@ -78,12 +79,22 @@ export function OpportunitySection() {
       <article id="featuredOpportunity" className="featured-opportunity">
         <div
           id="featuredArt"
-          className={"product-art" + (selected.imageUrl ? " has-photo" : "")}
-          aria-hidden="true"
+          className={
+            "product-art" +
+            (selected.imageUrl || selected.trialEligible ? " has-photo" : "") +
+            (selected.trialEligible ? " has-trial-card" : "")
+          }
+          aria-hidden={selected.trialEligible ? undefined : "true"}
           style={{ "--art-one": selected.artOne, "--art-two": selected.artTwo } as CSSProperties}
         >
-          {selected.imageUrl ? <img src={selected.imageUrl} alt="" /> : <span id="featuredSymbol">{selected.symbol}</span>}
-          {selected.imageUrl ? null : <small>{selected.trialEligible ? "체험" : "퍼뜩"}</small>}
+          {selected.trialEligible ? (
+            <TrialCardArt className="trial-card-art" />
+          ) : selected.imageUrl ? (
+            <img src={selected.imageUrl} alt="" />
+          ) : (
+            <span id="featuredSymbol">{selected.symbol}</span>
+          )}
+          {selected.imageUrl || selected.trialEligible ? null : <small>퍼뜩</small>}
         </div>
         <div className="opportunity-main">
           <div className="opportunity-meta">
@@ -185,14 +196,23 @@ export function OpportunitySection() {
             <button
               key={item.id}
               type="button"
-              className={"opportunity-mini" + (isSelected ? " is-selected" : "") + (item.imageUrl ? " has-photo" : "")}
+              className={
+                "opportunity-mini" +
+                (isSelected ? " is-selected" : "") +
+                (item.imageUrl || item.trialEligible ? " has-photo" : "") +
+                (item.trialEligible ? " has-trial-card" : "")
+              }
               style={{ "--mini-one": item.artOne, "--mini-two": item.artTwo } as CSSProperties}
               aria-pressed={isSelected}
               onClick={() => selectOpportunity(item.id)}
             >
-              {item.imageUrl ? <img className="mini-photo" src={item.imageUrl} alt="" /> : null}
+              {item.trialEligible ? (
+                <TrialCardArt className="mini-photo trial-card-art" decorative />
+              ) : item.imageUrl ? (
+                <img className="mini-photo" src={item.imageUrl} alt="" />
+              ) : null}
               <span className="mini-top">
-                {item.imageUrl ? null : <span className="mini-symbol">{item.symbol}</span>}
+                {item.imageUrl || item.trialEligible ? null : <span className="mini-symbol">{item.symbol}</span>}
                 <span className="mini-lock">{stateLabel}</span>
               </span>
               <strong>{item.title}</strong>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { TrialCardArt } from "@/components/gpt/TrialCardArt";
 import { EXECUTION_STEPS } from "@/lib/gpt/constants";
 import { formatKrw, formatSignedKrw } from "@/lib/gpt/format";
 import { isTerminal, useGpt } from "@/lib/gpt/GptContext";
@@ -93,13 +94,19 @@ export function ExecutionModal() {
           </span>
         </div>
         <div className="execution-heading">
-          <span
-            id="executionSymbol"
-            className="execution-symbol"
-            style={{ "--exec-one": opportunity.artOne, "--exec-two": opportunity.artTwo } as CSSProperties}
-          >
-            {opportunity.symbol}
-          </span>
+          {opportunity.trialEligible ? (
+            <span id="executionSymbol" className="execution-symbol is-trial-card">
+              <TrialCardArt className="trial-card-art" decorative />
+            </span>
+          ) : (
+            <span
+              id="executionSymbol"
+              className="execution-symbol"
+              style={{ "--exec-one": opportunity.artOne, "--exec-two": opportunity.artTwo } as CSSProperties}
+            >
+              {opportunity.symbol}
+            </span>
+          )}
           <div>
             <h2 id="executionAsset">{activeExecution.title}</h2>
             <p id="executionRoute">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { TrialCardArt } from "@/components/gpt/TrialCardArt";
 import { formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { useModalFocus } from "@/lib/gpt/useModalFocus";
@@ -33,6 +34,11 @@ export function PreflightModal() {
           ×
         </button>
         <span className="modal-kicker">참여 전 확인</span>
+        {selected.trialEligible ? (
+          <div className="preflight-trial-art">
+            <TrialCardArt className="trial-card-art" decorative />
+          </div>
+        ) : null}
         <h2 id="preflightTitle">{selected.title}</h2>
         {selected.lowMarket && selected.highMarket ? (
           <p id="preflightRoute" className="preflight-route">

@@ -1,11 +1,14 @@
 import type { LiveOpportunity } from "@/lib/api";
 import type { GptState, OpportunityView } from "./types";
 import { formatMoneyPrimary } from "./format";
+import { TRIAL_CARD_SVG } from "./trialCard";
+
+export { TRIAL_CARD_ART, TRIAL_CARD_SVG } from "./trialCard";
 
 const ART_ONE = "#f06a43";
 const ART_TWO = "#41364f";
-
-export const TRIAL_CARD_SVG = "/cards/trial-151.svg";
+const TRIAL_ART_ONE = "#ff5c35";
+const TRIAL_ART_TWO = "#351a16";
 
 export function resolveCardArt(item: Pick<LiveOpportunity, "trialEligible" | "imageUrl">): string | null {
   if (item.trialEligible) return TRIAL_CARD_SVG;
@@ -25,8 +28,8 @@ export function toOpportunityView(item: LiveOpportunity): OpportunityView {
     feesKrw: 0,
     riskKrw: 0,
     duration: item.duration,
-    artOne: ART_ONE,
-    artTwo: ART_TWO,
+    artOne: item.trialEligible ? TRIAL_ART_ONE : ART_ONE,
+    artTwo: item.trialEligible ? TRIAL_ART_TWO : ART_TWO,
     imageUrl: resolveCardArt(item),
     seats: item.seats ?? 0,
     lowKrw: item.requiredKrw ?? 0,
