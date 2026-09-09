@@ -42,7 +42,6 @@ import {
   readPreflightToken,
   readTrades,
   readTradeSnapshot,
-  readTradeStatus,
   readTrialState,
   sessionDisplayName,
   sessionEmail,
