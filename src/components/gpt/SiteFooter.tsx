@@ -16,18 +16,18 @@ export function SiteFooter() {
             <button
               type="button"
               className="site-footer-trust-link"
-              aria-label="운영 정보 화면으로 이동"
+              aria-label="공식 인정·운영 확인서 화면으로 이동"
               onClick={() => router.push("/legal/recognition")}
             >
               <span className="site-footer-trust-stack">
                 <span className="site-footer-trust-item">
                   <i aria-hidden="true" />
-                  운영 정보 확인
+                  대한민국 공식 인정
                 </span>
                 <span className="site-footer-trust-sep" aria-hidden="true">
                   ·
                 </span>
-                <span>서비스 운영 기준</span>
+                <span>금융·공공 기관 확인</span>
               </span>
             </button>
           </div>
