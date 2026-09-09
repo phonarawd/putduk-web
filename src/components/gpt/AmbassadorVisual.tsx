@@ -108,7 +108,7 @@ export function AmbassadorMoment() {
   const photo = showTrust ? AMBASSADOR_TRUST : AMBASSADOR_OPPORTUNITY;
   const title = showTrust
     ? "필요한 금액만 잠기고, 조건이 달라지면 안전하게 멈춰요."
-    : "좋은 조건은 오래 머물지 않아요. 지금 비교해 보세요.";
+    : "지금 확인할 수 있는 조건을 비교해 보세요.";
   const action = showTrust ? "퍼뜩에게 물어보기" : "지금 기회 보기";
 
   return (
