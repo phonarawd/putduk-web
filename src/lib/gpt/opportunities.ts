@@ -1,4 +1,4 @@
-import type { LiveOpportunity } from "@/lib/api";
+import type { LiveOpportunity, TrialState } from "@/lib/api";
 import type { GptState, OpportunityView } from "./types";
 import { formatMoneyPrimary } from "./format";
 import { TRIAL_CARD_SVG } from "./trialCard";
@@ -84,11 +84,21 @@ export function selectedOpportunity(state: GptState): OpportunityView {
   return opportunityById(state.selectedId || state.feed[0]?.id || "", state.feed);
 }
 
+export function canStartOpportunity(
+  item: Pick<OpportunityView, "trialEligible" | "affordable">,
+  trial: Pick<TrialState, "grantStatus" | "participationsRemaining">,
+): boolean {
+  if (item.trialEligible && trial.grantStatus === "active" && trial.participationsRemaining !== 0) {
+    return true;
+  }
+  return item.affordable;
+}
+
 export function principalSuggestion(state: GptState, opportunity: OpportunityView): string {
   if (!opportunity.id) {
     return "조건이 맞는 기회가 생기면 여기에서 보여 드려요.";
   }
-  if (opportunity.trialEligible && opportunity.affordable) {
+  if (canStartOpportunity(opportunity, state.trial)) {
     return opportunity.title + "부터 바로 확인할 수 있어요.";
   }
   const required = formatMoneyPrimary(opportunity.requiredUsdt, opportunity.requiredKrw);

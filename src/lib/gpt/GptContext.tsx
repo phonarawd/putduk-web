@@ -52,7 +52,7 @@ import {
 import { MSG, toastFromError, type ToastKind } from "@/lib/messages";
 import { conversationGreeting, evidenceFromDeepLink } from "./ai";
 import { EXECUTION_STEPS, VIEW_PATHS } from "./constants";
-import { allOpportunityViews, selectedOpportunity } from "./opportunities";
+import { allOpportunityViews, canStartOpportunity, selectedOpportunity } from "./opportunities";
 import { ticketState } from "./state";
 import { getHydratedServerSnapshot, getServerSnapshot, getSnapshot, isHydrated, setStoreState, subscribe } from "./store";
 import type {
@@ -601,12 +601,20 @@ export function GptProvider({ children }: { children: ReactNode }) {
       showToast(MSG.noOpportunity, "warning");
       return;
     }
-    if (!opportunity.affordable) {
+    if (opportunity.trialEligible) {
+      if (state.trial.participationsRemaining === 0) {
+        showToast(MSG.noTickets, "warning");
+        return;
+      }
+      if (state.trial.grantStatus !== "active") {
+        showToast(MSG.notEnoughMoney, "warning");
+        return;
+      }
+    } else if (!opportunity.affordable) {
       showToast(MSG.notEnoughMoney, "warning");
       router.push("/wallet/deposit");
       return;
-    }
-    if (state.trial.participationsRemaining === 0) {
+    } else if (state.trial.participationsRemaining === 0) {
       showToast(MSG.noTickets, "warning");
       return;
     }
@@ -787,7 +795,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
     setStoreState((prev) => {
       const currentIndex = Math.max(0, opportunities.findIndex((item) => item.id === prev.selectedId));
       const ordered = opportunities.slice(currentIndex + 1).concat(opportunities.slice(0, currentIndex + 1));
-      const next = ordered.find((item) => item.affordable) || ordered[0];
+      const next = ordered.find((item) => canStartOpportunity(item, prev.trial)) || ordered[0];
       return { ...prev, selectedId: next?.id || "" };
     });
     closeExecution("home");

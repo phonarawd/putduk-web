@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { TrialCardArt } from "@/components/gpt/TrialCardArt";
 import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
+import { canStartOpportunity } from "@/lib/gpt/opportunities";
 
 export function OpportunitySection() {
   const router = useRouter();
@@ -26,6 +27,17 @@ export function OpportunitySection() {
     statusClass = "availability-chip needs-capital";
     statusText = "아직 없음";
     showStart = false;
+  } else if (canStartOpportunity(selected, state.trial)) {
+    statusText = "참여 가능";
+  } else if (selected.trialEligible && state.trial.participationsRemaining === 0) {
+    statusClass = "availability-chip needs-capital";
+    statusText = "횟수 없음";
+    startDisabled = true;
+    startLabel = "남은 참여 횟수가 없어요";
+  } else if (selected.trialEligible) {
+    statusClass = "availability-chip needs-capital";
+    statusText = "참여 불가";
+    showStart = false;
   } else if (selected.bucket === "nearMiss") {
     statusClass = "availability-chip needs-capital";
     statusText = "조금 더 필요";
@@ -41,11 +53,6 @@ export function OpportunitySection() {
     statusText = "참여 불가";
     showStart = false;
     showCapitalCta = true;
-  } else if (state.trial.participationsRemaining === 0) {
-    statusClass = "availability-chip needs-capital";
-    statusText = "횟수 없음";
-    startDisabled = true;
-    startLabel = "남은 참여 횟수가 없어요";
   }
 
   if (!selected.id) {
@@ -196,8 +203,17 @@ export function OpportunitySection() {
       <div id="opportunityRail" className="opportunity-rail" aria-live="polite">
         {opportunities.map((item) => {
           const isSelected = item.id === state.selectedId;
-          const stateLabel =
-            item.bucket === "affordable" ? "참여 가능" : item.bucket === "nearMiss" ? "조금 더 필요" : item.bucket === "lockedHigh" ? "잠김" : "";
+          const stateLabel = canStartOpportunity(item, state.trial)
+            ? "참여 가능"
+            : item.trialEligible
+              ? ""
+              : item.bucket === "affordable"
+                ? "참여 가능"
+                : item.bucket === "nearMiss"
+                  ? "조금 더 필요"
+                  : item.bucket === "lockedHigh"
+                    ? "잠김"
+                    : "";
           return (
             <button
               key={item.id}
