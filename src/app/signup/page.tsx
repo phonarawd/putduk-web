@@ -4,13 +4,10 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
-import { TurnstileBox, hasTurnstileSiteKey, preloadTurnstile } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { birthDateFromPrefix, isAdultBirthDate, isIsoDate, signup, toE164 } from "@/lib/api";
 import { validBirthday, validEmail, validPhone, validUsername } from "@/lib/gpt/validate";
 import { MSG, toastFromError } from "@/lib/messages";
-
-preloadTurnstile();
 
 function passwordPoints(value: string) {
   return Array.from(value).length;
@@ -34,14 +31,7 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   const [termsAcceptedAt, setTermsAcceptedAt] = useState("");
   const [privacyAcceptedAt, setPrivacyAcceptedAt] = useState("");
   const [benefitNews, setBenefitNews] = useState(false);
-  const [challengeToken, setChallengeToken] = useState("");
-  const [challengeReset, setChallengeReset] = useState(0);
   const [busy, setBusy] = useState(false);
-
-  function dropUsedToken() {
-    setChallengeToken("");
-    setChallengeReset((value) => value + 1);
-  }
 
   function onRequiredTerms(checked: boolean) {
     setRequiredTerms(checked);
@@ -97,13 +87,8 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
       showToast(MSG.termsNeed, "warning");
       return;
     }
-    if (hasTurnstileSiteKey() && !challengeToken) {
-      showToast(MSG.challengeNeed, "warning");
-      return;
-    }
     if (busy) return;
     setBusy(true);
-    const usedToken = challengeToken;
     try {
       await signup({
         username: nextUsername,
@@ -112,19 +97,16 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
         passwordConfirm,
         declaredName: nextName,
         birthDate,
-        turnstileToken: usedToken,
         termsAcceptedAt,
         privacyAcceptedAt,
         marketingConsent: benefitNews || undefined,
         referralCode: referralCode.trim() || undefined,
         phoneE164: phone ? toE164(phone) : undefined,
       });
-      dropUsedToken();
       submitClassicSignupProfile({ displayName: nextName, email: nextEmail, birthday, gender: "", phone, benefitNews });
       router.push("/auth/verify-email");
       showToast(MSG.signupOk, "success");
     } catch (error: unknown) {
-      dropUsedToken();
       const payload = toastFromError(error, MSG.genericError);
       showToast(payload.message, payload.kind);
     } finally {
@@ -284,7 +266,6 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
               </span>
             </label>
           </div>
-          <TurnstileBox action="signup" onToken={setChallengeToken} resetNonce={challengeReset} />
           <button className="form-primary" type="submit" disabled={busy}>
             회원가입
           </button>
