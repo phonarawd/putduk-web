@@ -272,7 +272,7 @@ export function signup(body: {
   passwordConfirm: string;
   declaredName: string;
   birthDate: string;
-  turnstileToken: string;
+  turnstileToken?: string;
   termsAcceptedAt: string;
   privacyAcceptedAt: string;
   marketingConsent?: boolean;
@@ -288,7 +288,7 @@ export function signup(body: {
       passwordConfirm: body.passwordConfirm,
       declaredName: body.declaredName.trim(),
       birthDate: body.birthDate,
-      turnstileToken: body.turnstileToken,
+      ...(body.turnstileToken ? { turnstileToken: body.turnstileToken } : {}),
       termsAcceptedAt: body.termsAcceptedAt,
       privacyAcceptedAt: body.privacyAcceptedAt,
       ...(body.marketingConsent === true ? { marketingConsent: true } : {}),
@@ -298,24 +298,33 @@ export function signup(body: {
   });
 }
 
-export function resendSignupEmail(email: string, turnstileToken: string) {
+export function resendSignupEmail(email: string, turnstileToken?: string) {
   return apiFetch("/api/v1/auth/email/resend", {
     method: "POST",
-    body: JSON.stringify({ email: email.trim().toLowerCase(), turnstileToken }),
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      ...(turnstileToken ? { turnstileToken } : {}),
+    }),
   });
 }
 
-export function findId(email: string, turnstileToken: string) {
+export function findId(email: string, turnstileToken?: string) {
   return apiFetch("/api/v1/auth/find-id", {
     method: "POST",
-    body: JSON.stringify({ email: email.trim().toLowerCase(), turnstileToken }),
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      ...(turnstileToken ? { turnstileToken } : {}),
+    }),
   });
 }
 
-export function requestPasswordReset(email: string, turnstileToken: string) {
+export function requestPasswordReset(email: string, turnstileToken?: string) {
   return apiFetch("/api/v1/auth/password-reset/request", {
     method: "POST",
-    body: JSON.stringify({ email: email.trim().toLowerCase(), turnstileToken }),
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      ...(turnstileToken ? { turnstileToken } : {}),
+    }),
   });
 }
 
