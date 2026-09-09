@@ -12,6 +12,7 @@ const MENU_ITEMS = [
   { icon: "₩", title: "입금", small: "운용 자본 넣기", path: "/wallet/deposit" },
   { icon: "↗", title: "출금", small: "수익 출금", path: "/wallet/withdraw" },
   { icon: "≡", title: "입출금 내역", small: "신청과 반영 기록", path: "/wallet/history" },
+  { icon: "✓", title: "내 기록", small: "완료한 기회와 정산", path: "/me/records" },
   { icon: "✓", title: "본인확인", small: "출금 전 확인", path: "/me/kyc" },
   { icon: "♢", title: "알림", small: "기회와 정산 소식", path: "/me/inbox" },
   { icon: "📢", title: "공지사항", small: "퍼뜩의 새 소식", path: "/me/notices" },
@@ -128,8 +129,8 @@ export default function MePage() {
           </article>
         </section>
 
-        <button className="text-action route-wide-action" type="button" onClick={() => router.push("/work")}>
-          기록 보기
+        <button className="text-action route-wide-action" type="button" onClick={() => router.push("/me/records")}>
+          내 기록 보기
         </button>
 
         <section className="me-menu" aria-label="나의 메뉴">
