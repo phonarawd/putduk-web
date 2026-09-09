@@ -450,6 +450,155 @@ export function getReferralMe() {
   return apiFetch<unknown>("/api/v1/referral/me");
 }
 
+export type PeotteokChatDone = {
+  conversationId: string | null;
+  answerText: string;
+  deepLink: string | null;
+  degraded: boolean;
+};
+
+export function readPeotteokDone(data: unknown): PeotteokChatDone {
+  const row = asRecord(data);
+  return {
+    conversationId: pickString(row, ["conversation_id", "conversationId"]),
+    answerText: pickString(row, ["answer_text", "answerText"]) || "",
+    deepLink: pickString(row, ["deep_link", "deepLink"]),
+    degraded: row?.degraded === true,
+  };
+}
+
+export function readPeotteokConversationId(data: unknown): string | null {
+  return pickString(asRecord(data), ["conversation_id", "conversationId"]);
+}
+
+type PeotteokSseHandlers = {
+  onMeta?: (data: unknown) => void;
+  onChunk?: (text: string) => void;
+  onDone?: (data: unknown) => void;
+};
+
+function dispatchPeotteokSse(part: string, handlers: PeotteokSseHandlers): "ok" | "done" | "fail" {
+  const lines = part.split("\n");
+  let event = "message";
+  let data = "";
+  for (const line of lines) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    if (line.startsWith("data:")) data += line.slice(5).trim();
+  }
+  if (!data) return "ok";
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    return "fail";
+  }
+  if (event === "meta") {
+    handlers.onMeta?.(parsed);
+    return "ok";
+  }
+  if (event === "chunk") {
+    const text = pickString(asRecord(parsed), ["text"]) || "";
+    if (text) handlers.onChunk?.(text);
+    return "ok";
+  }
+  if (event === "done") {
+    handlers.onDone?.(parsed);
+    return "done";
+  }
+  if (event === "error") return "fail";
+  return "ok";
+}
+
+export async function streamPeotteokChat(input: {
+  text: string;
+  conversationId?: string;
+  signal?: AbortSignal;
+  onMeta?: (data: unknown) => void;
+  onChunk?: (text: string) => void;
+  onDone?: (data: unknown) => void;
+}): Promise<void> {
+  const body: Record<string, unknown> = { text: input.text, stream: true };
+  if (input.conversationId) body.conversationId = input.conversationId;
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api/v1/me/peotteok/chat`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify(body),
+      signal: input.signal,
+    });
+  } catch (error) {
+    if (input.signal?.aborted) return;
+    throw error instanceof Error && error.name === "AbortError"
+      ? error
+      : new Error("연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.");
+  }
+
+  if (!res.ok) {
+    throw new Error(await readErrorMessage(res));
+  }
+  if (!res.body) {
+    throw new Error("답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.");
+  }
+
+  const handlers: PeotteokSseHandlers = {
+    onMeta: input.onMeta,
+    onChunk: input.onChunk,
+    onDone: input.onDone,
+  };
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  let sawDone = false;
+
+  const take = (chunk: string): boolean => {
+    buf += chunk;
+    const parts = buf.split("\n\n");
+    buf = parts.pop() ?? "";
+    for (const part of parts) {
+      const status = dispatchPeotteokSse(part, handlers);
+      if (status === "fail") return false;
+      if (status === "done") {
+        sawDone = true;
+        return true;
+      }
+    }
+    return true;
+  };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        if (buf.trim()) {
+          const status = dispatchPeotteokSse(buf, handlers);
+          if (status === "fail") {
+            throw new Error("답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.");
+          }
+          if (status === "done") sawDone = true;
+        }
+        break;
+      }
+      if (!take(decoder.decode(value, { stream: true }))) {
+        throw new Error("답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.");
+      }
+      if (sawDone) break;
+    }
+  } catch (error) {
+    if (input.signal?.aborted || (error instanceof Error && error.name === "AbortError")) return;
+    throw error;
+  }
+
+  if (!sawDone) {
+    throw new Error("답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.");
+  }
+}
+
 export type FeedBucket = "affordable" | "nearMiss" | "lockedHigh";
 
 export type TrialGrantStatus = "active" | "failed_fx" | "none";

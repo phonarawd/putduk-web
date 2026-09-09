@@ -29,13 +29,16 @@ import {
   readListFeed,
   readMoney,
   readOpportunity,
+  readPeotteokConversationId,
+  readPeotteokDone,
   readTrialState,
   sessionDisplayName,
   sessionEmail,
   sessionUsername,
+  streamPeotteokChat,
 } from "@/lib/api";
 import { MSG, toastFromError, type ToastKind } from "@/lib/messages";
-import { AI_UNAVAILABLE_REPLY, conversationGreeting } from "./ai";
+import { conversationGreeting, evidenceFromDeepLink } from "./ai";
 import { VIEW_PATHS } from "./constants";
 import { allOpportunityViews, selectedOpportunity } from "./opportunities";
 import { ticketState } from "./state";
@@ -43,7 +46,6 @@ import { getHydratedServerSnapshot, getServerSnapshot, getSnapshot, isHydrated, 
 import type {
   ActiveExecution,
   Conversation,
-  Evidence,
   Gender,
   GptState,
 } from "./types";
@@ -55,8 +57,6 @@ function isTerminal(status: ActiveExecution["status"]): boolean {
 interface TypingState {
   conversationId: string;
   full: string;
-  evidence?: Evidence[];
-  revealed: number;
   started: boolean;
 }
 
@@ -170,6 +170,8 @@ export function GptProvider({ children }: { children: ReactNode }) {
 
   const [typing, setTyping] = useState<TypingState | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const aiAbortRef = useRef<AbortController | null>(null);
+  const aiGenRef = useRef(0);
 
   const lastToastRef = useRef<{ message: string; at: number }>({ message: "", at: 0 });
   const showToast = useCallback((message: string, kind: ToastKind = "info") => {
@@ -339,6 +341,15 @@ export function GptProvider({ children }: { children: ReactNode }) {
     setStoreState((prev) => ({ ...prev, pendingRoute: path }));
   }, []);
 
+  const stopAiStream = useCallback(() => {
+    aiGenRef.current += 1;
+    aiAbortRef.current?.abort();
+    aiAbortRef.current = null;
+    setTyping(null);
+  }, []);
+
+  useEffect(() => () => stopAiStream(), [stopAiStream]);
+
   // ---------- 퍼뜩AI (sendAiQuestion 을 먼저 선언해 navigateAfterAuth 에서 참조) ----------
   const sendAiQuestion = useCallback(
     (question: string) => {
@@ -358,6 +369,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
         return;
       }
       const conversationId = state.activeConversationId;
+      const serverConversationId = state.conversations.find((item) => item.id === conversationId)?.serverConversationId;
       setStoreState((prev) => {
         const conversation = prev.conversations.find((item) => item.id === prev.activeConversationId);
         if (!conversation) return prev;
@@ -369,25 +381,80 @@ export function GptProvider({ children }: { children: ReactNode }) {
         };
         return { ...prev, conversations: prev.conversations.map((item) => (item.id === updated.id ? updated : item)) };
       });
-      showToast(MSG.aiWait, "warning");
-      setTyping({ conversationId, full: "", revealed: 0, started: false });
-      window.setTimeout(() => {
+      aiAbortRef.current?.abort();
+      const ac = new AbortController();
+      aiAbortRef.current = ac;
+      const gen = ++aiGenRef.current;
+      setTyping({ conversationId, full: "", started: false });
+
+      const rememberServerId = (serverId: string | null) => {
+        if (!serverId) return;
+        setStoreState((prev) => ({
+          ...prev,
+          conversations: prev.conversations.map((item) =>
+            item.id === conversationId && item.serverConversationId !== serverId
+              ? { ...item, serverConversationId: serverId }
+              : item,
+          ),
+        }));
+      };
+
+      void streamPeotteokChat({
+        text,
+        conversationId: serverConversationId,
+        signal: ac.signal,
+        onMeta: (data) => {
+          if (gen !== aiGenRef.current) return;
+          rememberServerId(readPeotteokConversationId(data));
+        },
+        onChunk: (part) => {
+          if (gen !== aiGenRef.current) return;
+          setTyping((current) =>
+            current && current.conversationId === conversationId
+              ? { ...current, started: true, full: current.full + part }
+              : current,
+          );
+        },
+        onDone: (data) => {
+          if (gen !== aiGenRef.current) return;
+          const done = readPeotteokDone(data);
+          rememberServerId(done.conversationId);
+          const answer = done.answerText.trim();
+          setTyping(null);
+          if (!answer) {
+            showToast(MSG.aiUnavailable, "error");
+            return;
+          }
+          setStoreState((prev) => {
+            const conversation = prev.conversations.find((item) => item.id === conversationId);
+            if (!conversation) return prev;
+            const updated: Conversation = {
+              ...conversation,
+              updatedAt: new Date().toISOString(),
+              messages: [
+                ...conversation.messages,
+                {
+                  role: "assistant",
+                  text: answer,
+                  evidence: evidenceFromDeepLink(done.deepLink),
+                  createdAt: new Date().toISOString(),
+                },
+              ],
+            };
+            return { ...prev, conversations: prev.conversations.map((item) => (item.id === updated.id ? updated : item)) };
+          });
+        },
+      }).catch((error: unknown) => {
+        if (ac.signal.aborted || gen !== aiGenRef.current) return;
         setTyping(null);
-        setStoreState((prev) => {
-          const conversation = prev.conversations.find((item) => item.id === conversationId);
-          if (!conversation) return prev;
-          const updated: Conversation = {
-            ...conversation,
-            updatedAt: new Date().toISOString(),
-            messages: [
-              ...conversation.messages,
-              { role: "assistant", text: AI_UNAVAILABLE_REPLY, createdAt: new Date().toISOString() },
-            ],
-          };
-          return { ...prev, conversations: prev.conversations.map((item) => (item.id === updated.id ? updated : item)) };
-        });
-        showToast(MSG.aiSendFail, "error");
-      }, 700);
+        const payload = toastFromError(error, MSG.aiSendFail);
+        showToast(payload.message, payload.kind);
+        const raw = error instanceof Error ? error.message : "";
+        if (payload.message === MSG.loginNeed || /AUTH_REQUIRED|UNAUTHORIZED/i.test(raw) || payload.message.includes("로그인이 필요")) {
+          setStoreState((prev) => ({ ...prev, pendingAiQuestion: text, pendingRoute: "/ai" }));
+          router.push("/login");
+        }
+      });
     },
     [state, typing, showToast, router],
   );
@@ -407,48 +474,8 @@ export function GptProvider({ children }: { children: ReactNode }) {
     [state.pendingRoute, state.pendingAiQuestion, router, sendAiQuestion],
   );
 
-  // 타이핑 1단계: 520ms 대기 후 점 → 실제 타이핑 시작
-  useEffect(() => {
-    if (!typing || typing.started) return;
-    const id = window.setTimeout(() => {
-      setTyping((current) => (current && !current.started ? { ...current, started: true } : current));
-    }, 520);
-    return () => window.clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typing?.conversationId, typing?.started]);
-
-  // 타이핑 2단계: 13ms 간격으로 한 글자씩 노출하고, 다 끝나면 대화에 확정 반영한다.
-  // revealed는 effect 시작 시점의 값(0)에서 이 콜백 스코프의 지역 변수로만 센다.
-  // (setInterval 콜백 안에서 처리 - effect 본문에서 직접 setState를 부르지 않는다)
-  useEffect(() => {
-    if (!typing || !typing.started) return;
-    const conversationId = typing.conversationId;
-    const full = typing.full;
-    const evidence = typing.evidence;
-    let revealed = typing.revealed;
-    const id = window.setInterval(() => {
-      revealed += 1;
-      if (revealed >= full.length) {
-        window.clearInterval(id);
-        setTyping(null);
-        setStoreState((prev) => {
-          const conversation = prev.conversations.find((item) => item.id === conversationId);
-          if (!conversation) return prev;
-          const message = { role: "assistant" as const, text: full, evidence, createdAt: new Date().toISOString() };
-          const updated: Conversation = { ...conversation, messages: [...conversation.messages, message], updatedAt: new Date().toISOString() };
-          return { ...prev, conversations: prev.conversations.map((item) => (item.id === updated.id ? updated : item)) };
-        });
-        return;
-      }
-      const nextRevealed = revealed;
-      setTyping((current) => (current ? { ...current, revealed: nextRevealed } : current));
-    }, 13);
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typing?.conversationId, typing?.started]);
-
   const createConversation = useCallback(() => {
-    setTyping(null);
+    stopAiStream();
     const id = "talk-" + Date.now().toString(36);
     setStoreState((prev) => {
       const conversation: Conversation = {
@@ -459,11 +486,15 @@ export function GptProvider({ children }: { children: ReactNode }) {
       };
       return { ...prev, conversations: [conversation, ...prev.conversations].slice(0, 12), activeConversationId: id };
     });
-  }, []);
+  }, [stopAiStream]);
 
-  const selectConversation = useCallback((id: string) => {
-    setStoreState((prev) => ({ ...prev, activeConversationId: id }));
-  }, []);
+  const selectConversation = useCallback(
+    (id: string) => {
+      if (id !== state.activeConversationId) stopAiStream();
+      setStoreState((prev) => ({ ...prev, activeConversationId: id }));
+    },
+    [state.activeConversationId, stopAiStream],
+  );
 
   const currentConversation = useMemo(
     () => state.conversations.find((item) => item.id === state.activeConversationId) || state.conversations[0] || null,
@@ -621,7 +652,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
     }
     setActiveExecution(null);
     setCelebrate(false);
-    setTyping(null);
+    stopAiStream();
     processedTradeRef.current = null;
     setStoreState((prev) => ({
       ...prev,
@@ -630,7 +661,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
     }));
     showToast(MSG.chatReset, "success");
     router.replace("/");
-  }, [router, showToast]);
+  }, [router, showToast, stopAiStream]);
 
   const value: GptContextValue = {
     ready,

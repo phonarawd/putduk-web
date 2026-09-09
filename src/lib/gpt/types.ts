@@ -83,6 +83,7 @@ export interface Conversation {
   title: string;
   updatedAt: string;
   messages: ChatMessage[];
+  serverConversationId?: string;
 }
 
 export type TicketType = "base" | "bonus";
