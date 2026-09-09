@@ -184,7 +184,7 @@ export function PeotteokAiView() {
                 ↑
               </button>
             </form>
-            <p className="ai-disclaimer">숫자는 지갑 화면을 기준으로 확인해 주세요.</p>
+            <p className="ai-disclaimer">숫자는 지갑 기준이에요. 일상 답은 참고용이에요.</p>
           </section>
         </div>
       </section>
