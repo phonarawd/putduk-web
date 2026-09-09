@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { WalletSummaryStrip } from "@/components/gpt/WalletSummaryStrip";
-import { formatKrw, formatTime } from "@/lib/gpt/format";
+import { formatKrw, formatTime, formatUsdt } from "@/lib/gpt/format";
 import { getLedgerJournals, readJournals, type JournalRow } from "@/lib/api";
 
 export default function WalletHistoryPage() {
@@ -55,12 +55,9 @@ export default function WalletHistoryPage() {
                   </small>
                 </div>
                 <b className={positive ? "positive" : ""}>
-                  {row.amountKrw != null
-                    ? (positive ? "+" : "") + formatKrw(Math.abs(row.amountKrw))
-                    : row.amountUsdt != null
-                      ? `${row.amountUsdt.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`
-                      : ""}
+                  {row.amountKrw != null ? (positive ? "+" : "") + formatKrw(Math.abs(row.amountKrw)) : "원화 확인 중"}
                 </b>
+                {row.amountUsdt != null ? <small>{positive ? "+" : ""}{formatUsdt(Math.abs(row.amountUsdt))}</small> : null}
               </article>
             );
           })
