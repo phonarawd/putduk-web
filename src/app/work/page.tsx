@@ -14,7 +14,7 @@ export default function WorkPage() {
           <div>
             <span className="view-kicker">기회 목록</span>
             <h1 id="work-title">기회</h1>
-            <p>내 자본과 계정에 맞는 기회만 확인하세요. 완료한 업무와 정산은 나의 내 기록에서 확인해요.</p>
+            <p>내 자본과 계정에 맞는 기회만 확인하세요. 완료한 업무와 정산은 나 → 내 기록에서 확인해요.</p>
           </div>
           <div className="header-actions">
             <span className="view-count">{state.deskReady ? `${opportunities.length}개` : "확인 중"}</span>
