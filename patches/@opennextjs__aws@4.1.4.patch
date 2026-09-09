@@ -1,0 +1,24 @@
+diff --git a/dist/build/copyTracedFiles.js b/dist/build/copyTracedFiles.js
+index c847154da1464b71bbd871ba668336ae0078cfed..acc9ed617a52414ac55f06a4e7c1653553e56b55 100644
+--- a/dist/build/copyTracedFiles.js
++++ b/dist/build/copyTracedFiles.js
+@@ -234,7 +234,18 @@ File ${serverPath} does not exist
+         }
+         if (symlink) {
+             try {
+-                symlinkSync(symlink, to);
++                if (process.platform === "win32") {
++                    const rawTarget = symlink.startsWith("\\\\?\\")
++                        ? symlink.slice(4)
++                        : symlink;
++                    const target = path.isAbsolute(rawTarget)
++                        ? rawTarget
++                        : path.resolve(path.dirname(to), rawTarget);
++                    symlinkSync(target, to, "junction");
++                }
++                else {
++                    symlinkSync(symlink, to);
++                }
+             }
+             catch (e) {
+                 if (e.code !== "EEXIST") {
