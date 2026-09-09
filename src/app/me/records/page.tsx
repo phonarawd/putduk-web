@@ -3,9 +3,10 @@
 import type { CSSProperties } from "react";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
-import { formatSignedMoneyPrimary, formatTime } from "@/lib/gpt/format";
+import { formatRecordProfit, formatTime } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { opportunityById } from "@/lib/gpt/opportunities";
+import { MSG } from "@/lib/messages";
 
 function statusLabel(status: string) {
   const value = status.toLowerCase();
@@ -46,9 +47,12 @@ export default function MeRecordsPage() {
           </div>
         ) : (
           trades.map((trade) => {
+            const found = state.feed.find((item) => item.id === trade.opportunityId);
             const opportunity = opportunityById(trade.opportunityId, state.feed);
             const done = /success|completed|settled/i.test(trade.status);
-            const profit = formatSignedMoneyPrimary(trade.settledProfitUsdt ?? null, trade.settledProfitKrw);
+            const stopped = /safe_stop|cancelled|canceled|failed/i.test(trade.status);
+            const profit = formatRecordProfit(trade.settledProfitUsdt ?? null, trade.settledProfitKrw);
+            const title = trade.title || (found ? opportunity.title : "") || "기록";
             return (
               <article className="history-row" key={trade.tradeId}>
                 <span
@@ -58,7 +62,7 @@ export default function MeRecordsPage() {
                   {opportunity.symbol || "퍼"}
                 </span>
                 <div className="history-main">
-                  <strong>{trade.title}</strong>
+                  <strong>{title}</strong>
                   <small>
                     {statusLabel(trade.status)}
                     {trade.createdAt ? ` · ${formatTime(trade.createdAt)}` : ""}
@@ -66,7 +70,7 @@ export default function MeRecordsPage() {
                 </div>
                 <div className="history-result">
                   <strong className={done ? "" : "is-safe"}>
-                    {profit ?? "정산 금액 확인 중"}
+                    {profit ?? (stopped ? MSG.recordReturned : "정산 금액 확인 중")}
                   </strong>
                   <small>{done ? "지갑 반영" : "처리 결과"}</small>
                 </div>

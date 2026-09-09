@@ -84,6 +84,7 @@ export const MSG = {
   noOpportunity: "🔎 아직 확인할 기회가 없어요.",
   notEnoughMoney: "💳 지금은 이 기회에 참여할 금액이 부족해요.",
   noTickets: "⚠️ 남은 참여 횟수가 없어요.",
+  recordReturned: "잠근 금액이 돌아왔어요.",
   waitExecution: "⏳ 처리가 끝날 때까지 잠시만 기다려 주세요.",
   genderMale: "✅ 남성으로 선택했어요.",
   genderFemale: "✅ 여성으로 선택했어요.",

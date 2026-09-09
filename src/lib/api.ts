@@ -1107,13 +1107,14 @@ export function readTrades(data: unknown): Array<{
     const raw = asRecord(item);
     if (!raw) return [];
     const row = nest(raw, "trade") || raw;
+    const asset = nest(row, "asset") || nest(raw, "asset");
     const tradeId = pickString(row, ["tradeId", "id"]);
     if (!tradeId) return [];
     return [
       {
         tradeId,
-        opportunityId: pickString(row, ["opportunityId"]) || "",
-        title: pickString(row, ["title", "label", "name"]) || "기록",
+        opportunityId: pickString(row, ["opportunityId", "opportunity_id"]) || "",
+        title: pickString(row, ["title", "label", "name"]) || pickString(asset, ["label", "title", "name"]) || "",
         capitalKrw: pickNumber(row, withSnake(["capitalKrwApprox", "settledCapitalKrwApprox"])),
         settledProfitKrw: pickNumber(row, withSnake(["settledProfitKrwApprox", "profitKrwApprox"])),
         settledProfitUsdt: pickNumber(row, withSnake(["settledProfitUsdt", "profitUsdt"])),

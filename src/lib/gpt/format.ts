@@ -44,6 +44,12 @@ export function formatSignedMoneyPrimary(usdt: number | null, krw: number | null
   return null;
 }
 
+export function formatRecordProfit(usdt: number | null, krw: number | null): string | null {
+  if (krw != null) return formatSignedKrw(krw);
+  if (usdt != null) return formatSignedUsdt(usdt);
+  return null;
+}
+
 export function formatSignedMoneySecondary(usdt: number | null, krw: number | null): string | null {
   if (krw != null && usdt != null) return formatSignedUsdt(usdt);
   return null;
