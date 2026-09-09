@@ -62,7 +62,7 @@ import type {
   GptState,
 } from "./types";
 
-function isTerminal(status: ActiveExecution["status"]): boolean {
+export function isTerminal(status: ActiveExecution["status"]): boolean {
   return status === "success" || status === "safe_stop";
 }
 
