@@ -59,8 +59,12 @@ export function PreflightModal() {
             <div>
               <span>예상 수익</span>
               <strong id="preflightProfit">
-                {formatSignedMoneyPrimary(selected.expectedUsdt, selected.expectedKrw)}
+                {formatSignedMoneyPrimary(selected.expectedUsdt, selected.expectedKrw) ??
+                  (selected.expectedUsdt != null ? "원화 환산 확인 중" : "아직 표시할 금액이 없어요")}
               </strong>
+              {formatMoneySecondary(selected.expectedUsdt, selected.expectedKrw) ? (
+                <small>{formatMoneySecondary(selected.expectedUsdt, selected.expectedKrw)}</small>
+              ) : null}
               <small>결과에 따라 달라질 수 있어요</small>
             </div>
           ) : null}
@@ -82,7 +86,7 @@ export function PreflightModal() {
             다시 보기
           </button>
           <button id="preflightConfirm" className="modal-primary" type="button" onClick={confirmStart}>
-            이 기회에 참여하기
+            이 기회로 수익 벌기
           </button>
         </div>
       </section>
