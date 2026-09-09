@@ -73,7 +73,8 @@ function IntroScreen() {
 
 function HomeWorkspace() {
   const router = useRouter();
-  const { state, selected, tickets, refreshQuotes } = useGpt();
+  const { state, selected, refreshQuotes } = useGpt();
+  const remainingTickets = state.trial.participationsRemaining;
 
   return (
     <WorkspaceView>
@@ -119,9 +120,9 @@ function HomeWorkspace() {
             </div>
             <div className="ticket-number">
               <strong id="remainingTickets">
-                {state.trial.participationsRemaining != null ? state.trial.participationsRemaining : tickets.remaining || "—"}
+                {remainingTickets != null ? remainingTickets : "확인 중"}
               </strong>
-              <span>{state.trial.participationsRemaining != null || tickets.remaining ? "회 남음" : "아직 없음"}</span>
+              <span>{remainingTickets != null ? "회 남음" : "계정 값 확인"}</span>
             </div>
             {state.trial.profitRemainingKrw != null ? (
               <p id="bonusMini">
