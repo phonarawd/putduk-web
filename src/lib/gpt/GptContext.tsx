@@ -41,6 +41,7 @@ import {
   readPeotteokDone,
   readPreflightToken,
   readTrades,
+  readTradeSnapshot,
   readTradeStatus,
   readTrialState,
   sessionDisplayName,
@@ -51,7 +52,7 @@ import {
 } from "@/lib/api";
 import { MSG, toastFromError, type ToastKind } from "@/lib/messages";
 import { conversationGreeting, evidenceFromDeepLink } from "./ai";
-import { VIEW_PATHS } from "./constants";
+import { EXECUTION_STEPS, VIEW_PATHS } from "./constants";
 import { allOpportunityViews, selectedOpportunity } from "./opportunities";
 import { ticketState } from "./state";
 import { getHydratedServerSnapshot, getServerSnapshot, getSnapshot, isHydrated, setStoreState, subscribe } from "./store";
@@ -64,6 +65,20 @@ import type {
 
 function isTerminal(status: ActiveExecution["status"]): boolean {
   return status === "success" || status === "safe_stop";
+}
+
+function normalizeExecutionStatus(value: string): ActiveExecution["status"] | null {
+  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!normalized) return null;
+  if (/(^|_)(success|succeeded|completed|settled)(_|$)/.test(normalized)) return "success";
+  if (/(safe_stop|safe_stopped|cancelled|canceled|failed|stopped)/.test(normalized)) return "safe_stop";
+  if (normalized === "rechecking") return "rechecking";
+  if (tradeIsOpen(normalized)) return "running";
+  return null;
+}
+
+function executionStepMessage(index: number): string {
+  return EXECUTION_STEPS[Math.min(EXECUTION_STEPS.length - 1, Math.max(0, index))]?.active || "업무 결과를 확인하고 있어요.";
 }
 
 interface TypingState {
@@ -178,6 +193,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
 
   const [activeExecution, setActiveExecution] = useState<ActiveExecution | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+  const celebrateTimerRef = useRef<number | null>(null);
   const processedTradeRef = useRef<string | null>(null);
 
   const [typing, setTyping] = useState<TypingState | null>(null);
@@ -606,7 +622,9 @@ export function GptProvider({ children }: { children: ReactNode }) {
     }
     setPreflightOpen(false);
     const amountUsdt = opportunity.requiredCapitalUsdt;
+    const amountUsdtNumber = Number(amountUsdt);
     const idempotencyKey = newIdempotencyKey();
+
     preflightOpportunity(opportunity.id)
       .then((preflight) => {
         const preflightToken = readPreflightToken(preflight);
@@ -620,19 +638,108 @@ export function GptProvider({ children }: { children: ReactNode }) {
         });
       })
       .then(async (result) => {
-        showToast(MSG.participateOk, "success");
         const tradeId = readParticipateTradeId(result);
-        if (tradeId) {
-          try {
-            for (let i = 0; i < 8; i += 1) {
-              const tick = await executeTradeTick(tradeId);
-              const status = readTradeStatus(tick);
-              if (status && !tradeIsOpen(status)) break;
-            }
-          } catch {
-            /* 참여는 이미 접수됨 */
-          }
+        if (!tradeId) {
+          showToast(MSG.participateOk, "success");
+          return reloadDesk();
         }
+
+        setActiveExecution({
+          tradeId,
+          opportunityId: opportunity.id,
+          title: opportunity.title,
+          ticketType: "base",
+          capitalKrw: opportunity.requiredKrw,
+          capitalUsdt: Number.isFinite(amountUsdtNumber) ? amountUsdtNumber : null,
+          expectedProfitKrw: null,
+          status: "running",
+          progress: 8,
+          stepIndex: 0,
+          startedAt: Date.now(),
+          message: EXECUTION_STEPS[0].active,
+        });
+        showToast(MSG.participateOk, "success");
+
+        let terminalStatus: ActiveExecution["status"] | null = null;
+        try {
+          for (let i = 0; i < 8; i += 1) {
+            const tick = await executeTradeTick(tradeId);
+            const snapshot = readTradeSnapshot(tick);
+            const nextStatus = normalizeExecutionStatus(snapshot.status);
+            if (nextStatus === "success" || nextStatus === "safe_stop") {
+              terminalStatus = nextStatus;
+              setActiveExecution((current) =>
+                current && current.tradeId === tradeId
+                  ? {
+                      ...current,
+                      status: nextStatus,
+                      progress: 100,
+                      stepIndex: EXECUTION_STEPS.length - 1,
+                      capitalKrw: snapshot.capitalKrw ?? current.capitalKrw,
+                      expectedProfitKrw: snapshot.profitKrw ?? current.expectedProfitKrw,
+                      message:
+                        nextStatus === "success"
+                          ? "서버 정산 결과를 확인했어요."
+                          : "조건이 달라 안전 중단 결과를 확인했어요.",
+                    }
+                  : current,
+              );
+              if (nextStatus === "success" && state.celebrateOn) {
+                setCelebrate(true);
+                if (celebrateTimerRef.current != null) window.clearTimeout(celebrateTimerRef.current);
+                celebrateTimerRef.current = window.setTimeout(() => {
+                  setCelebrate(false);
+                  celebrateTimerRef.current = null;
+                }, 1600);
+              }
+              break;
+            }
+
+            const stepIndex = Math.min(
+              EXECUTION_STEPS.length - 1,
+              Math.floor(((i + 1) * EXECUTION_STEPS.length) / 8),
+            );
+            const progress = Math.min(94, 12 + Math.round(((i + 1) / 8) * 78));
+            setActiveExecution((current) =>
+              current && current.tradeId === tradeId
+                ? {
+                    ...current,
+                    status: "running",
+                    progress,
+                    stepIndex,
+                    capitalKrw: snapshot.capitalKrw ?? current.capitalKrw,
+                    expectedProfitKrw: snapshot.profitKrw ?? current.expectedProfitKrw,
+                    message: executionStepMessage(stepIndex),
+                  }
+                : current,
+            );
+          }
+        } catch {
+          setActiveExecution((current) =>
+            current && current.tradeId === tradeId
+              ? {
+                  ...current,
+                  status: "rechecking",
+                  progress: 92,
+                  message: "업무 결과를 다시 확인하고 있어요.",
+                }
+              : current,
+          );
+        }
+
+        if (!terminalStatus) {
+          setActiveExecution((current) =>
+            current && current.tradeId === tradeId && current.status === "running"
+              ? {
+                  ...current,
+                  status: "rechecking",
+                  progress: 92,
+                  message: "업무 결과를 다시 확인하고 있어요.",
+                }
+              : current,
+          );
+        }
+
         return reloadDesk();
       })
       .catch((error: unknown) => {
@@ -646,6 +753,10 @@ export function GptProvider({ children }: { children: ReactNode }) {
       if (activeExecution && !isTerminal(activeExecution.status)) {
         showToast(MSG.waitExecution, "warning");
         return;
+      }
+      if (celebrateTimerRef.current != null) {
+        window.clearTimeout(celebrateTimerRef.current);
+        celebrateTimerRef.current = null;
       }
       setActiveExecution(null);
       setCelebrate(false);
@@ -707,6 +818,10 @@ export function GptProvider({ children }: { children: ReactNode }) {
   const resetPractice = useCallback(() => {
     if (typeof window !== "undefined" && !window.confirm("퍼뜩AI 대화를 처음부터 시작할까요? 금액은 그대로 둡니다.")) {
       return;
+    }
+    if (celebrateTimerRef.current != null) {
+      window.clearTimeout(celebrateTimerRef.current);
+      celebrateTimerRef.current = null;
     }
     setActiveExecution(null);
     setCelebrate(false);
