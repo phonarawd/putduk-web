@@ -2,16 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useGpt } from "@/lib/gpt/GptContext";
-import { navActiveKey } from "@/lib/gpt/nav";
+import {
+  PRIMARY_NAV_ITEMS,
+  navActiveKey,
+} from "@/lib/gpt/nav";
 import { useAppSurface } from "@/lib/gpt/useAppSurface";
-
-const NAV_ITEMS = [
-  { key: "home", label: "홈", path: "/" },
-  { key: "work", label: "기록", path: "/work" },
-  { key: "ai", label: "퍼뜩", path: "/ai" },
-  { key: "invite", label: "초대", path: "/invite" },
-  { key: "me", label: "나", path: "/me" },
-] as const;
 
 export function SiteHeader() {
   const router = useRouter();
@@ -33,7 +28,7 @@ export function SiteHeader() {
         </button>
 
         <nav id="desktopNav" className="desktop-nav" aria-label="주요 메뉴" hidden={!showNav}>
-          {NAV_ITEMS.map((item) => (
+          {PRIMARY_NAV_ITEMS.map((item) => (
             <button
               key={item.key}
               type="button"
