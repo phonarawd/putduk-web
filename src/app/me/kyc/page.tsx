@@ -7,6 +7,7 @@ import { RouteTop } from "@/components/gpt/RouteTop";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { getKycStatus, readKycVerified, submitKyc, toE164 } from "@/lib/api";
 import { validPhone } from "@/lib/gpt/validate";
+import { MSG, toastFromError } from "@/lib/messages";
 
 const ID_DOC_TYPES = [
   { idDocType: "kr_id", label: "주민등록증" },
@@ -18,6 +19,7 @@ export default function MeKycPage() {
   const router = useRouter();
   const { showToast } = useGpt();
   const [verified, setVerified] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [legalName, setLegalName] = useState("");
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -36,11 +38,11 @@ export default function MeKycPage() {
     event.preventDefault();
     if (busy) return;
     if (!legalName.trim() || !validPhone(phone) || !birthDate) {
-      showToast("🙏 이름, 휴대폰, 생년월일을 알려 주세요.", "error");
+      showToast(MSG.kycNeed, "warning");
       return;
     }
     if (!idDoc || !selfie) {
-      showToast("🙏 신분증과 얼굴 사진을 준비해 주세요.", "error");
+      showToast(MSG.kycNeedFiles, "warning");
       return;
     }
     setBusy(true);
@@ -53,10 +55,11 @@ export default function MeKycPage() {
         idDoc,
         selfie,
       });
-      setVerified(true);
-      showToast("🛡️ 본인확인 요청을 보냈어요.");
+      setSubmitted(true);
+      showToast(MSG.kycOk, "success");
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "본인확인 요청 실패", "error");
+      const payload = toastFromError(error, MSG.kycFail);
+      showToast(payload.message, payload.kind);
     } finally {
       setBusy(false);
     }
@@ -80,6 +83,28 @@ export default function MeKycPage() {
             출금 화면으로 가기
           </button>
           <button className="text-action" type="button" onClick={() => router.push("/me")}>
+            나로 돌아가기
+          </button>
+        </section>
+      </RouteScreen>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <RouteScreen>
+        <section className="status-page-card">
+          <span className="status-orb mail" aria-hidden="true">
+            📌
+          </span>
+          <span className="view-kicker">본인확인</span>
+          <h1>요청을 보냈어요</h1>
+          <p>
+            확인이 끝나면 출금할 수 있어요.
+            <br />
+            지금은 결과를 기다리면 됩니다.
+          </p>
+          <button className="form-primary" type="button" onClick={() => router.push("/me")}>
             나로 돌아가기
           </button>
         </section>

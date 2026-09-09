@@ -17,6 +17,7 @@ import {
   readKrwInstructions,
   requestKrwDeposit,
 } from "@/lib/api";
+import { MSG, toastFromError } from "@/lib/messages";
 
 function KrwDepositPanel() {
   const router = useRouter();
@@ -36,16 +37,17 @@ function KrwDepositPanel() {
     event.preventDefault();
     if (busy) return;
     if (amount <= 0 || !depositor.trim()) {
-      showToast("🙏 입금 금액과 입금자 이름을 입력해 주세요.", "error");
+      showToast(MSG.depositNeed, "warning");
       return;
     }
     setBusy(true);
     try {
       await requestKrwDeposit(amount, depositor.trim(), newIdempotencyKey());
-      showToast("📝 원화 입금 신청을 보냈어요.");
+      showToast(MSG.depositOk, "success");
       router.push("/wallet/history");
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "입금 신청 실패", "error");
+      const payload = toastFromError(error, MSG.depositFail);
+      showToast(payload.message, payload.kind);
     } finally {
       setBusy(false);
     }
@@ -128,7 +130,7 @@ function UsdtDepositPanel() {
   async function onCopy() {
     if (!address) return;
     const ok = await copyTextToClipboard(address);
-    showToast(ok ? "😊 주소를 복사했어요" : "길게 눌러 복사해 주세요.", ok ? "normal" : "error");
+    showToast(ok ? MSG.copyOk : MSG.copyFail, ok ? "success" : "warning");
   }
 
   return (

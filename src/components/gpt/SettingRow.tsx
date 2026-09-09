@@ -18,7 +18,13 @@ export function SettingRow({
         <strong>{title}</strong>
         <small>{copy}</small>
       </div>
-      <button type="button" className={"toggle-button" + (checked ? " is-on" : "")} aria-pressed={checked} onClick={onToggle}>
+      <button
+        type="button"
+        className={"toggle-button" + (checked ? " is-on" : "")}
+        aria-pressed={checked}
+        aria-label={`${title} ${checked ? "켜짐" : "꺼짐"}`}
+        onClick={onToggle}
+      >
         <span></span>
       </button>
     </div>

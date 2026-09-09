@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { GATED_PATHS } from "@/lib/gpt/constants";
 import { useGpt } from "@/lib/gpt/GptContext";
+import { MSG } from "@/lib/messages";
 import { CapitalModal } from "./CapitalModal";
 import { ExecutionModal } from "./ExecutionModal";
 import { MobileNav } from "./MobileNav";
@@ -16,7 +17,7 @@ import { Toast } from "./Toast";
 function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { ready, sessionReady, state, setPendingRoute } = useGpt();
+  const { ready, sessionReady, state, setPendingRoute, showToast } = useGpt();
   const gated = GATED_PATHS.includes(pathname);
   const blocked = gated && !state.loggedIn;
   const needsProfile = state.loggedIn && !state.profileCompleted && pathname !== "/auth/complete-profile";
@@ -25,6 +26,7 @@ function AuthGate({ children }: { children: ReactNode }) {
     if (!ready || !sessionReady) return;
     if (blocked) {
       setPendingRoute(pathname);
+      showToast(MSG.loginReturn, "security");
       router.replace("/login");
       return;
     }
@@ -34,7 +36,16 @@ function AuthGate({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, sessionReady, blocked, needsProfile, pathname]);
 
-  if ((!sessionReady && gated) || blocked || needsProfile) return null;
+  if ((!sessionReady && gated) || blocked || needsProfile) {
+    return (
+      <section className="route-screen shell" aria-live="polite">
+        <div className="plain-notice">
+          <strong>잠시만 기다려 주세요</strong>
+          <p>화면을 준비하고 있어요.</p>
+        </div>
+      </section>
+    );
+  }
   return <>{children}</>;
 }
 

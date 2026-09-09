@@ -43,18 +43,18 @@ export function formatTime(value: string | number): string {
 }
 
 export function formatIssued(value: string | number): string {
-  try {
-    return (
-      new Intl.DateTimeFormat("ko-KR", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }).format(new Date(value)) + " 발급"
-    );
-  } catch {
-    return "오늘 발급";
-  }
+  if (value === "" || value == null) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return (
+    new Intl.DateTimeFormat("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(date) + " 발급"
+  );
 }
+
 
 export function formatAge(milliseconds: number): string {
   const seconds = Math.max(0, Math.floor(milliseconds / 1000));

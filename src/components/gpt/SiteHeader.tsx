@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useGpt } from "@/lib/gpt/GptContext";
+import { navActiveKey } from "@/lib/gpt/nav";
 import { useAppSurface } from "@/lib/gpt/useAppSurface";
 
 const NAV_ITEMS = [
@@ -12,19 +13,11 @@ const NAV_ITEMS = [
   { key: "me", label: "나", path: "/me" },
 ] as const;
 
-function activeKey(pathname: string): string {
-  if (pathname === "/ai" || pathname === "/me/peotteok") return "ai";
-  if (pathname === "/work") return "work";
-  if (pathname === "/invite") return "invite";
-  if (pathname === "/me") return "me";
-  return "home";
-}
-
 export function SiteHeader() {
   const router = useRouter();
   const { state } = useGpt();
   const { pathname, showNav } = useAppSurface();
-  const current = activeKey(pathname);
+  const current = navActiveKey(pathname);
 
   return (
     <header className="site-header">
@@ -46,6 +39,7 @@ export function SiteHeader() {
               type="button"
               className={"nav-button" + (current === item.key ? " is-active" : "")}
               aria-current={current === item.key ? "page" : undefined}
+              aria-label={`${item.label} 화면으로 이동`}
               onClick={() => router.push(item.path)}
             >
               {item.label}
@@ -54,7 +48,14 @@ export function SiteHeader() {
         </nav>
 
         <div className="header-actions">
-          <button id="headerLogin" className="reset-button" type="button" hidden={state.loggedIn} onClick={() => router.push("/login")}>
+          <button
+            id="headerLogin"
+            className="reset-button"
+            type="button"
+            hidden={state.loggedIn}
+            aria-label="로그인 화면으로 이동"
+            onClick={() => router.push("/login")}
+          >
             로그인
           </button>
           <span id="headerReseller" className="header-reseller" hidden={!state.loggedIn}>

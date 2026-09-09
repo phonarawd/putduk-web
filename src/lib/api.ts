@@ -51,29 +51,44 @@ function nest(row: Record<string, unknown> | null, key: string): Record<string, 
   return row ? asRecord(row[key]) : null;
 }
 
-function toUserMessage(message: string): string {
+function toUserMessage(message: string, status?: number): string {
   if (/TURNSTILE/i.test(message)) return "지금은 가입과 로그인을 받을 수 없어요. 잠시 뒤 다시 시도해 주세요.";
-  if (/AUTH_REQUIRED/i.test(message)) return "로그인이 필요해요.";
+  if (/AUTH_REQUIRED|UNAUTHORIZED|INVALID_TOKEN|TOKEN_EXPIRED/i.test(message)) return "로그인이 필요해요.";
   if (/SIGNUP_LINK_INVALID/i.test(message)) return "인증 링크가 올바르지 않아요. 메일 속 링크를 다시 열어 주세요.";
+  if (/INVALID_CREDENTIAL|INVALID_PASSWORD|LOGIN_FAILED|BAD_CREDENTIAL/i.test(message)) {
+    return "입력한 정보를 다시 확인해 주세요.";
+  }
+  if (/FORBIDDEN|ACCESS_DENIED/i.test(message)) return "이 작업을 할 수 없어요. 다시 로그인해 주세요.";
+  if (/NOT_FOUND/i.test(message)) return "아직 준비 중인 기능이에요.";
+  if (status === 401) return "로그인이 필요해요.";
+  if (status === 403) return "이 작업을 할 수 없어요. 다시 로그인해 주세요.";
+  if (status === 404) return "아직 준비 중인 기능이에요.";
+  if (status === 409) return "입력한 정보를 다시 확인해 주세요.";
+  if (status === 422 || status === 400) return "입력한 정보를 다시 확인해 주세요.";
+  if (status === 429) return "요청이 많아요. 잠시 후 다시 시도해 주세요.";
+  if (status != null && status >= 500) return "잠시 문제가 생겼어요. 다시 시도해 주세요.";
+  if (/unauthorized|forbidden|not found|internal server|bad request|network error|request failed|invalid token|api error|timeout/i.test(message)) {
+    return "잠시 문제가 생겼어요. 다시 시도해 주세요.";
+  }
+  if (/^[A-Z0-9_]+$/.test(message)) return "잠시 문제가 생겼어요. 다시 시도해 주세요.";
   return message;
 }
 
 async function readErrorMessage(res: Response): Promise<string> {
-  const fallback = `${res.status} ${res.statusText}`.trim();
   try {
     const text = await res.text();
-    if (!text) return fallback;
+    if (!text) return toUserMessage("", res.status);
     try {
       const json = JSON.parse(text) as unknown;
       const row = asRecord(json);
       const message = pickString(row, ["message", "error", "detail"]);
-      const raw = Array.isArray(row?.message) ? row.message.map(String).join(" ") : message || text.slice(0, 240);
-      return toUserMessage(raw);
+      const raw = Array.isArray(row?.message) ? row.message.map(String).join(" ") : message || "";
+      return toUserMessage(raw, res.status);
     } catch {
-      return text.slice(0, 240);
+      return toUserMessage(text, res.status);
     }
   } catch {
-    return fallback;
+    return toUserMessage("", res.status);
   }
 }
 
@@ -91,9 +106,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       credentials: "include",
       headers,
     });
-  } catch (error: unknown) {
-    const cause = error instanceof Error ? error.message : "네트워크 오류";
-    throw new Error(`요청에 실패했습니다. ${cause}`);
+  } catch {
+    throw new Error("연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.");
   }
 
   if (!res.ok) {
@@ -119,10 +133,14 @@ export function newIdempotencyKey(): string {
   return `idemp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export function login(identifier: string, password: string) {
+export function login(identifier: string, password: string, turnstileToken?: string) {
   return apiFetch("/api/v1/auth/login", {
     method: "POST",
-    body: JSON.stringify({ identifier, password }),
+    body: JSON.stringify({
+      identifier,
+      password,
+      ...(turnstileToken ? { turnstileToken } : {}),
+    }),
   });
 }
 
@@ -143,10 +161,15 @@ export function signup(body: {
   gender?: string;
   phone?: string;
   inviteCode?: string;
+  turnstileToken?: string;
 }) {
+  const { turnstileToken, ...fields } = body;
   return apiFetch("/api/v1/auth/signup/classic", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      ...fields,
+      ...(turnstileToken ? { turnstileToken } : {}),
+    }),
   });
 }
 

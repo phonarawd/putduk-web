@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { AmbassadorHero, AmbassadorMoment } from "@/components/gpt/AmbassadorVisual";
 import { OpportunitySection } from "@/components/gpt/OpportunitySection";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
+import { hasMoneyValues } from "@/lib/api";
 import { formatKrw, formatSignedKrw, formatSignedUsdt, formatUsdt } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { principalSuggestion } from "@/lib/gpt/opportunities";
@@ -117,8 +118,10 @@ function HomeWorkspace() {
               </b>
             </div>
             <div className="ticket-number">
-              <strong id="remainingTickets">{state.trial.participationsRemaining ?? tickets.remaining}</strong>
-              <span>회 남음</span>
+              <strong id="remainingTickets">
+                {state.trial.participationsRemaining != null ? state.trial.participationsRemaining : tickets.remaining || "—"}
+              </strong>
+              <span>{state.trial.participationsRemaining != null || tickets.remaining ? "회 남음" : "아직 없음"}</span>
             </div>
             {state.trial.profitRemainingKrw != null ? (
               <p id="bonusMini">
@@ -155,14 +158,29 @@ function ProfileCapitalCard() {
   const { state } = useGpt();
   const profitUsdt = state.profitUsdt;
   const profitKrw = state.profitKrw;
+  const ready =
+    state.deskReady &&
+    hasMoneyValues({
+      principalUsdt: state.principalUsdt,
+      principalKrw: state.principalKrw,
+      lockedUsdt: state.lockedUsdt,
+      lockedKrw: state.lockedKrw,
+      profitUsdt: state.profitUsdt,
+      profitKrw: state.profitKrw,
+      practiceUsdt: state.practiceUsdt,
+      practiceKrw: state.practiceKrw,
+      trialPrincipalUsdt: state.trial.trialPrincipalUsdt,
+      trialLockedUsdt: state.trial.trialLockedUsdt,
+      fxKrwPerUsdt: null,
+    });
   return (
     <article className="capital-card">
       <div className="summary-label">
         <span>내 예치</span>
       </div>
-      <strong id="availableCapital">{formatUsdt(state.principalUsdt)}</strong>
-      {state.principalKrw != null ? <small id="availableUsdt">{formatKrw(state.principalKrw)}</small> : <small>본인 예치만 보여 드려요</small>}
-      {state.trial.grantStatus === "active" ? (
+      <strong id="availableCapital">{ready ? formatUsdt(state.principalUsdt) : "아직 표시할 금액이 없어요"}</strong>
+      {ready && state.principalKrw != null ? <small id="availableUsdt">{formatKrw(state.principalKrw)}</small> : <small>본인 예치만 보여 드려요</small>}
+      {ready && state.trial.grantStatus === "active" ? (
         <div className="capital-card-bottom">
           <span>체험 원금 · 출금 불가</span>
           <b>{formatUsdt(state.trial.trialPrincipalUsdt)}</b>
@@ -171,7 +189,11 @@ function ProfileCapitalCard() {
       <div className="capital-card-bottom">
         <span>출금 가능 수익</span>
         <b id="settledProfit">
-          {profitUsdt != null ? formatSignedUsdt(profitUsdt) : profitKrw != null ? formatSignedKrw(profitKrw) : formatSignedUsdt(0)}
+          {ready && profitUsdt != null
+            ? formatSignedUsdt(profitUsdt)
+            : ready && profitKrw != null
+              ? formatSignedKrw(profitKrw)
+              : "아직 표시할 금액이 없어요"}
         </b>
       </div>
     </article>

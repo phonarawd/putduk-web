@@ -13,7 +13,9 @@ export type ViewKey = keyof typeof VIEW_PATHS;
 export const GATED_PATHS = [
   "/work",
   "/invite",
+  "/ai",
   "/me",
+  "/me/peotteok",
   "/wallet/deposit",
   "/wallet/withdraw",
   "/wallet/history",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { navActiveKey } from "@/lib/gpt/nav";
 import { useAppSurface } from "@/lib/gpt/useAppSurface";
 
 const NAV_ITEMS = [
@@ -11,26 +12,20 @@ const NAV_ITEMS = [
   { key: "me", label: "나", path: "/me", icon: "●" },
 ] as const;
 
-function activeKey(pathname: string): string {
-  if (pathname === "/ai" || pathname === "/me/peotteok") return "ai";
-  if (pathname === "/work") return "work";
-  if (pathname === "/invite") return "invite";
-  if (pathname === "/me") return "me";
-  return "home";
-}
-
 export function MobileNav() {
   const router = useRouter();
   const { pathname, showNav } = useAppSurface();
-  const current = activeKey(pathname);
+  const current = navActiveKey(pathname);
 
   return (
-    <nav id="mobileNav" className="mobile-nav" aria-label="모바일 주요 메뉴" hidden={!showNav}>
+    <nav id="mobileNav" className="mobile-nav" aria-label="주요 메뉴" hidden={!showNav}>
       {NAV_ITEMS.map((item) => (
         <button
           key={item.key}
           type="button"
           className={"mobile-nav-button" + (current === item.key ? " is-active" : "")}
+          aria-current={current === item.key ? "page" : undefined}
+          aria-label={`${item.label} 화면으로 이동`}
           onClick={() => router.push(item.path)}
         >
           {item.icon ? (

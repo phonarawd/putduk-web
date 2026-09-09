@@ -82,7 +82,7 @@ export function CapitalModal() {
             <span id="capitalChoiceLabel">{isReplace ? "선택한 가상 자본" : "추가 후 업무 가능 자본"}</span>
             <strong id="capitalTotalPreview">{formatUsdt(resultingCapital)}</strong>
           </div>
-          <p id="capitalEligible">금액은 입금이 확인된 뒤 서버 숫자로만 보여 드려요.</p>
+          <p id="capitalEligible">금액은 입금이 확인된 뒤에만 보여 드려요.</p>
         </div>
         <div className="modal-actions">
           <button id="capitalCancel" className="modal-secondary" type="button" onClick={closeCapitalModal}>

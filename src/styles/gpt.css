@@ -4,9 +4,9 @@
   --surface: #ffffff;
   --surface-soft: #f8f9fb;
   --ink: #111827;
-  --ink-soft: #344054;
-  --muted: #667085;
-  --muted-light: #98a2b3;
+  --ink-soft: #1f2937;
+  --muted: #3d4a5c;
+  --muted-light: #4b5568;
   --line: #e4e7ec;
   --line-dark: #d0d5dd;
   --navy: #111b32;
@@ -49,8 +49,8 @@ body {
   background:
     radial-gradient(circle at 10% 5%, rgba(255, 90, 60, 0.055), transparent 24rem),
     linear-gradient(180deg, #ffffff 0, var(--bg) 42rem);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 17px;
+  line-height: 1.65;
   word-break: keep-all;
   -webkit-font-smoothing: antialiased;
 }
@@ -60,7 +60,9 @@ body.modal-open {
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
 }
 
@@ -123,8 +125,11 @@ button:disabled {
 
 button:focus-visible,
 input:focus-visible,
-summary:focus-visible {
-  outline: 3px solid rgba(255, 90, 60, 0.28);
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(255, 90, 60, 0.45);
   outline-offset: 3px;
 }
 
@@ -185,10 +190,10 @@ summary:focus-visible {
 }
 
 .brand-copy small {
-  color: var(--muted-light);
-  font-size: 10px;
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.08em;
 }
 
 .desktop-nav {
@@ -303,9 +308,9 @@ summary:focus-visible {
 .modal-kicker,
 .referral-kicker {
   color: var(--coral-dark);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 850;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -2641,16 +2646,18 @@ summary:focus-visible {
   bottom: 28px;
   left: 50%;
   z-index: 200;
-  max-width: min(calc(100% - 32px), 520px);
-  padding: 13px 17px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
+  max-width: min(calc(100% - 32px), 560px);
+  padding: 15px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
   color: #fff;
-  background: rgba(17, 27, 50, 0.94);
-  box-shadow: 0 16px 45px rgba(17, 24, 39, 0.24);
-  font-size: 14px;
-  font-weight: 720;
+  background: rgba(17, 27, 50, 0.96);
+  box-shadow: 0 16px 45px rgba(17, 24, 39, 0.28);
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.45;
   text-align: center;
+  word-break: keep-all;
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 14px);
@@ -2662,8 +2669,24 @@ summary:focus-visible {
   transform: translate(-50%, 0);
 }
 
+.toast.is-success {
+  background: #0f7a5a;
+}
+
+.toast.is-info {
+  background: #1d4ed8;
+}
+
+.toast.is-warning {
+  background: #b45309;
+}
+
 .toast.is-error {
-  background: rgba(151, 49, 31, 0.96);
+  background: #b42318;
+}
+
+.toast.is-security {
+  background: #4c1d95;
 }
 
 /* Motion */
@@ -4313,6 +4336,10 @@ textarea:focus-visible {
 .stack-form {
   display: grid;
   gap: 15px;
+}
+
+.challenge-box {
+  min-height: 65px;
 }
 
 .form-grid {
@@ -6119,5 +6146,88 @@ textarea:focus-visible {
   .typing-dots i,
   .celebration-burst.is-active i {
     animation: none !important;
+  }
+}
+
+h1,
+h2,
+h3,
+.chat-bubble,
+.featured-opportunity h3,
+.history-main strong,
+.conversation-item strong {
+  overflow-wrap: anywhere;
+}
+
+.capital-card strong,
+.ticket-number strong,
+.wallet-overview strong,
+.wallet-lines b,
+.route-wallet-strip strong,
+.withdraw-limit strong,
+.opportunity-numbers strong,
+.ledger-row b {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.ready-notice {
+  display: grid;
+  gap: 10px;
+}
+
+.ready-notice .form-primary {
+  margin-top: 6px;
+}
+
+.ai-ready-banner {
+  margin: 0;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+}
+
+.ai-chat-head small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ai-disclaimer,
+.settings-note,
+.form-field small,
+.capital-card > small,
+.ledger-row small,
+.history-main small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.chat-bubble {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.evidence-row button,
+.ai-chip-row button {
+  font-size: 13px;
+}
+
+@media (max-width: 860px) {
+  .toast {
+    bottom: 92px;
+    font-size: 16px;
+  }
+
+  .mobile-nav-button {
+    color: rgba(255, 255, 255, 0.82);
+  }
+
+  .mobile-nav-button b {
+    font-size: 13px;
+  }
+
+  .mobile-nav-button.is-active {
+    color: #fff;
   }
 }

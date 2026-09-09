@@ -49,9 +49,9 @@ export function PeotteokAiView() {
           <div>
             <span className="view-kicker">내 일을 아는 개인 AI</span>
             <h1 id="ai-title">퍼뜩AI</h1>
-            <p>자본·잠금·수익·오늘 기회를 함께 보고 쉽게 답해 드려요.</p>
+            <p>질문은 남길 수 있어요. 지금은 자동 답변 연결을 준비하고 있어요.</p>
           </div>
-          <button id="newConversation" className="quiet-button" type="button" onClick={createConversation}>
+          <button id="newConversation" className="quiet-button" type="button" aria-label="새 대화 만들기" onClick={createConversation}>
             새 대화
           </button>
         </div>
@@ -62,11 +62,14 @@ export function PeotteokAiView() {
               <small>눌러서 이어가기</small>
             </div>
             <div id="conversationList" className="conversation-list">
+              {state.conversations.length === 0 ? <p className="settings-note">아직 이전 대화가 없어요.</p> : null}
               {state.conversations.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   className={"conversation-item" + (item.id === state.activeConversationId ? " is-active" : "")}
+                  aria-label={`${item.title || "새 대화"} 이어가기`}
+                  aria-pressed={item.id === state.activeConversationId}
                   onClick={() => selectConversation(item.id)}
                 >
                   <strong>{item.title || "새 대화"}</strong>
@@ -76,6 +79,10 @@ export function PeotteokAiView() {
             </div>
           </aside>
           <section className="ai-chat-card" aria-label="퍼뜩AI와 대화">
+            <div className="plain-notice ready-notice ai-ready-banner">
+              <strong>답변 연결을 준비하고 있어요</strong>
+              <p>질문은 이 기기에 남겨 두며, 지금은 자동 답변을 드릴 수 없어요.</p>
+            </div>
             <div className="ai-chat-head">
               <span className="ai-avatar" aria-hidden="true">
                 <img src="/putduk-mark.svg" alt="" />
@@ -83,7 +90,7 @@ export function PeotteokAiView() {
               <div>
                 <strong>퍼뜩AI</strong>
                 <small>
-                  <i></i> 내 데스크 확인 중
+                  <i></i> 답변 연결 준비 중
                 </small>
               </div>
             </div>
@@ -181,7 +188,7 @@ export function PeotteokAiView() {
                 ↑
               </button>
             </form>
-            <p className="ai-disclaimer">숫자는 지갑 기준이에요. 일상 답은 참고용이에요.</p>
+            <p className="ai-disclaimer">지금은 자동 답변을 연결하는 중이에요. 숫자는 지갑 화면을 기준으로 확인해 주세요.</p>
           </section>
         </div>
       </section>

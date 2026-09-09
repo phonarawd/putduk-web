@@ -29,7 +29,7 @@ function ensureConversation(state: GptState): GptState {
   return {
     ...state,
     conversations: [
-      { id, title: "지금 자본으로 가능한 기회", updatedAt: new Date().toISOString(), messages: [conversationGreeting(state, now)] },
+      { id, title: "새 대화", updatedAt: new Date().toISOString(), messages: [conversationGreeting()] },
     ],
     activeConversationId: id,
   };

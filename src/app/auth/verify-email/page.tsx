@@ -1,10 +1,11 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { verifyClassicSignup } from "@/lib/api";
+import { MSG, toastFromError } from "@/lib/messages";
 
 export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verify-email">) {
   const router = useRouter();
@@ -15,35 +16,38 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
     (typeof query.signupToken === "string" && query.signupToken) ||
     (typeof query.code === "string" && query.code) ||
     "";
-  const [token, setToken] = useState(linkToken);
+  const [typedToken, setTypedToken] = useState("");
   const [busy, setBusy] = useState(false);
+  const token = linkToken || typedToken;
+  const startedLinkRef = useRef("");
 
-  useEffect(() => {
-    if (linkToken) setToken(linkToken);
-  }, [linkToken]);
-
-  async function onVerified() {
+  async function verifyWith(value: string) {
     if (busy) return;
-    if (!token.trim()) {
-      showToast("메일 안의 인증 링크로 들어와 주세요.", "error");
+    if (!value.trim()) {
+      showToast(MSG.verifyNeed, "warning");
       return;
     }
     setBusy(true);
     try {
-      await verifyClassicSignup(token.trim());
+      await verifyClassicSignup(value.trim());
       markPasswordAuth();
-      showToast("이메일 확인이 끝났어요.");
+      showToast(MSG.verifyOk, "success");
       navigateAfterAuth("/");
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "인증에 실패했어요.", "error");
+      const payload = toastFromError(error, MSG.verifyFail);
+      showToast(payload.message, payload.kind);
     } finally {
       setBusy(false);
     }
   }
 
   useEffect(() => {
-    if (!linkToken) return;
-    void onVerified();
+    if (!linkToken || startedLinkRef.current === linkToken) return;
+    startedLinkRef.current = linkToken;
+    const timer = window.setTimeout(() => {
+      void verifyWith(linkToken);
+    }, 0);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkToken]);
 
@@ -63,10 +67,10 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
         {!linkToken ? (
           <label className="form-field">
             <span>메일에서 받은 인증 값</span>
-            <input value={token} onChange={(event) => setToken(event.target.value)} placeholder="메일의 인증 링크를 그대로 열어 주세요" />
+            <input value={typedToken} onChange={(event) => setTypedToken(event.target.value)} placeholder="메일의 인증 링크를 그대로 열어 주세요" />
           </label>
         ) : null}
-        <button className="form-primary" type="button" disabled={busy} onClick={onVerified}>
+        <button className="form-primary" type="button" disabled={busy} onClick={() => void verifyWith(token)}>
           인증을 마쳤어요
         </button>
         <button className="route-back-link" type="button" onClick={() => router.push("/signup")}>

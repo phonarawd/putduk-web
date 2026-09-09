@@ -5,6 +5,7 @@ import { WorkspaceView } from "@/components/gpt/WorkspaceView";
 import { copyTextToClipboard } from "@/lib/gpt/clipboard";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { getReferralMe, readReferral } from "@/lib/api";
+import { MSG } from "@/lib/messages";
 
 export default function InvitePage() {
   const { showToast } = useGpt();
@@ -30,7 +31,7 @@ export default function InvitePage() {
   async function copyReferral() {
     if (!referralLink) return;
     const ok = await copyTextToClipboard(referralLink);
-    showToast(ok ? "😊 추천 링크를 복사했어요" : "길게 눌러 복사해 주세요.", ok ? "normal" : "error");
+    showToast(ok ? MSG.inviteCopy : MSG.copyFail, ok ? "success" : "warning");
   }
 
   async function shareReferral() {
@@ -38,7 +39,7 @@ export default function InvitePage() {
     if (navigator.share) {
       try {
         await navigator.share({ title: "퍼뜩 초대", text: "퍼뜩 리셀러 데스크에서 함께 시작해요.", url: referralLink });
-        showToast("😊 친구에게 초대장을 열었어요");
+        showToast(MSG.inviteShare, "success");
         return;
       } catch {
         // 공유 시트를 닫으면 복사로 대신한다.

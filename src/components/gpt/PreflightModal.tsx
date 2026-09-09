@@ -43,7 +43,7 @@ export function PreflightModal() {
           <div>
             <span>이번 업무에 사용할 금액</span>
             <strong id="preflightAmount">
-              {selected.requiredUsdt != null ? formatUsdt(selected.requiredUsdt) : "서버가 고른 금액"}
+              {selected.requiredUsdt != null ? formatUsdt(selected.requiredUsdt) : "아직 표시할 금액이 없어요"}
             </strong>
             {selected.requiredKrw != null ? <small id="preflightUsdt">{formatKrw(selected.requiredKrw)}</small> : null}
           </div>
@@ -60,7 +60,7 @@ export function PreflightModal() {
         <div className="lock-explanation">
           <span aria-hidden="true">✓</span>
           <div>
-            <strong>쓸 금액은 서버가 고릅니다.</strong>
+            <strong>쓸 금액은 화면에 확인된 값만 씁니다.</strong>
             <p id="preflightBalanceAfter">화면에서 체험/본인 예치를 고르지 않아도 돼요.</p>
           </div>
         </div>

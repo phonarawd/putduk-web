@@ -148,6 +148,10 @@ export interface GptState {
   withdrawals: WithdrawalRecord[];
   notificationsEnabled: boolean;
   benefitNews: boolean;
+  settlementAlerts: boolean;
+  walletAlerts: boolean;
+  preferKrwFirst: boolean;
+  celebrateOn: boolean;
   conversations: Conversation[];
   activeConversationId: string;
   pendingAiQuestion: string;

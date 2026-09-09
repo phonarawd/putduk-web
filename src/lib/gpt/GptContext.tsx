@@ -32,7 +32,8 @@ import {
   sessionEmail,
   sessionUsername,
 } from "@/lib/api";
-import { buildAiReply, conversationGreeting } from "./ai";
+import { MSG, toastFromError, type ToastKind } from "@/lib/messages";
+import { AI_UNAVAILABLE_REPLY, conversationGreeting } from "./ai";
 import { VIEW_PATHS } from "./constants";
 import { allOpportunityViews, selectedOpportunity } from "./opportunities";
 import { ticketState } from "./state";
@@ -59,7 +60,7 @@ interface TypingState {
 
 interface ToastState {
   message: string;
-  type: "normal" | "error";
+  kind: ToastKind;
   key: number;
 }
 
@@ -103,7 +104,7 @@ interface GptContextValue {
 
   // 가상 자본 모달
   capitalModal: CapitalModalState;
-  openCapitalModal: (mode: "replace" | "topup", suggestedAmount: number) => void;
+  openCapitalModal: (mode?: "replace" | "topup", suggestedAmount?: number) => void;
   closeCapitalModal: () => void;
   setCapitalSelection: (amount: number) => void;
   confirmCapital: () => void;
@@ -129,11 +130,15 @@ interface GptContextValue {
   chooseProfileGender: (value: Gender) => void;
   toggleNotifications: () => void;
   toggleBenefitNews: () => void;
+  toggleSettlementAlerts: () => void;
+  toggleWalletAlerts: () => void;
+  togglePreferKrwFirst: () => void;
+  toggleCelebrateOn: () => void;
   resetPractice: () => void;
 
   // 토스트
   toast: ToastState | null;
-  showToast: (message: string, type?: "normal" | "error") => void;
+  showToast: (message: string, kind?: ToastKind) => void;
 }
 
 const GptContext = createContext<GptContextValue | null>(null);
@@ -164,9 +169,15 @@ export function GptProvider({ children }: { children: ReactNode }) {
   const [typing, setTyping] = useState<TypingState | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
 
-  const showToast = useCallback((message: string, type: "normal" | "error" = "normal") => {
+  const lastToastRef = useRef<{ message: string; at: number }>({ message: "", at: 0 });
+  const showToast = useCallback((message: string, kind: ToastKind = "info") => {
+    const now = Date.now();
+    if (lastToastRef.current.message === message && now - lastToastRef.current.at < 1800) {
+      return;
+    }
+    lastToastRef.current = { message, at: now };
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-    setToast({ message, type, key: Date.now() });
+    setToast({ message, kind, key: now });
     toastTimerRef.current = window.setTimeout(() => setToast(null), 3400);
   }, []);
 
@@ -290,9 +301,10 @@ export function GptProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     logoutSession()
-      .then(() => showToast("다음에 또 만나요 😊"))
+      .then(() => showToast(MSG.logoutOk, "success"))
       .catch((error: unknown) => {
-        showToast(error instanceof Error ? error.message : "로그아웃 요청 실패", "error");
+        const payload = toastFromError(error, MSG.logoutFail);
+        showToast(payload.message, payload.kind);
       });
     setStoreState((prev) => ({ ...prev, loggedIn: false, pendingRoute: "", profileCompleted: true, authMethod: "" }));
     router.push("/login");
@@ -307,21 +319,20 @@ export function GptProvider({ children }: { children: ReactNode }) {
     (question: string) => {
       const text = String(question || "").trim();
       if (!text) {
-        showToast("🙏 궁금한 내용을 입력해 주세요.", "error");
+        showToast(MSG.aiEmpty, "warning");
         return;
       }
       if (!state.loggedIn) {
         setStoreState((prev) => ({ ...prev, pendingAiQuestion: text, pendingRoute: "/ai" }));
-        showToast("로그인하면 이 질문부터 바로 이어갈게요.");
+        showToast(MSG.aiLogin, "info");
         router.push("/login");
         return;
       }
       if (typing) {
-        showToast("지금은 잠시 바빠요. 조금 뒤 다시 물어봐 주세요.", "error");
+        showToast(MSG.aiBusy, "warning");
         return;
       }
       const conversationId = state.activeConversationId;
-      const reply = buildAiReply(text, state, Date.now());
       setStoreState((prev) => {
         const conversation = prev.conversations.find((item) => item.id === prev.activeConversationId);
         if (!conversation) return prev;
@@ -333,9 +344,25 @@ export function GptProvider({ children }: { children: ReactNode }) {
         };
         return { ...prev, conversations: prev.conversations.map((item) => (item.id === updated.id ? updated : item)) };
       });
+      showToast(MSG.aiWait, "warning");
+      setTyping({ conversationId, full: "", revealed: 0, started: false });
       window.setTimeout(() => {
-        setTyping({ conversationId, full: reply.text, evidence: reply.evidence, revealed: 0, started: false });
-      }, 0);
+        setTyping(null);
+        setStoreState((prev) => {
+          const conversation = prev.conversations.find((item) => item.id === conversationId);
+          if (!conversation) return prev;
+          const updated: Conversation = {
+            ...conversation,
+            updatedAt: new Date().toISOString(),
+            messages: [
+              ...conversation.messages,
+              { role: "assistant", text: AI_UNAVAILABLE_REPLY, createdAt: new Date().toISOString() },
+            ],
+          };
+          return { ...prev, conversations: prev.conversations.map((item) => (item.id === updated.id ? updated : item)) };
+        });
+        showToast(MSG.aiSendFail, "error");
+      }, 700);
     },
     [state, typing, showToast, router],
   );
@@ -403,7 +430,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
         id,
         title: "새 대화",
         updatedAt: new Date().toISOString(),
-        messages: [conversationGreeting(prev, Date.now())],
+        messages: [conversationGreeting()],
       };
       return { ...prev, conversations: [conversation, ...prev.conversations].slice(0, 12), activeConversationId: id };
     });
@@ -425,14 +452,15 @@ export function GptProvider({ children }: { children: ReactNode }) {
 
   const refreshQuotes = useCallback(() => {
     reloadDesk()
-      .then(() => showToast("😊 지금 확인할 기회를 다시 가져왔어요."))
+      .then(() => showToast(MSG.quoteOk, "success"))
       .catch((error: unknown) => {
-        showToast(error instanceof Error ? error.message : "기회를 다시 가져오지 못했어요.", "error");
+        const payload = toastFromError(error, MSG.quoteFail);
+        showToast(payload.message, payload.kind);
       });
   }, [reloadDesk, showToast]);
 
   // ---------- 가상 자본 모달 ----------
-  const openCapitalModal = useCallback((_mode: "replace" | "topup", _suggestedAmount: number) => {
+  const openCapitalModal = useCallback(() => {
     router.push("/wallet/deposit");
   }, [router]);
 
@@ -457,26 +485,26 @@ export function GptProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (activeExecution && !isTerminal(activeExecution.status)) {
-      showToast("현재 업무가 끝난 뒤 다음 기회를 시작할 수 있어요.", "error");
+      showToast(MSG.participateBusy, "warning");
       return;
     }
     const opportunity = selectedOpportunity(state);
     if (!opportunity.id) {
-      showToast("아직 확인할 기회가 없어요.", "error");
+      showToast(MSG.noOpportunity, "warning");
       return;
     }
     if (!opportunity.affordable) {
-      showToast("지금은 이 기회에 참여할 금액이 부족해요.", "error");
+      showToast(MSG.notEnoughMoney, "warning");
       router.push("/wallet/deposit");
       return;
     }
     if (state.trial.participationsRemaining === 0) {
-      showToast("남은 참여 횟수가 없어요.", "error");
+      showToast(MSG.noTickets, "warning");
       return;
     }
     preflightOpenedAtRef.current = Date.now();
     setPreflightOpen(true);
-  }, [state, activeExecution, router, showToast, openCapitalModal]);
+  }, [state, activeExecution, router, showToast]);
 
   const closePreflight = useCallback(() => setPreflightOpen(false), []);
 
@@ -484,24 +512,25 @@ export function GptProvider({ children }: { children: ReactNode }) {
     const opportunity = selectedOpportunity(state);
     if (!opportunity.id) {
       setPreflightOpen(false);
-      showToast("아직 확인할 기회가 없어요.", "error");
+      showToast(MSG.noOpportunity, "warning");
       return;
     }
     setPreflightOpen(false);
     participateOpportunity(opportunity.id)
       .then(() => {
-        showToast("참여를 요청했어요.");
+        showToast(MSG.participateOk, "success");
         return reloadDesk();
       })
       .catch((error: unknown) => {
-        showToast(error instanceof Error ? error.message : "참여 요청에 실패했어요.", "error");
+        const payload = toastFromError(error, MSG.participateFail);
+        showToast(payload.message, payload.kind);
       });
   }, [state, reloadDesk, showToast]);
 
   const closeExecution = useCallback(
     (destination: ViewName) => {
       if (activeExecution && !isTerminal(activeExecution.status)) {
-        showToast("자동 처리가 끝날 때까지 잠시만 기다려 주세요.", "error");
+        showToast(MSG.waitExecution, "warning");
         return;
       }
       setActiveExecution(null);
@@ -526,20 +555,40 @@ export function GptProvider({ children }: { children: ReactNode }) {
   const chooseProfileGender = useCallback(
     (value: Gender) => {
       setStoreState((prev) => ({ ...prev, gender: value }));
-      showToast(value === "male" ? "😊 남성으로 선택했어요" : "😊 여성으로 선택했어요");
+      showToast(value === "male" ? MSG.genderMale : MSG.genderFemale, "success");
     },
     [showToast],
   );
 
   const toggleNotifications = useCallback(() => {
     setStoreState((prev) => ({ ...prev, notificationsEnabled: !prev.notificationsEnabled }));
-    showToast(!state.notificationsEnabled ? "😊 알림을 켰어요" : "알림을 껐어요");
+    showToast(!state.notificationsEnabled ? MSG.alertOn : MSG.alertOff, "info");
   }, [state.notificationsEnabled, showToast]);
 
   const toggleBenefitNews = useCallback(() => {
     setStoreState((prev) => ({ ...prev, benefitNews: !prev.benefitNews }));
-    showToast(!state.benefitNews ? "😊 알림을 켰어요" : "알림을 껐어요");
+    showToast(!state.benefitNews ? MSG.alertOn : MSG.alertOff, "info");
   }, [state.benefitNews, showToast]);
+
+  const toggleSettlementAlerts = useCallback(() => {
+    setStoreState((prev) => ({ ...prev, settlementAlerts: !prev.settlementAlerts }));
+    showToast(!state.settlementAlerts ? MSG.alertOn : MSG.alertOff, "info");
+  }, [state.settlementAlerts, showToast]);
+
+  const toggleWalletAlerts = useCallback(() => {
+    setStoreState((prev) => ({ ...prev, walletAlerts: !prev.walletAlerts }));
+    showToast(!state.walletAlerts ? MSG.alertOn : MSG.alertOff, "info");
+  }, [state.walletAlerts, showToast]);
+
+  const togglePreferKrwFirst = useCallback(() => {
+    setStoreState((prev) => ({ ...prev, preferKrwFirst: !prev.preferKrwFirst }));
+    showToast(MSG.settingOn, "info");
+  }, [showToast]);
+
+  const toggleCelebrateOn = useCallback(() => {
+    setStoreState((prev) => ({ ...prev, celebrateOn: !prev.celebrateOn }));
+    showToast(MSG.settingOn, "info");
+  }, [showToast]);
 
   const resetPractice = useCallback(() => {
     if (typeof window !== "undefined" && !window.confirm("퍼뜩AI 대화를 처음부터 시작할까요? 금액은 그대로 둡니다.")) {
@@ -554,7 +603,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
       conversations: [],
       activeConversationId: "",
     }));
-    showToast("대화를 지웠어요.");
+    showToast(MSG.chatReset, "success");
     router.replace("/");
   }, [router, showToast]);
 
@@ -597,6 +646,10 @@ export function GptProvider({ children }: { children: ReactNode }) {
     chooseProfileGender,
     toggleNotifications,
     toggleBenefitNews,
+    toggleSettlementAlerts,
+    toggleWalletAlerts,
+    togglePreferKrwFirst,
+    toggleCelebrateOn,
     resetPractice,
     toast,
     showToast,

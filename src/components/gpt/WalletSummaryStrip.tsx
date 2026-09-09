@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import { emptyTrial, getHomeRead, getTrialState, getWalletBuckets, hasMoneyValues, readMoney, readTrialState, type MoneyRead } from "@/lib/api";
 import { formatKrw, formatUsdt } from "@/lib/gpt/format";
+import { useGpt } from "@/lib/gpt/GptContext";
 
 export function WalletSummaryStrip() {
+  const { state } = useGpt();
   const [money, setMoney] = useState<MoneyRead | null>(null);
   const [ready, setReady] = useState(false);
+  const krwFirst = state.preferKrwFirst;
 
   useEffect(() => {
     let cancelled = false;
@@ -41,8 +44,12 @@ export function WalletSummaryStrip() {
     <section className="route-wallet-strip">
       <div>
         <span>내 예치</span>
-        <strong>{formatUsdt(money.principalUsdt)}</strong>
-        {money.principalKrw != null ? <small>{formatKrw(money.principalKrw)}</small> : null}
+        <strong>{krwFirst && money.principalKrw != null ? formatKrw(money.principalKrw) : formatUsdt(money.principalUsdt)}</strong>
+        {krwFirst && money.principalKrw != null ? (
+          <small>{formatUsdt(money.principalUsdt)}</small>
+        ) : money.principalKrw != null ? (
+          <small>{formatKrw(money.principalKrw)}</small>
+        ) : null}
       </div>
       {money.trialPrincipalUsdt ? (
         <div>
@@ -52,7 +59,9 @@ export function WalletSummaryStrip() {
       ) : null}
       <div>
         <span>출금 가능 수익</span>
-        <strong>{money.profitUsdt != null ? formatUsdt(money.profitUsdt) : money.profitKrw != null ? formatKrw(money.profitKrw) : formatUsdt(0)}</strong>
+        <strong>
+          {money.profitUsdt != null ? formatUsdt(money.profitUsdt) : money.profitKrw != null ? formatKrw(money.profitKrw) : "아직 표시할 금액이 없어요"}
+        </strong>
         {money.profitUsdt != null && money.profitKrw != null ? <small>{formatKrw(money.profitKrw)}</small> : null}
       </div>
       {money.lockedUsdt != null || money.lockedKrw != null ? (

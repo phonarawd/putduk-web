@@ -16,8 +16,8 @@ export default function MeBenefitsPage() {
       <RouteTop kicker="받을 수 있는 혜택" title="혜택" copy="지금 내 계정에서 확인되는 혜택만 보여 드려요." backPath="/me" />
       <section className="benefit-hero">
         <span>친구 보너스</span>
-        <strong>{bank}회</strong>
-        <p>{bank ? "확정된 보너스가 오늘 기회에 반영돼요." : "친구가 첫 수익까지 마치면 혜택이 확정돼요."}</p>
+        <strong>{bank ? `${bank}회` : "아직 표시할 혜택이 없어요"}</strong>
+        <p>{bank ? "확정된 보너스가 오늘 기회에 반영돼요." : "친구가 첫 수익까지 마치면 혜택이 열려요. 횟수는 화면에서 더하지 않아요."}</p>
       </section>
       <section className="benefit-list">
         <article>

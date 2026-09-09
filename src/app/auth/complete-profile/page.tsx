@@ -8,6 +8,7 @@ import { getSession, saveProfile, sessionEmail } from "@/lib/api";
 import { useGpt } from "@/lib/gpt/GptContext";
 import type { Gender } from "@/lib/gpt/types";
 import { validBirthday } from "@/lib/gpt/validate";
+import { MSG, toastFromError } from "@/lib/messages";
 
 export default function CompleteProfilePage() {
   const router = useRouter();
@@ -47,17 +48,18 @@ export default function CompleteProfilePage() {
     event.preventDefault();
     if (busy) return;
     if (!displayName.trim() || !validBirthday(birthday) || !gender) {
-      showToast("🙏 이름과 생년월일 앞자리, 성별을 알려 주세요.", "error");
+      showToast(MSG.profileNeed, "warning");
       return;
     }
     setBusy(true);
     try {
       await saveProfile(displayName.trim(), gender, birthday);
       completeGoogleProfile({ displayName: displayName.trim(), birthday, gender, phone: "" });
-      showToast("✨ 내 리셀러 데스크가 준비됐어요!");
+      showToast(MSG.profileSaved, "success");
       navigateAfterAuth("/");
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "저장 실패", "error");
+      const payload = toastFromError(error, MSG.profileSaveFail);
+      showToast(payload.message, payload.kind);
     } finally {
       setBusy(false);
     }

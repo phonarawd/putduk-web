@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
+import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
 import {
   googleCallback,
@@ -13,6 +14,7 @@ import {
   sessionEmail,
   startGoogle,
 } from "@/lib/api";
+import { MSG, toastFromError } from "@/lib/messages";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,6 +22,7 @@ export default function LoginPage() {
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [challengeToken, setChallengeToken] = useState("");
 
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get("code");
@@ -32,7 +35,8 @@ export default function LoginPage() {
         else navigateAfterAuth("/");
       })
       .catch((error: unknown) => {
-        showToast(error instanceof Error ? error.message : "구글 로그인 실패", "error");
+        const payload = toastFromError(error, MSG.googleFail);
+        showToast(payload.message, payload.kind);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -40,22 +44,27 @@ export default function LoginPage() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!loginId.trim()) {
-      showToast("🙏 아이디 또는 이메일을 입력해 주세요.", "error");
+      showToast(MSG.loginIdNeed, "warning");
       return;
     }
     if (password.length < 8) {
-      showToast("🙏 비밀번호는 8자 이상 입력해 주세요.", "error");
+      showToast(MSG.passwordShort, "warning");
+      return;
+    }
+    if (hasTurnstileSiteKey() && !challengeToken) {
+      showToast(MSG.challengeNeed, "warning");
       return;
     }
     if (busy) return;
     setBusy(true);
     try {
-      await login(loginId, password);
+      await login(loginId, password, challengeToken || undefined);
       markPasswordAuth();
-      showToast("✨ 다시 만나서 반가워요!");
+      showToast(MSG.loginOk, "success");
       navigateAfterAuth("/");
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "로그인 실패", "error");
+      const payload = toastFromError(error, MSG.loginFail);
+      showToast(payload.message, payload.kind);
     } finally {
       setBusy(false);
     }
@@ -66,12 +75,13 @@ export default function LoginPage() {
       const data = await startGoogle();
       const url = googleRedirectUrl(data);
       if (!url) {
-        showToast("구글 주소를 받지 못했습니다", "error");
+        showToast(MSG.googleUrlFail, "error");
         return;
       }
       window.location.href = url;
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "구글 로그인 실패", "error");
+      const payload = toastFromError(error, MSG.googleStartFail);
+      showToast(payload.message, payload.kind);
     }
   }
 
@@ -105,6 +115,7 @@ export default function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
               />
             </label>
+            <TurnstileBox onToken={setChallengeToken} />
             <button className="form-primary" type="submit" disabled={busy}>
               로그인
             </button>

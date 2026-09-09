@@ -28,8 +28,8 @@ export default function MeMembershipPage() {
         <div className="level-emblem">P</div>
         <span>현재 등급</span>
         <h2>퍼뜩 리셀러</h2>
-        {ready && cap != null ? <strong>하루 기회 {cap}번</strong> : <strong>하루 기회 n번</strong>}
-        <p>정확한 횟수는 계정에 정해진 값으로 표시돼요.</p>
+        {ready && cap != null ? <strong>하루 기회 {cap}번</strong> : <strong>아직 표시할 횟수가 없어요</strong>}
+        <p>정확한 횟수는 계정에 정해진 값이 있을 때만 보여 드려요.</p>
       </section>
       <section className="level-points">
         <article>

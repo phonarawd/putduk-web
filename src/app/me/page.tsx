@@ -70,8 +70,8 @@ export default function MePage() {
             </div>
             <div className="profile-pass-main">
               <small>리셀러 ID</small>
-              <strong id="profileResellerId">{state.resellerId}</strong>
-              <span id="profileIssued">{formatIssued(state.issuedAt)}</span>
+              <strong id="profileResellerId">{state.resellerId || state.displayName || "아직 표시할 아이디가 없어요"}</strong>
+              <span id="profileIssued">{state.issuedAt ? formatIssued(state.issuedAt) : ""}</span>
             </div>
             <div className="pass-bottom">
               <span>퍼뜩 매칭 데스크</span>
@@ -207,11 +207,23 @@ function MyRecords() {
       <section className="record-summary" aria-label="정산 요약">
         <div>
           <span>누적 수익</span>
-          <strong id="recordProfit">{state.profitUsdt != null ? formatSignedUsdt(state.profitUsdt) : state.profitKrw != null ? formatSignedKrw(state.profitKrw) : formatSignedUsdt(0)}</strong>
+          <strong id="recordProfit">
+            {state.profitUsdt != null
+              ? formatSignedUsdt(state.profitUsdt)
+              : state.profitKrw != null
+                ? formatSignedKrw(state.profitKrw)
+                : "아직 표시할 금액이 없어요"}
+          </strong>
         </div>
         <div>
           <span>진행 중 잠금</span>
-          <strong id="recordLocked">{state.lockedUsdt != null ? formatUsdt(state.lockedUsdt) : state.lockedKrw != null ? formatKrw(state.lockedKrw) : formatUsdt(0)}</strong>
+          <strong id="recordLocked">
+            {state.lockedUsdt != null
+              ? formatUsdt(state.lockedUsdt)
+              : state.lockedKrw != null
+                ? formatKrw(state.lockedKrw)
+                : "아직 표시할 금액이 없어요"}
+          </strong>
         </div>
         <button type="button" onClick={() => router.push("/wallet/history")}>
           입출금 내역 보기

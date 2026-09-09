@@ -9,7 +9,8 @@ export function useAppSurface() {
   const pathname = usePathname();
   const { state } = useGpt();
 
-  const inWorkspaceGroup = WORKSPACE_PATHS.includes(pathname);
+  const inWorkspaceGroup =
+    WORKSPACE_PATHS.includes(pathname) || pathname.startsWith("/me/") || pathname.startsWith("/wallet/");
   const isHomeIntro = pathname === "/" && !state.loggedIn;
   const surfaceIsWorkspace = inWorkspaceGroup && !isHomeIntro;
 

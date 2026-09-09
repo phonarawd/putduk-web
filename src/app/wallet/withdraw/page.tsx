@@ -25,6 +25,7 @@ import {
   readStepUpToken,
 } from "@/lib/api";
 import { formatUsdt } from "@/lib/gpt/format";
+import { MSG, toastFromError } from "@/lib/messages";
 
 export default function WalletWithdrawPage() {
   const router = useRouter();
@@ -49,11 +50,11 @@ export default function WalletWithdrawPage() {
         buckets.status === "fulfilled" ? buckets.value : null,
         trial.status === "fulfilled" ? readTrialState(trial.value) : emptyTrial(),
       );
-      setProfitUsdt(money.profitUsdt ?? 0);
+      setProfitUsdt(money.profitUsdt);
     });
     getWithdrawStepUpPolicy()
       .then((data) => setStepMethod(readStepUpMethod(data)))
-      .catch(() => setStepMethod("pin"));
+      .catch(() => setStepMethod(null));
   }, []);
 
   async function onChallenge() {
@@ -63,9 +64,10 @@ export default function WalletWithdrawPage() {
       const data = await startWithdrawStepUp(stepMethod);
       const id = readChallengeId(data);
       if (id) setChallengeId(id);
-      showToast(stepMethod === "email_otp" ? "코드를 보냈어요." : "확인을 시작했어요.");
+      showToast(stepMethod === "email_otp" ? MSG.withdrawCodeSent : MSG.withdrawConfirmStart, stepMethod === "email_otp" ? "info" : "warning");
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "확인 시작 실패", "error");
+      const payload = toastFromError(error, MSG.withdrawConfirmFail);
+      showToast(payload.message, payload.kind);
     } finally {
       setBusy("");
     }
@@ -74,7 +76,7 @@ export default function WalletWithdrawPage() {
   async function onVerify() {
     if (busy || !stepMethod) return;
     if (!code.trim()) {
-      showToast("🙏 PIN 또는 코드를 입력해 주세요.", "error");
+      showToast(MSG.withdrawConfirmNeed, "warning");
       return;
     }
     setBusy("verify");
@@ -82,13 +84,14 @@ export default function WalletWithdrawPage() {
       const data = await verifyWithdrawStepUp(stepMethod, code.trim(), challengeId || undefined);
       const token = readStepUpToken(data);
       if (!token) {
-        showToast("확인 토큰을 받지 못했어요.", "error");
+        showToast(MSG.withdrawConfirmFail, "error");
         return;
       }
       setStepUpToken(token);
-      showToast("😊 출금 확인이 끝났어요.");
+      showToast(MSG.withdrawConfirmOk, "success");
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "확인 실패", "error");
+      const payload = toastFromError(error, MSG.withdrawConfirmFail);
+      showToast(payload.message, payload.kind);
     } finally {
       setBusy("");
     }
@@ -98,24 +101,24 @@ export default function WalletWithdrawPage() {
     event.preventDefault();
     if (busy) return;
     if (!verified) {
-      showToast("🙏 출금 전에 본인확인을 마쳐 주세요.", "error");
+      showToast(MSG.withdrawNeedKyc, "security");
       return;
     }
     const amountUsdt = Number(amount);
     if (!Number.isFinite(amountUsdt) || amountUsdt <= 0) {
-      showToast("🙏 출금할 테더 금액을 입력해 주세요.", "error");
+      showToast(MSG.withdrawNeedAmount, "warning");
       return;
     }
     if (profitUsdt != null && amountUsdt > profitUsdt) {
-      showToast("🙏 출금 가능한 금액 안에서 입력해 주세요.", "error");
+      showToast(MSG.withdrawNeedBalance, "warning");
       return;
     }
     if (!destination.trim()) {
-      showToast("🙏 받을 테더 주소를 입력해 주세요.", "error");
+      showToast(MSG.withdrawNeedAddress, "warning");
       return;
     }
     if (!stepUpToken) {
-      showToast("🙏 먼저 PIN 또는 코드를 확인해 주세요.", "error");
+      showToast(MSG.withdrawNeedConfirm, "security");
       return;
     }
     setBusy("withdraw");
@@ -128,10 +131,11 @@ export default function WalletWithdrawPage() {
         idempotencyKey: newIdempotencyKey(),
         stepUpToken,
       });
-      showToast("📝 출금 요청을 보냈어요.");
+      showToast(MSG.withdrawOk, "success");
       router.push("/wallet/history");
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "출금 요청 실패", "error");
+      const payload = toastFromError(error, MSG.withdrawFail);
+      showToast(payload.message, payload.kind);
     } finally {
       setBusy("");
     }

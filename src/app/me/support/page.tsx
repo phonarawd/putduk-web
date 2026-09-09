@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ReadyNotice } from "@/components/gpt/ReadyNotice";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { useGpt } from "@/lib/gpt/GptContext";
-import { useRouter } from "next/navigation";
+import { MSG } from "@/lib/messages";
 
 const SUPPORT_TOPICS = [
   { key: "입금", icon: "₩", title: "입금 문의", small: "신청과 반영 확인" },
@@ -12,7 +14,6 @@ const SUPPORT_TOPICS = [
   { key: "업무", icon: "✓", title: "업무 문의", small: "기회와 정산 기록" },
 ] as const;
 
-// GPT 짧은 경로 /support → 이 레포에서는 /me/support
 export default function MeSupportPage() {
   const router = useRouter();
   const { showToast } = useGpt();
@@ -23,18 +24,19 @@ export default function MeSupportPage() {
   function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!message.trim()) {
-      showToast("🙏 문의 내용을 입력해 주세요.", "error");
+      showToast(MSG.supportNeed, "warning");
       return;
     }
-    showToast("😊 문의를 남겼어요. 확인 후 알려 드릴게요");
-    setTopic("일반 문의");
-    setMessage("");
-    setSelectedTopic(null);
+    showToast(MSG.featureSoon, "warning");
   }
 
   return (
     <RouteScreen>
       <RouteTop kicker="도움이 필요할 때" title="고객지원" copy="어려운 말 없이 필요한 내용을 남겨 주세요." backPath="/me" />
+      <ReadyNotice
+        title="문의 접수는 아직 준비 중이에요"
+        copy="내용은 적어 두실 수 있지만, 지금은 바로 접수되지 않아요. 입금·출금·기회 화면에서 상태를 먼저 확인해 주세요."
+      />
       <section className="support-options">
         {SUPPORT_TOPICS.map((item) => (
           <button

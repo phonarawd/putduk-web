@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { GenderSelect } from "@/components/gpt/GenderSelect";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
+import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { birthDateFromPrefix, googleRedirectUrl, signup, startGoogle } from "@/lib/api";
 import type { Gender } from "@/lib/gpt/types";
 import { validBirthday, validEmail, validPhone, validUsername } from "@/lib/gpt/validate";
+import { MSG, toastFromError } from "@/lib/messages";
 
 export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   const router = useRouter();
@@ -27,35 +29,40 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   const [inviteCode, setInviteCode] = useState(ref);
   const [requiredTerms, setRequiredTerms] = useState(false);
   const [benefitNews, setBenefitNews] = useState(false);
+  const [challengeToken, setChallengeToken] = useState("");
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!validUsername(username)) {
-      showToast("🙏 아이디는 영문 소문자로 시작하는 4~20자로 입력해 주세요.", "error");
+      showToast(MSG.usernameNeed, "warning");
       return;
     }
     if (!validEmail(email)) {
-      showToast("🙏 이메일을 정확하게 입력해 주세요.", "error");
+      showToast(MSG.emailNeed, "warning");
       return;
     }
     if (password.length < 8) {
-      showToast("🙏 비밀번호는 8자 이상 입력해 주세요.", "error");
+      showToast(MSG.passwordShort, "warning");
       return;
     }
     if (password !== passwordConfirm) {
-      showToast("🙏 비밀번호 확인이 서로 달라요.", "error");
+      showToast(MSG.passwordMismatch, "warning");
       return;
     }
     if (!displayName.trim() || !validBirthday(birthday) || !gender) {
-      showToast("🙏 이름, 생년월일 앞자리와 성별을 알려 주세요.", "error");
+      showToast(MSG.profileNeed, "warning");
       return;
     }
     if (phone && !validPhone(phone)) {
-      showToast("🙏 휴대폰 번호를 다시 확인해 주세요.", "error");
+      showToast(MSG.phoneNeed, "warning");
       return;
     }
     if (!requiredTerms) {
-      showToast("🙏 이용약관과 개인정보 처리방침에 동의해 주세요.", "error");
+      showToast(MSG.termsNeed, "warning");
+      return;
+    }
+    if (hasTurnstileSiteKey() && !challengeToken) {
+      showToast(MSG.challengeNeed, "warning");
       return;
     }
     try {
@@ -69,30 +76,33 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
         gender,
         phone: phone || undefined,
         inviteCode: inviteCode.trim() || undefined,
+        turnstileToken: challengeToken || undefined,
       });
       submitClassicSignupProfile({ displayName, email, birthday, gender, phone, benefitNews });
       router.push("/auth/verify-email");
-      showToast("✉ 인증 메일을 보냈어요.");
+      showToast(MSG.signupOk, "success");
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "회원가입 실패", "error");
+      const payload = toastFromError(error, MSG.signupFail);
+      showToast(payload.message, payload.kind);
     }
   }
 
   async function onGoogle() {
     if (!requiredTerms) {
-      showToast("🙏 이용약관과 개인정보 처리방침에 동의해 주세요.", "error");
+      showToast(MSG.termsNeed, "warning");
       return;
     }
     try {
       const data = await startGoogle();
       const url = googleRedirectUrl(data);
       if (!url) {
-        showToast("구글 주소를 받지 못했습니다", "error");
+        showToast(MSG.googleUrlFail, "error");
         return;
       }
       window.location.href = url;
     } catch (error: unknown) {
-      showToast(error instanceof Error ? error.message : "구글 가입 실패", "error");
+      const payload = toastFromError(error, MSG.googleStartFail);
+      showToast(payload.message, payload.kind);
     }
   }
 
@@ -250,6 +260,7 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
               </span>
             </label>
           </div>
+          <TurnstileBox onToken={setChallengeToken} />
           <button className="form-primary" type="submit">
             회원가입
           </button>
