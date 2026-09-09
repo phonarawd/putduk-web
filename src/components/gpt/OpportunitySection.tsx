@@ -19,7 +19,7 @@ export function OpportunitySection() {
   let statusText = "참여 가능";
   let showStart = true;
   let startDisabled = false;
-  let startLabel = "이 기회에 참여하기";
+  let startLabel = "이 기회로 수익 벌기";
   let showCapitalCta = false;
 
   if (!selected.id) {
@@ -120,8 +120,14 @@ export function OpportunitySection() {
             {selected.expectedUsdt != null || selected.expectedKrw ? (
               <div className="profit-number">
                 <span>예상 수익</span>
-                <strong id="featuredProfit">{formatSignedMoneyPrimary(selected.expectedUsdt, selected.expectedKrw)}</strong>
-                {selected.duration ? <small id="featuredProfitRate">{selected.duration}</small> : null}
+                <strong id="featuredProfit">
+                  {formatSignedMoneyPrimary(selected.expectedUsdt, selected.expectedKrw) ??
+                    (selected.expectedUsdt != null ? "원화 환산 확인 중" : "아직 표시할 금액이 없어요")}
+                </strong>
+                {formatMoneySecondary(selected.expectedUsdt, selected.expectedKrw) ? (
+                  <small>{formatMoneySecondary(selected.expectedUsdt, selected.expectedKrw)}</small>
+                ) : null}
+                {selected.duration ? <small id="featuredProfitRate">{selected.duration}</small> : null>
               </div>
             ) : null}
           </div>
