@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { TrialCardArt } from "@/components/gpt/TrialCardArt";
 import { EXECUTION_STEPS } from "@/lib/gpt/constants";
-import { formatKrw, formatSignedKrw } from "@/lib/gpt/format";
+import { formatKrw, formatSignedKrw, formatUsdt } from "@/lib/gpt/format";
 import { isTerminal, useGpt } from "@/lib/gpt/GptContext";
 import { opportunityById } from "@/lib/gpt/opportunities";
 import type { ActiveExecution } from "@/lib/gpt/types";
@@ -15,15 +15,18 @@ function prefersReducedMotion(): boolean {
 
 function ResultAmount({ execution }: { execution: ActiveExecution }) {
   const success = execution.status === "success";
-  // 모션 축소 선호 시엔 처음부터 최종 값으로 시작해 애니메이션을 건너뛴다(effect에서 값을 되돌리지 않는다).
-  const [display, setDisplay] = useState(() => (success && !prefersReducedMotion() ? 0 : execution.expectedProfitKrw));
+  const target = execution.expectedProfitKrw;
+  const shouldAnimate = success && target != null && !prefersReducedMotion();
+  const [display, setDisplay] = useState<number | null>(() => (shouldAnimate ? 0 : target));
   const animatedForRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!success || prefersReducedMotion()) return;
+    if (!shouldAnimate || target == null) {
+      setDisplay(target);
+      return;
+    }
     if (animatedForRef.current === execution.tradeId) return;
     animatedForRef.current = execution.tradeId;
-    const target = execution.expectedProfitKrw;
     const started = performance.now();
     const duration = 820;
     let frame = 0;
@@ -35,10 +38,11 @@ function ResultAmount({ execution }: { execution: ActiveExecution }) {
     }
     frame = window.requestAnimationFrame(step);
     return () => window.cancelAnimationFrame(frame);
-  }, [success, execution.tradeId, execution.expectedProfitKrw]);
+  }, [shouldAnimate, target, execution.tradeId]);
 
   if (!success) return <>잠근 금액 전액 반환</>;
-  return <>{formatSignedKrw(display)}</>;
+  if (target == null) return <>정산 금액은 지갑에서 확인해 주세요.</>;
+  return <>{formatSignedKrw(display ?? target)}</>;
 }
 
 export function ExecutionModal() {
@@ -110,7 +114,7 @@ export function ExecutionModal() {
           <div>
             <h2 id="executionAsset">{activeExecution.title}</h2>
             <p id="executionRoute">
-              {opportunity.lowMarket} → {opportunity.highMarket} · 조건 v{activeExecution.pricingVersion}
+              {[opportunity.lowMarket, opportunity.highMarket].filter(Boolean).join(" → ") || "조건을 확인하고 있어요."}
             </p>
           </div>
         </div>
@@ -143,7 +147,10 @@ export function ExecutionModal() {
         </div>
         <div className="execution-amount">
           <span>이번 업무 자본</span>
-          <strong id="executionAmount">{formatKrw(activeExecution.capitalKrw)}</strong>
+          <strong id="executionAmount">
+            {activeExecution.capitalKrw != null ? formatKrw(activeExecution.capitalKrw) : "원화 금액 확인 중"}
+          </strong>
+          {activeExecution.capitalUsdt != null ? <small>{formatUsdt(activeExecution.capitalUsdt)}</small> : null}
         </div>
         <div id="executionResult" className={"execution-result" + (safe ? " is-safe" : "")} hidden={!terminal}>
           <span id="executionResultIcon" className="result-icon" aria-hidden="true">
@@ -154,7 +161,7 @@ export function ExecutionModal() {
             <h3 id="executionResultTitle">{success ? "✨ 리셀 업무 성공!" : "이번 기회는 안전하게 멈췄어요"}</h3>
             <p id="executionResultCopy">
               {success
-                ? "사용한 자본은 돌아오고 수익이 내 지갑에 반영됐어요."
+                ? "서버가 정산 완료를 확인했어요. 실제 반영 금액은 지갑에서 확인해 주세요."
                 : "가격 조건이 달라져 매칭하지 않았어요. 잠근 자본과 기회가 모두 돌아왔어요."}
             </p>
             <strong id="executionResultAmount">
