@@ -4,21 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
-import { TurnstileBox, hasTurnstileSiteKey, preloadTurnstile } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { findId, readFoundUsername } from "@/lib/api";
 import { validEmail } from "@/lib/gpt/validate";
 import { MSG, toastFromError } from "@/lib/messages";
-
-preloadTurnstile();
 
 export default function FindIdPage() {
   const router = useRouter();
   const { showToast } = useGpt();
   const [email, setEmail] = useState("");
   const [found, setFound] = useState<string | null>(null);
-  const [challengeToken, setChallengeToken] = useState("");
-  const [challengeReset, setChallengeReset] = useState(0);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: React.FormEvent) {
@@ -28,23 +23,14 @@ export default function FindIdPage() {
       showToast(MSG.emailNeed, "warning");
       return;
     }
-    if (hasTurnstileSiteKey() && !challengeToken) {
-      showToast(MSG.challengeNeed, "warning");
-      return;
-    }
     if (busy) return;
     setBusy(true);
-    const usedToken = challengeToken;
     try {
-      const data = await findId(nextEmail, usedToken);
-      setChallengeToken("");
-      setChallengeReset((value) => value + 1);
+      const data = await findId(nextEmail);
       const username = readFoundUsername(data);
       setFound(username);
       showToast(MSG.findIdOk, "success");
     } catch (error: unknown) {
-      setChallengeToken("");
-      setChallengeReset((value) => value + 1);
       const payload = toastFromError(error, MSG.genericError);
       showToast(payload.message, payload.kind);
     } finally {
@@ -75,7 +61,6 @@ export default function FindIdPage() {
               onChange={(event) => setEmail(event.target.value)}
             />
           </label>
-          <TurnstileBox action="find-id" onToken={setChallengeToken} resetNonce={challengeReset} />
           <button className="form-primary" type="submit" disabled={busy}>
             아이디 확인하기
           </button>
