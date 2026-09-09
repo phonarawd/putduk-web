@@ -3,12 +3,9 @@
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
-import { TurnstileBox, hasTurnstileSiteKey, preloadTurnstile } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { resendSignupEmail, verifyClassicSignup } from "@/lib/api";
 import { MSG, toastFromError } from "@/lib/messages";
-
-preloadTurnstile();
 
 export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verify-email">) {
   const router = useRouter();
@@ -21,8 +18,6 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
     "";
   const [typedToken, setTypedToken] = useState("");
   const [busy, setBusy] = useState(false);
-  const [challengeToken, setChallengeToken] = useState("");
-  const [challengeReset, setChallengeReset] = useState(0);
   const token = linkToken || typedToken;
   const startedLinkRef = useRef("");
 
@@ -52,20 +47,11 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
       showToast(MSG.emailNeed, "warning");
       return;
     }
-    if (hasTurnstileSiteKey() && !challengeToken) {
-      showToast(MSG.challengeNeed, "warning");
-      return;
-    }
     setBusy(true);
-    const usedToken = challengeToken;
     try {
-      await resendSignupEmail(state.email, usedToken);
-      setChallengeToken("");
-      setChallengeReset((value) => value + 1);
+      await resendSignupEmail(state.email);
       showToast(MSG.resendOk, "success");
     } catch (error: unknown) {
-      setChallengeToken("");
-      setChallengeReset((value) => value + 1);
       const payload = toastFromError(error, MSG.genericError);
       showToast(payload.message, payload.kind);
     } finally {
@@ -107,7 +93,6 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
         </button>
         {state.email ? (
           <>
-            <TurnstileBox action="email-resend" onToken={setChallengeToken} resetNonce={challengeReset} />
             <button className="route-back-link" type="button" disabled={busy} onClick={() => void onResend()}>
               인증 메일 다시 받기
             </button>
