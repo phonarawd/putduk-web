@@ -1095,6 +1095,29 @@ export function readTrades(data: unknown): Array<{
   });
 }
 
+export type TradeSnapshot = {
+  tradeId: string | null;
+  status: string;
+  capitalKrw: number | null;
+  profitKrw: number | null;
+  profitUsdt: number | null;
+};
+
+export function readTradeSnapshot(data: unknown): TradeSnapshot {
+  const root = asRecord(data);
+  const row = nest(root, "trade") || nest(root, "data") || root;
+  const numberKeys = withSnake(["capitalKrwApprox", "capitalKrw", "settledCapitalKrwApprox"]);
+  const profitKrwKeys = withSnake(["settledProfitKrwApprox", "settledProfitKrw", "profitKrwApprox", "profitKrw"]);
+  const profitUsdtKeys = withSnake(["settledProfitUsdt", "profitUsdt"]);
+  return {
+    tradeId: pickString(row, ["tradeId", "id"]) || pickString(root, ["tradeId"]),
+    status: pickString(row, ["status", "state"]) || pickString(root, ["status", "state"]) || "",
+    capitalKrw: pickNumber(row, numberKeys) ?? pickNumber(root, numberKeys),
+    profitKrw: pickNumber(row, profitKrwKeys) ?? pickNumber(root, profitKrwKeys),
+    profitUsdt: pickNumber(row, profitUsdtKeys) ?? pickNumber(root, profitUsdtKeys),
+  };
+}
+
 export function readTradeStatus(data: unknown): string {
   const row = asRecord(data);
   return pickString(row, ["status", "state"]) || pickString(nest(row, "trade"), ["status", "state"]) || "";
