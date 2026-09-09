@@ -171,7 +171,7 @@ export function ExecutionModal() {
         </div>
         <div className="modal-actions execution-actions">
           <button id="executionClose" className="modal-secondary" type="button" hidden={!terminal} onClick={() => closeExecution("me")}>
-            기록 보기
+            내 기록 보기
           </button>
           <button id="executionNext" className="modal-primary" type="button" hidden={!terminal} onClick={selectNextOpportunity}>
             다음 기회 보기
