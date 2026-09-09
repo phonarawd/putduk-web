@@ -19,7 +19,7 @@ import {
   readChallengeId,
   readStepUpToken,
 } from "@/lib/api";
-import { formatUsdt } from "@/lib/gpt/format";
+import { formatKrw, formatMoneySecondary, formatUsdt } from "@/lib/gpt/format";
 import { MSG, toastFromError } from "@/lib/messages";
 
 export default function WalletWithdrawPage() {
@@ -27,6 +27,7 @@ export default function WalletWithdrawPage() {
   const { showToast } = useGpt();
   const [verified, setVerified] = useState(false);
   const [profitUsdt, setProfitUsdt] = useState<number | null>(null);
+  const [profitKrw, setProfitKrw] = useState<number | null>(null);
   const [amount, setAmount] = useState("");
   const [destination, setDestination] = useState("");
   const [stepMethod, setStepMethod] = useState<"pin" | "email_otp" | null>(null);
@@ -40,8 +41,14 @@ export default function WalletWithdrawPage() {
       .then((data) => setVerified(readKycVerified(data)))
       .catch(() => setVerified(false));
     loadMoneyRead()
-      .then((money) => setProfitUsdt(money.profitUsdt))
-      .catch(() => setProfitUsdt(null));
+      .then((money) => {
+        setProfitUsdt(money.profitUsdt);
+        setProfitKrw(money.profitKrw);
+      })
+      .catch(() => {
+        setProfitUsdt(null);
+        setProfitKrw(null);
+      });
     getWithdrawStepUpPolicy()
       .then((data) => setStepMethod(readStepUpMethod(data)))
       .catch(() => setStepMethod(null));
@@ -139,11 +146,12 @@ export default function WalletWithdrawPage() {
         <form className="stack-form wallet-panel" data-form="withdraw" onSubmit={onSubmit}>
           <div className="withdraw-limit">
             <span>출금 가능 수익</span>
-            {profitUsdt != null ? (
-              <strong>{formatUsdt(profitUsdt)}</strong>
+            {profitKrw != null ? (
+              <strong>{formatKrw(profitKrw)}</strong>
             ) : (
-              <strong>아직 표시할 금액이 없어요</strong>
+              <strong>{profitUsdt != null ? "원화 환산 확인 중" : "아직 표시할 금액이 없어요"}</strong>
             )}
+            {formatMoneySecondary(profitUsdt, profitKrw) ? <small>{formatMoneySecondary(profitUsdt, profitKrw)}</small> : null}
             <small>체험 원금과 연습 잔액은 출금할 수 없어요.</small>
           </div>
           {!verified ? (
