@@ -1,0 +1,231 @@
+/* 홍보 사진 전용. 기존 gpt.css 수치·브레이크포인트는 건드리지 않는다. */
+
+.ambassador-hero {
+  position: relative;
+  margin: 0;
+}
+
+.ambassador-hero-media {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1672 / 941;
+  border-radius: 30px;
+  background: #d8dde6;
+  box-shadow: var(--shadow-lg);
+}
+
+.ambassador-hero-media > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 70% 28%;
+}
+
+.ambassador-phone-mark {
+  position: absolute;
+  left: 56.5%;
+  top: 30.2%;
+  z-index: 2;
+  display: grid;
+  width: 6.1%;
+  height: 20.4%;
+  place-items: center;
+  pointer-events: none;
+  transform: rotate(-7deg);
+}
+
+.ambassador-phone-mark img {
+  display: block;
+  width: 62%;
+  height: auto;
+  filter: drop-shadow(0 3px 8px rgba(17, 27, 50, 0.22));
+}
+
+.ambassador-hero-copy {
+  position: absolute;
+  top: 50%;
+  left: 5.2%;
+  z-index: 2;
+  width: min(42%, 280px);
+  transform: translateY(-50%);
+}
+
+.ambassador-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--coral-dark);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+}
+
+.ambassador-hero-copy strong {
+  display: block;
+  margin: 10px 0 0;
+  color: var(--navy);
+  font-size: clamp(20px, 2.1vw, 28px);
+  font-weight: 850;
+  line-height: 1.28;
+  letter-spacing: -0.045em;
+}
+
+.ambassador-hero-copy p {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 520;
+  line-height: 1.55;
+}
+
+.ambassador-hero.is-failed .ambassador-hero-media > img,
+.ambassador-hero.is-failed .ambassador-phone-mark {
+  visibility: hidden;
+}
+
+.ambassador-moment {
+  position: relative;
+  display: grid;
+  width: 100%;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 12px 14px 12px 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: inherit;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+  transition: transform 160ms var(--ease), box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.ambassador-moment:hover {
+  border-color: var(--line-dark);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.ambassador-moment-photo {
+  position: relative;
+  display: block;
+  width: 92px;
+  height: 112px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #d8dde6;
+}
+
+.ambassador-moment-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ambassador-moment.is-opportunity .ambassador-moment-photo img {
+  object-position: 50% 16%;
+}
+
+.ambassador-moment.is-trust .ambassador-moment-photo img {
+  object-position: 50% 14%;
+}
+
+.ambassador-moment-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ambassador-moment-copy .ambassador-label {
+  background: var(--coral-soft);
+  box-shadow: none;
+}
+
+.ambassador-moment-copy strong {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: -0.03em;
+}
+
+.ambassador-moment-copy em {
+  color: var(--coral-dark);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.ambassador-moment.is-failed .ambassador-moment-photo img {
+  visibility: hidden;
+}
+
+.ambassador-moment .ask-ai-arrow {
+  color: var(--ink-soft);
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+
+@media (max-width: 860px) {
+  .ambassador-hero-copy strong {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 650px) {
+  .ambassador-hero-media {
+    border-radius: 24px;
+  }
+
+  .ambassador-hero-copy {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    top: auto;
+    width: auto;
+    max-width: none;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 8px 20px rgba(17, 24, 39, 0.1);
+    transform: none;
+  }
+
+  .ambassador-hero-copy strong {
+    margin-top: 6px;
+    font-size: 18px;
+  }
+
+  .ambassador-hero-copy p {
+    margin-top: 5px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 420px) {
+  .ambassador-moment {
+    grid-template-columns: 76px minmax(0, 1fr) auto;
+    gap: 11px;
+    padding: 10px;
+  }
+
+  .ambassador-moment-photo {
+    width: 76px;
+    height: 96px;
+    border-radius: 14px;
+  }
+
+  .ambassador-moment-copy strong {
+    font-size: 15px;
+  }
+}

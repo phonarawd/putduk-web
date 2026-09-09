@@ -1,0 +1,123 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { WorkspaceView } from "@/components/gpt/WorkspaceView";
+import { copyTextToClipboard } from "@/lib/gpt/clipboard";
+import { useGpt } from "@/lib/gpt/GptContext";
+import { getReferralMe, readReferral } from "@/lib/api";
+
+export default function InvitePage() {
+  const { showToast } = useGpt();
+  const [code, setCode] = useState<string | null>(null);
+  const [referralLink, setReferralLink] = useState("");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    getReferralMe()
+      .then((data) => {
+        const found = readReferral(data);
+        setCode(found?.code ?? null);
+        setReferralLink(found?.link ?? "");
+        setReady(true);
+      })
+      .catch(() => {
+        setCode(null);
+        setReferralLink("");
+        setReady(true);
+      });
+  }, []);
+
+  async function copyReferral() {
+    if (!referralLink) return;
+    const ok = await copyTextToClipboard(referralLink);
+    showToast(ok ? "😊 추천 링크를 복사했어요" : "길게 눌러 복사해 주세요.", ok ? "normal" : "error");
+  }
+
+  async function shareReferral() {
+    if (!referralLink) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "퍼뜩 초대", text: "퍼뜩 리셀러 데스크에서 함께 시작해요.", url: referralLink });
+        showToast("😊 친구에게 초대장을 열었어요");
+        return;
+      } catch {
+        // 공유 시트를 닫으면 복사로 대신한다.
+      }
+    }
+    copyReferral();
+  }
+
+  return (
+    <WorkspaceView>
+      <section className="app-view is-active" data-view="invite" aria-labelledby="invite-title">
+        <div className="view-intro">
+          <div>
+            <span className="view-kicker">추천 코드와 친구 보너스</span>
+            <h1 id="invite-title">초대</h1>
+            <p>친구의 실제 시작 단계가 이어질 때 혜택이 차례로 열려요.</p>
+          </div>
+        </div>
+        <section className="referral-hero">
+          <div className="referral-copy">
+            <span className="referral-kicker">나의 추천 코드</span>
+            {ready && (code || referralLink) ? (
+              <>
+                <strong id="referralResellerId">{code || "초대 코드"}</strong>
+                <p>부를 수 있는 친구 수에는 제한이 없어요. 혜택은 각 단계가 확인된 뒤 반영돼요.</p>
+                {referralLink ? (
+                  <label className="referral-link-box">
+                    <span className="sr-only">추천 링크</span>
+                    <input id="referralLink" type="text" readOnly value={referralLink} />
+                    <button id="copyReferral" type="button" onClick={copyReferral}>
+                      링크 복사
+                    </button>
+                  </label>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <strong id="referralResellerId">아직 초대 정보가 없어요</strong>
+                <p>로그인 후 초대 코드가 있으면 여기에 보여 드려요. 횟수는 화면에서 더하지 않아요.</p>
+              </>
+            )}
+          </div>
+        </section>
+        <section className="referral-how">
+          <article>
+            <span>1</span>
+            <div>
+              <strong>친구가 링크로 가입</strong>
+              <small>추천 코드가 연결돼요</small>
+            </div>
+          </article>
+          <article>
+            <span>2</span>
+            <div>
+              <strong>친구가 첫 충전</strong>
+              <small>운용 자본 시작을 확인해요</small>
+            </div>
+          </article>
+          <article>
+            <span>3</span>
+            <div>
+              <strong>친구가 첫 수익</strong>
+              <small>친구 보너스가 확정돼요</small>
+            </div>
+          </article>
+        </section>
+        <section className="referral-demo-card invite-trust-card">
+          <div>
+            <span>혜택 안내</span>
+            <strong id="referralStateText">추천 혜택은 바로 큰돈이 들어오는 구조가 아니에요.</strong>
+            <small>첫 체험만 마쳤다고 매칭 횟수가 생기지 않아요.</small>
+          </div>
+          {referralLink ? (
+            <button id="shareReferral" className="secondary-accent-button" type="button" onClick={shareReferral}>
+              추천 링크 공유
+            </button>
+          ) : null}
+        </section>
+      </section>
+    </WorkspaceView>
+  );
+}
