@@ -4,13 +4,10 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
-import { TurnstileBox, hasTurnstileSiteKey, preloadTurnstile } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { completePasswordReset, requestPasswordReset } from "@/lib/api";
 import { validEmail } from "@/lib/gpt/validate";
 import { MSG, toastFromError } from "@/lib/messages";
-
-preloadTurnstile();
 
 function passwordPoints(value: string) {
   return Array.from(value).length;
@@ -24,8 +21,6 @@ export default function ResetPasswordPage({ searchParams }: PageProps<"/auth/res
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [challengeToken, setChallengeToken] = useState("");
-  const [challengeReset, setChallengeReset] = useState(0);
   const [busy, setBusy] = useState(false);
 
   async function onRequest(event: React.FormEvent) {
@@ -35,21 +30,12 @@ export default function ResetPasswordPage({ searchParams }: PageProps<"/auth/res
       showToast(MSG.emailNeed, "warning");
       return;
     }
-    if (hasTurnstileSiteKey() && !challengeToken) {
-      showToast(MSG.challengeNeed, "warning");
-      return;
-    }
     if (busy) return;
     setBusy(true);
-    const usedToken = challengeToken;
     try {
-      await requestPasswordReset(nextEmail, usedToken);
-      setChallengeToken("");
-      setChallengeReset((value) => value + 1);
+      await requestPasswordReset(nextEmail);
       showToast(MSG.resetRequestOk, "success");
     } catch (error: unknown) {
-      setChallengeToken("");
-      setChallengeReset((value) => value + 1);
       const payload = toastFromError(error, MSG.genericError);
       showToast(payload.message, payload.kind);
     } finally {
@@ -136,7 +122,6 @@ export default function ResetPasswordPage({ searchParams }: PageProps<"/auth/res
                 onChange={(event) => setEmail(event.target.value)}
               />
             </label>
-            <TurnstileBox action="password-reset" onToken={setChallengeToken} resetNonce={challengeReset} />
             <button className="form-primary" type="submit" disabled={busy}>
               재설정 메일 받기
             </button>
