@@ -1,16 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { navActiveKey } from "@/lib/gpt/nav";
+import {
+  PRIMARY_NAV_ITEMS,
+  navActiveKey,
+  type PrimaryNavKey,
+} from "@/lib/gpt/nav";
 import { useAppSurface } from "@/lib/gpt/useAppSurface";
 
-const NAV_ITEMS = [
-  { key: "home", label: "홈", path: "/", icon: "⌂" },
-  { key: "work", label: "기록", path: "/work", icon: "✓" },
-  { key: "ai", label: "퍼뜩", path: "/ai", icon: null },
-  { key: "invite", label: "초대", path: "/invite", icon: "＋" },
-  { key: "me", label: "나", path: "/me", icon: "●" },
-] as const;
+const NAV_ICONS: Record<PrimaryNavKey, string | null> = {
+  home: "⌂",
+  work: "↗",
+  ai: null,
+  invite: "＋",
+  me: "●",
+};
 
 export function MobileNav() {
   const router = useRouter();
@@ -19,25 +23,29 @@ export function MobileNav() {
 
   return (
     <nav id="mobileNav" className="mobile-nav" aria-label="주요 메뉴" hidden={!showNav}>
-      {NAV_ITEMS.map((item) => (
-        <button
-          key={item.key}
-          type="button"
-          className={"mobile-nav-button" + (current === item.key ? " is-active" : "")}
-          aria-current={current === item.key ? "page" : undefined}
-          aria-label={`${item.label} 화면으로 이동`}
-          onClick={() => router.push(item.path)}
-        >
-          {item.icon ? (
-            <span aria-hidden="true">{item.icon}</span>
-          ) : (
-            <span className="mobile-nav-logo" aria-hidden="true">
-              <img src="/putduk-mark.svg" alt="" />
-            </span>
-          )}
-          <b>{item.label}</b>
-        </button>
-      ))}
+      {PRIMARY_NAV_ITEMS.map((item) => {
+        const icon = NAV_ICONS[item.key];
+
+        return (
+          <button
+            key={item.key}
+            type="button"
+            className={"mobile-nav-button" + (current === item.key ? " is-active" : "")}
+            aria-current={current === item.key ? "page" : undefined}
+            aria-label={`${item.label} 화면으로 이동`}
+            onClick={() => router.push(item.path)}
+          >
+            {icon ? (
+              <span aria-hidden="true">{icon}</span>
+            ) : (
+              <span className="mobile-nav-logo" aria-hidden="true">
+                <img src="/putduk-mark.svg" alt="" />
+              </span>
+            )}
+            <b>{item.label}</b>
+          </button>
+        );
+      })}
     </nav>
   );
 }
