@@ -49,14 +49,11 @@ export function AmbassadorHero() {
             decoding="async"
             onError={onError}
           />
-          <span className="ambassador-phone-mark" aria-hidden="true">
-            <img src="/putduk-mark.svg" alt="" />
-          </span>
-          <div className="ambassador-hero-copy">
-            <span className="ambassador-label">{AMBASSADOR_LABEL}</span>
-            <strong>기회는 퍼뜩, 결정은 내 손으로.</strong>
-            <p>내 자본과 오늘 조건을 먼저 보고, 필요한 금액만 잠가 시작하세요.</p>
-          </div>
+        </div>
+        <div className="ambassador-hero-copy">
+          <span className="ambassador-label">{AMBASSADOR_LABEL}</span>
+          <strong>기회는 퍼뜩, 결정은 내 손으로.</strong>
+          <p>내 자본과 오늘 조건을 먼저 보고, 필요한 금액만 잠가 시작하세요.</p>
         </div>
       </div>
 
