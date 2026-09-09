@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@opennextjs/aws@4.1.4': c79cdd6e4f6623e60f222bd8bd8a77ed96145c22af033d718221717e8f730216
-  '@opennextjs/cloudflare@1.20.6': 88b31c3ab0085910ff0bfd720da27b735674b90650c327530909a70281ea34f2
+  '@opennextjs/cloudflare@1.20.6': eb909ac2aa164db6b8a3bedfe4cc956c7eaa78eb5f26e6456cc45a10ca3ac47e
 
 importers:
 
@@ -14,7 +14,7 @@ importers:
     dependencies:
       '@opennextjs/cloudflare':
         specifier: ^1.20.6
-        version: 1.20.6(patch_hash=88b31c3ab0085910ff0bfd720da27b735674b90650c327530909a70281ea34f2)(next@16.3.4(@babel/core@7.29.7)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(wrangler@4.129.1)
+        version: 1.20.6(patch_hash=eb909ac2aa164db6b8a3bedfe4cc956c7eaa78eb5f26e6456cc45a10ca3ac47e)(next@16.3.4(@babel/core@7.29.7)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(wrangler@4.129.1)
       next:
         specifier: 16.3.4
         version: 16.3.4(@babel/core@7.29.7)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -4909,7 +4909,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@opennextjs/cloudflare@1.20.6(patch_hash=88b31c3ab0085910ff0bfd720da27b735674b90650c327530909a70281ea34f2)(next@16.3.4(@babel/core@7.29.7)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(wrangler@4.129.1)':
+  '@opennextjs/cloudflare@1.20.6(patch_hash=eb909ac2aa164db6b8a3bedfe4cc956c7eaa78eb5f26e6456cc45a10ca3ac47e)(next@16.3.4(@babel/core@7.29.7)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(wrangler@4.129.1)':
     dependencies:
       '@ast-grep/napi': 0.40.5
       '@dotenvx/dotenvx': 1.31.0
