@@ -55,9 +55,9 @@ export default function WalletHistoryPage() {
                   </small>
                 </div>
                 <b className={positive ? "positive" : ""}>
-                  {row.amountKrw != null ? (positive ? "+" : "") + formatKrw(Math.abs(row.amountKrw)) : "원화 확인 중"}
+                  {row.amountKrw != null ? (positive ? "+" : "−") + formatKrw(Math.abs(row.amountKrw)) : "원화 확인 중"}
                 </b>
-                {row.amountUsdt != null ? <small>{positive ? "+" : ""}{formatUsdt(Math.abs(row.amountUsdt))}</small> : null}
+                {row.amountUsdt != null ? <small>{positive ? "+" : "−"}{formatUsdt(Math.abs(row.amountUsdt))}</small> : null}
               </article>
             );
           })
