@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { formatKrw, formatSignedKrw, formatSignedUsdt, formatUsdt } from "@/lib/gpt/format";
+import { formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { useModalFocus } from "@/lib/gpt/useModalFocus";
 
@@ -43,15 +43,17 @@ export function PreflightModal() {
           <div>
             <span>이번 업무에 사용할 금액</span>
             <strong id="preflightAmount">
-              {selected.requiredUsdt != null ? formatUsdt(selected.requiredUsdt) : "아직 표시할 금액이 없어요"}
+              {formatMoneyPrimary(selected.requiredUsdt, selected.requiredKrw) ?? "아직 표시할 금액이 없어요"}
             </strong>
-            {selected.requiredKrw != null ? <small id="preflightUsdt">{formatKrw(selected.requiredKrw)}</small> : null}
+            {formatMoneySecondary(selected.requiredUsdt, selected.requiredKrw) ? (
+              <small id="preflightUsdt">{formatMoneySecondary(selected.requiredUsdt, selected.requiredKrw)}</small>
+            ) : null}
           </div>
           {selected.expectedUsdt != null || selected.expectedKrw ? (
             <div>
               <span>예상 수익</span>
               <strong id="preflightProfit">
-                {selected.expectedUsdt != null ? formatSignedUsdt(selected.expectedUsdt) : formatSignedKrw(selected.expectedKrw)}
+                {formatSignedMoneyPrimary(selected.expectedUsdt, selected.expectedKrw)}
               </strong>
               <small>결과에 따라 달라질 수 있어요</small>
             </div>

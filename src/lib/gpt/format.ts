@@ -29,6 +29,28 @@ export function formatSignedUsdt(value: number): string {
   return "+" + formatUsdt(value);
 }
 
+export function formatMoneyPrimary(usdt: number | null, krw: number | null): string | null {
+  if (krw != null) return formatKrw(krw);
+  if (usdt != null) return formatUsdt(usdt);
+  return null;
+}
+
+export function formatMoneySecondary(usdt: number | null, krw: number | null): string | null {
+  if (krw != null && usdt != null) return formatUsdt(usdt);
+  return null;
+}
+
+export function formatSignedMoneyPrimary(usdt: number | null, krw: number | null): string | null {
+  if (krw != null) return formatSignedKrw(krw);
+  if (usdt != null) return formatSignedUsdt(usdt);
+  return null;
+}
+
+export function formatSignedMoneySecondary(usdt: number | null, krw: number | null): string | null {
+  if (krw != null && usdt != null) return formatSignedUsdt(usdt);
+  return null;
+}
+
 export function formatTime(value: string | number): string {
   try {
     return new Intl.DateTimeFormat("ko-KR", {

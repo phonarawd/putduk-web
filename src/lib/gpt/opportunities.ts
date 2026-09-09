@@ -1,9 +1,16 @@
 import type { LiveOpportunity } from "@/lib/api";
 import type { GptState, OpportunityView } from "./types";
-import { formatUsdt } from "./format";
+import { formatMoneyPrimary } from "./format";
 
 const ART_ONE = "#f06a43";
 const ART_TWO = "#41364f";
+
+export const TRIAL_CARD_SVG = "/cards/trial-151.svg";
+
+export function resolveCardArt(item: Pick<LiveOpportunity, "trialEligible" | "imageUrl">): string | null {
+  if (item.trialEligible) return TRIAL_CARD_SVG;
+  return item.imageUrl;
+}
 
 export function toOpportunityView(item: LiveOpportunity): OpportunityView {
   return {
@@ -13,17 +20,18 @@ export function toOpportunityView(item: LiveOpportunity): OpportunityView {
     title: item.title,
     lowMarket: item.lowMarket,
     highMarket: item.highMarket,
-    requiredKrw: item.requiredKrw ?? 0,
+    requiredKrw: item.requiredKrw,
     highKrw: 0,
     feesKrw: 0,
     riskKrw: 0,
     duration: item.duration,
     artOne: ART_ONE,
     artTwo: ART_TWO,
+    imageUrl: resolveCardArt(item),
     seats: item.seats ?? 0,
     lowKrw: item.requiredKrw ?? 0,
     grossKrw: 0,
-    expectedKrw: item.expectedKrw ?? 0,
+    expectedKrw: item.expectedKrw,
     profitRate: 0,
     pricingVersion: 1,
     fresh: true,
@@ -45,6 +53,7 @@ export function emptyOpportunity(): OpportunityView {
     trialEligible: false,
     requiredUsdt: null,
     requiredKrw: null,
+    imageUrl: null,
     expectedUsdt: null,
     expectedKrw: null,
     lowMarket: "",
@@ -74,8 +83,9 @@ export function principalSuggestion(state: GptState, opportunity: OpportunityVie
   if (opportunity.trialEligible && opportunity.affordable) {
     return opportunity.title + "부터 바로 확인할 수 있어요.";
   }
-  if (opportunity.requiredUsdt != null) {
-    return formatUsdt(opportunity.requiredUsdt) + "이 필요한 " + opportunity.title + "이에요.";
+  const required = formatMoneyPrimary(opportunity.requiredUsdt, opportunity.requiredKrw);
+  if (required) {
+    return required + "이 필요한 " + opportunity.title + "이에요.";
   }
   return opportunity.title + "을 먼저 살펴보세요.";
 }

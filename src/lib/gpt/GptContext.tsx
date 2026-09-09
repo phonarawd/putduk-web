@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import {
   emptyTrial,
   getHomeRead,
+  getOpportunity,
   getSession,
   getTrialState,
   getWalletBuckets,
@@ -27,6 +28,7 @@ import {
   participateOpportunity,
   readListFeed,
   readMoney,
+  readOpportunity,
   readTrialState,
   sessionDisplayName,
   sessionEmail,
@@ -198,7 +200,30 @@ export function GptProvider({ children }: { children: ReactNode }) {
     const trialVal = trial.status === "fulfilled" ? readTrialState(trial.value) : emptyTrial();
     const bucketVal = buckets.status === "fulfilled" ? buckets.value : null;
     const feed = readListFeed(homeVal, trialVal.trialEligibleOpportunityIds);
-    const fallback = feed.length ? feed : readListFeed(oppVal, trialVal.trialEligibleOpportunityIds);
+    let fallback = feed.length ? feed : readListFeed(oppVal, trialVal.trialEligibleOpportunityIds);
+    const focus = fallback.find((item) => item.trialEligible) ?? fallback[0];
+    if (focus && (focus.requiredUsdt == null || !focus.imageUrl)) {
+      try {
+        const parsed = readOpportunity(await getOpportunity(focus.id), trialVal.trialEligibleOpportunityIds);
+        if (parsed) {
+          fallback = fallback.map((item) =>
+            item.id === parsed.id
+              ? {
+                  ...item,
+                  ...parsed,
+                  requiredUsdt: parsed.requiredUsdt ?? item.requiredUsdt,
+                  requiredKrw: parsed.requiredKrw ?? item.requiredKrw,
+                  imageUrl: parsed.imageUrl ?? item.imageUrl,
+                  expectedUsdt: parsed.expectedUsdt ?? item.expectedUsdt,
+                  expectedKrw: parsed.expectedKrw ?? item.expectedKrw,
+                }
+              : item,
+          );
+        }
+      } catch {
+        /* 목록 값은 유지 */
+      }
+    }
     const money = readMoney(homeVal ?? oppVal, bucketVal, trialVal);
     setStoreState((prev) => ({
       ...prev,

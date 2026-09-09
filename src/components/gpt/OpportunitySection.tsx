@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { formatKrw, formatSignedKrw, formatSignedUsdt, formatUsdt } from "@/lib/gpt/format";
+import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 
 export function OpportunitySection() {
@@ -11,6 +11,8 @@ export function OpportunitySection() {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   const selectedIndex = Math.max(0, opportunities.findIndex((item) => item.id === state.selectedId));
+  const requiredPrimary = formatMoneyPrimary(selected.requiredUsdt, selected.requiredKrw);
+  const requiredSecondary = formatMoneySecondary(selected.requiredUsdt, selected.requiredKrw);
 
   let statusClass = "availability-chip";
   let statusText = "참여 가능";
@@ -76,12 +78,12 @@ export function OpportunitySection() {
       <article id="featuredOpportunity" className="featured-opportunity">
         <div
           id="featuredArt"
-          className="product-art"
+          className={"product-art" + (selected.imageUrl ? " has-photo" : "")}
           aria-hidden="true"
           style={{ "--art-one": selected.artOne, "--art-two": selected.artTwo } as CSSProperties}
         >
-          <span id="featuredSymbol">{selected.symbol}</span>
-          <small>{selected.trialEligible ? "체험" : "퍼뜩"}</small>
+          {selected.imageUrl ? <img src={selected.imageUrl} alt="" /> : <span id="featuredSymbol">{selected.symbol}</span>}
+          {selected.imageUrl ? null : <small>{selected.trialEligible ? "체험" : "퍼뜩"}</small>}
         </div>
         <div className="opportunity-main">
           <div className="opportunity-meta">
@@ -100,16 +102,14 @@ export function OpportunitySection() {
             <div>
               <span>필요한 금액</span>
               <strong id="featuredRequired">
-                {selected.requiredUsdt != null ? formatUsdt(selected.requiredUsdt) : "아직 표시할 금액이 없어요"}
+                {requiredPrimary ?? "아직 표시할 금액이 없어요"}
               </strong>
-              {selected.requiredKrw != null ? <small id="featuredRequiredUsdt">{formatKrw(selected.requiredKrw)}</small> : null}
+              {requiredSecondary ? <small id="featuredRequiredUsdt">{requiredSecondary}</small> : null}
             </div>
             {selected.expectedUsdt != null || selected.expectedKrw ? (
               <div className="profit-number">
                 <span>예상 수익</span>
-                <strong id="featuredProfit">
-                  {selected.expectedUsdt != null ? formatSignedUsdt(selected.expectedUsdt) : formatSignedKrw(selected.expectedKrw)}
-                </strong>
+                <strong id="featuredProfit">{formatSignedMoneyPrimary(selected.expectedUsdt, selected.expectedKrw)}</strong>
                 {selected.duration ? <small id="featuredProfitRate">{selected.duration}</small> : null}
               </div>
             ) : null}
@@ -185,19 +185,22 @@ export function OpportunitySection() {
             <button
               key={item.id}
               type="button"
-              className={"opportunity-mini" + (isSelected ? " is-selected" : "")}
+              className={"opportunity-mini" + (isSelected ? " is-selected" : "") + (item.imageUrl ? " has-photo" : "")}
               style={{ "--mini-one": item.artOne, "--mini-two": item.artTwo } as CSSProperties}
               aria-pressed={isSelected}
               onClick={() => selectOpportunity(item.id)}
             >
+              {item.imageUrl ? <img className="mini-photo" src={item.imageUrl} alt="" /> : null}
               <span className="mini-top">
-                <span className="mini-symbol">{item.symbol}</span>
+                {item.imageUrl ? null : <span className="mini-symbol">{item.symbol}</span>}
                 <span className="mini-lock">{stateLabel}</span>
               </span>
               <strong>{item.title}</strong>
               <span className="mini-money">
-                <span>{item.requiredUsdt != null ? formatUsdt(item.requiredUsdt) : ""}</span>
-                {item.expectedUsdt != null ? <b>{formatSignedUsdt(item.expectedUsdt)}</b> : null}
+                <span>{formatMoneyPrimary(item.requiredUsdt, item.requiredKrw) ?? ""}</span>
+                {formatSignedMoneyPrimary(item.expectedUsdt, item.expectedKrw) ? (
+                  <b>{formatSignedMoneyPrimary(item.expectedUsdt, item.expectedKrw)}</b>
+                ) : null}
               </span>
             </button>
           );

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import { GenderSelect } from "@/components/gpt/GenderSelect";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
-import { formatIssued, formatKrw, formatSignedKrw, formatTime, formatUsdt, formatSignedUsdt } from "@/lib/gpt/format";
+import { formatIssued, formatMoneyPrimary, formatMoneySecondary, formatSignedKrw, formatSignedMoneyPrimary, formatTime } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { opportunityById } from "@/lib/gpt/opportunities";
 import { emptyTrial, getHomeRead, getTrialState, getWalletBuckets, hasMoneyValues, readMoney, readTrialState, type MoneyRead } from "@/lib/api";
@@ -45,10 +45,10 @@ export default function MePage() {
   }, []);
 
   const principalUsdt = money?.principalUsdt ?? 0;
-  const profitUsdt = money?.profitUsdt;
-  const profitKrw = money?.profitKrw;
-  const practiceUsdt = money?.practiceUsdt;
-  const practiceKrw = money?.practiceKrw;
+  const profitUsdt = money?.profitUsdt ?? null;
+  const profitKrw = money?.profitKrw ?? null;
+  const practiceUsdt = money?.practiceUsdt ?? null;
+  const practiceKrw = money?.practiceKrw ?? null;
   const trialPrincipal = money?.trialPrincipalUsdt ?? 0;
 
   return (
@@ -83,7 +83,7 @@ export default function MePage() {
             <div className="wallet-overview-head">
               <div>
                 <span>내 운용 지갑</span>
-                <strong id="profileTotal">{moneyReady ? formatUsdt(principalUsdt) : ""}</strong>
+                <strong id="profileTotal">{moneyReady ? formatMoneyPrimary(principalUsdt, money?.principalKrw ?? null) : ""}</strong>
               </div>
             </div>
             {moneyReady && money && hasMoneyValues(money) ? (
@@ -91,30 +91,35 @@ export default function MePage() {
                 <div className="wallet-lines wallet-lines-four">
                   <div>
                     <span>내 예치</span>
-                    <b id="profileCapital">{formatUsdt(principalUsdt)}</b>
-                    {money.principalKrw != null ? <small>{formatKrw(money.principalKrw)}</small> : null}
+                    <b id="profileCapital">{formatMoneyPrimary(principalUsdt, money.principalKrw)}</b>
+                    {formatMoneySecondary(principalUsdt, money.principalKrw) ? <small>{formatMoneySecondary(principalUsdt, money.principalKrw)}</small> : null}
                   </div>
                   {trialPrincipal ? (
                     <div>
                       <span>체험 원금 · 출금 불가</span>
-                      <b>{formatUsdt(trialPrincipal)}</b>
+                      <b>
+                        {formatMoneyPrimary(trialPrincipal, money.trialPrincipalKrw)}
+                        {formatMoneySecondary(trialPrincipal, money.trialPrincipalKrw)
+                          ? ` · ${formatMoneySecondary(trialPrincipal, money.trialPrincipalKrw)}`
+                          : ""}
+                      </b>
                     </div>
                   ) : null}
                   <div>
                     <span>출금 가능 수익</span>
-                    <b id="profileProfit">{profitUsdt != null ? formatSignedUsdt(profitUsdt) : profitKrw != null ? formatSignedKrw(profitKrw) : formatSignedUsdt(0)}</b>
-                    {profitUsdt != null && profitKrw != null ? <small>{formatKrw(profitKrw)}</small> : null}
+                    <b id="profileProfit">{formatSignedMoneyPrimary(profitUsdt, profitKrw) ?? "아직 표시할 금액이 없어요"}</b>
+                    {formatMoneySecondary(profitUsdt, profitKrw) ? <small>{formatMoneySecondary(profitUsdt, profitKrw)}</small> : null}
                   </div>
                   {money.lockedUsdt != null || money.lockedKrw != null ? (
                     <div>
                       <span>진행 중 잠금</span>
-                      <b id="profileLocked">{money.lockedUsdt != null ? formatUsdt(money.lockedUsdt) : formatKrw(money.lockedKrw ?? 0)}</b>
+                      <b id="profileLocked">{formatMoneyPrimary(money.lockedUsdt, money.lockedKrw)}</b>
                     </div>
                   ) : null}
                   {practiceUsdt != null || practiceKrw != null ? (
                     <div>
                       <span>연습 · 사용 불가</span>
-                      <b id="profilePractice">{practiceUsdt != null ? formatUsdt(practiceUsdt) : formatKrw(practiceKrw ?? 0)}</b>
+                      <b id="profilePractice">{formatMoneyPrimary(practiceUsdt, practiceKrw)}</b>
                     </div>
                   ) : null}
                 </div>
@@ -208,21 +213,13 @@ function MyRecords() {
         <div>
           <span>누적 수익</span>
           <strong id="recordProfit">
-            {state.profitUsdt != null
-              ? formatSignedUsdt(state.profitUsdt)
-              : state.profitKrw != null
-                ? formatSignedKrw(state.profitKrw)
-                : "아직 표시할 금액이 없어요"}
+            {formatSignedMoneyPrimary(state.profitUsdt, state.profitKrw) ?? "아직 표시할 금액이 없어요"}
           </strong>
         </div>
         <div>
           <span>진행 중 잠금</span>
           <strong id="recordLocked">
-            {state.lockedUsdt != null
-              ? formatUsdt(state.lockedUsdt)
-              : state.lockedKrw != null
-                ? formatKrw(state.lockedKrw)
-                : "아직 표시할 금액이 없어요"}
+            {formatMoneyPrimary(state.lockedUsdt, state.lockedKrw) ?? "아직 표시할 금액이 없어요"}
           </strong>
         </div>
         <button type="button" onClick={() => router.push("/wallet/history")}>

@@ -9,20 +9,21 @@ export interface Opportunity {
   title: string;
   lowMarket: string;
   highMarket: string;
-  requiredKrw: number;
+  requiredKrw: number | null;
   highKrw: number;
   feesKrw: number;
   riskKrw: number;
   duration: string;
   artOne: string;
   artTwo: string;
+  imageUrl: string | null;
   seats: number;
 }
 
 export interface OpportunityView extends Opportunity {
   lowKrw: number;
   grossKrw: number;
-  expectedKrw: number;
+  expectedKrw: number | null;
   profitRate: number;
   pricingVersion: number;
   fresh: boolean;

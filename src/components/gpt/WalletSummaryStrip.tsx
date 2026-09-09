@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { emptyTrial, getHomeRead, getTrialState, getWalletBuckets, hasMoneyValues, readMoney, readTrialState, type MoneyRead } from "@/lib/api";
-import { formatKrw, formatUsdt } from "@/lib/gpt/format";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { formatMoneyPrimary, formatMoneySecondary } from "@/lib/gpt/format";
 
 export function WalletSummaryStrip() {
-  const { state } = useGpt();
   const [money, setMoney] = useState<MoneyRead | null>(null);
   const [ready, setReady] = useState(false);
-  const krwFirst = state.preferKrwFirst;
 
   useEffect(() => {
     let cancelled = false;
@@ -44,36 +41,37 @@ export function WalletSummaryStrip() {
     <section className="route-wallet-strip">
       <div>
         <span>내 예치</span>
-        <strong>{krwFirst && money.principalKrw != null ? formatKrw(money.principalKrw) : formatUsdt(money.principalUsdt)}</strong>
-        {krwFirst && money.principalKrw != null ? (
-          <small>{formatUsdt(money.principalUsdt)}</small>
-        ) : money.principalKrw != null ? (
-          <small>{formatKrw(money.principalKrw)}</small>
+        <strong>{formatMoneyPrimary(money.principalUsdt, money.principalKrw)}</strong>
+        {formatMoneySecondary(money.principalUsdt, money.principalKrw) ? (
+          <small>{formatMoneySecondary(money.principalUsdt, money.principalKrw)}</small>
         ) : null}
       </div>
       {money.trialPrincipalUsdt ? (
         <div>
           <span>체험 원금 · 출금 불가</span>
-          <strong>{formatUsdt(money.trialPrincipalUsdt)}</strong>
+          <strong>
+            {formatMoneyPrimary(money.trialPrincipalUsdt, money.trialPrincipalKrw)}
+            {formatMoneySecondary(money.trialPrincipalUsdt, money.trialPrincipalKrw)
+              ? ` · ${formatMoneySecondary(money.trialPrincipalUsdt, money.trialPrincipalKrw)}`
+              : ""}
+          </strong>
         </div>
       ) : null}
       <div>
         <span>출금 가능 수익</span>
-        <strong>
-          {money.profitUsdt != null ? formatUsdt(money.profitUsdt) : money.profitKrw != null ? formatKrw(money.profitKrw) : "아직 표시할 금액이 없어요"}
-        </strong>
-        {money.profitUsdt != null && money.profitKrw != null ? <small>{formatKrw(money.profitKrw)}</small> : null}
+        <strong>{formatMoneyPrimary(money.profitUsdt, money.profitKrw) ?? "아직 표시할 금액이 없어요"}</strong>
+        {formatMoneySecondary(money.profitUsdt, money.profitKrw) ? <small>{formatMoneySecondary(money.profitUsdt, money.profitKrw)}</small> : null}
       </div>
       {money.lockedUsdt != null || money.lockedKrw != null ? (
         <div>
           <span>진행 중 잠금</span>
-          <strong>{money.lockedUsdt != null ? formatUsdt(money.lockedUsdt) : formatKrw(money.lockedKrw ?? 0)}</strong>
+          <strong>{formatMoneyPrimary(money.lockedUsdt, money.lockedKrw)}</strong>
         </div>
       ) : null}
       {money.practiceUsdt != null || money.practiceKrw != null ? (
         <div>
           <span>연습 · 사용 불가</span>
-          <strong>{money.practiceUsdt != null ? formatUsdt(money.practiceUsdt) : formatKrw(money.practiceKrw ?? 0)}</strong>
+          <strong>{formatMoneyPrimary(money.practiceUsdt, money.practiceKrw)}</strong>
         </div>
       ) : null}
     </section>

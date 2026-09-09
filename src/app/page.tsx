@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { AmbassadorHero, AmbassadorMoment } from "@/components/gpt/AmbassadorVisual";
 import { OpportunitySection } from "@/components/gpt/OpportunitySection";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
-import { hasMoneyValues } from "@/lib/api";
-import { formatKrw, formatSignedKrw, formatSignedUsdt, formatUsdt } from "@/lib/gpt/format";
+import { hasMoneyValues, trialGrantKrw } from "@/lib/api";
+import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { principalSuggestion } from "@/lib/gpt/opportunities";
 
@@ -158,6 +158,11 @@ function ProfileCapitalCard() {
   const { state } = useGpt();
   const profitUsdt = state.profitUsdt;
   const profitKrw = state.profitKrw;
+  const grantKrw = trialGrantKrw(state.trial);
+  const principalPrimary = formatMoneyPrimary(state.principalUsdt, state.principalKrw);
+  const principalSecondary = formatMoneySecondary(state.principalUsdt, state.principalKrw);
+  const trialPrimary = formatMoneyPrimary(state.trial.trialPrincipalUsdt, grantKrw);
+  const trialSecondary = formatMoneySecondary(state.trial.trialPrincipalUsdt, grantKrw);
   const ready =
     state.deskReady &&
     hasMoneyValues({
@@ -171,6 +176,7 @@ function ProfileCapitalCard() {
       practiceKrw: state.practiceKrw,
       trialPrincipalUsdt: state.trial.trialPrincipalUsdt,
       trialLockedUsdt: state.trial.trialLockedUsdt,
+      trialPrincipalKrw: grantKrw,
       fxKrwPerUsdt: null,
     });
   return (
@@ -178,23 +184,20 @@ function ProfileCapitalCard() {
       <div className="summary-label">
         <span>내 예치</span>
       </div>
-      <strong id="availableCapital">{ready ? formatUsdt(state.principalUsdt) : "아직 표시할 금액이 없어요"}</strong>
-      {ready && state.principalKrw != null ? <small id="availableUsdt">{formatKrw(state.principalKrw)}</small> : <small>본인 예치만 보여 드려요</small>}
+      <strong id="availableCapital">{ready ? principalPrimary ?? "아직 표시할 금액이 없어요" : "아직 표시할 금액이 없어요"}</strong>
+      {ready && principalSecondary ? <small id="availableUsdt">{principalSecondary}</small> : <small>본인 예치만 보여 드려요</small>}
       {ready && state.trial.grantStatus === "active" ? (
         <div className="capital-card-bottom">
           <span>체험 원금 · 출금 불가</span>
-          <b>{formatUsdt(state.trial.trialPrincipalUsdt)}</b>
+          <b>
+            {trialPrimary}
+            {trialSecondary ? ` · ${trialSecondary}` : ""}
+          </b>
         </div>
       ) : null}
       <div className="capital-card-bottom">
         <span>출금 가능 수익</span>
-        <b id="settledProfit">
-          {ready && profitUsdt != null
-            ? formatSignedUsdt(profitUsdt)
-            : ready && profitKrw != null
-              ? formatSignedKrw(profitKrw)
-              : "아직 표시할 금액이 없어요"}
-        </b>
+        <b id="settledProfit">{ready ? formatSignedMoneyPrimary(profitUsdt, profitKrw) ?? "아직 표시할 금액이 없어요" : "아직 표시할 금액이 없어요"}</b>
       </div>
     </article>
   );

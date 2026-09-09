@@ -47,8 +47,45 @@ function pickString(row: Record<string, unknown> | null, keys: string[]): string
   return null;
 }
 
+function withSnake(keys: string[]): string[] {
+  const out: string[] = [];
+  for (const key of keys) {
+    out.push(key);
+    const snake = key.replace(/[A-Z]/g, (ch) => `_${ch.toLowerCase()}`);
+    if (snake !== key) out.push(snake);
+  }
+  return out;
+}
+
 function nest(row: Record<string, unknown> | null, key: string): Record<string, unknown> | null {
   return row ? asRecord(row[key]) : null;
+}
+
+function pickNumberFrom(rows: Array<Record<string, unknown> | null>, keys: string[]): number | null {
+  const aliases = withSnake(keys);
+  for (const row of rows) {
+    const found = pickNumber(row, aliases);
+    if (found != null) return found;
+  }
+  return null;
+}
+
+function asImageUrl(value: string | null): string | null {
+  if (!value) return null;
+  if (value.startsWith("data:image")) return value;
+  if (value.startsWith("https://") || value.startsWith("http://") || value.startsWith("/")) return value;
+  return null;
+}
+
+function pickImageUrl(row: Record<string, unknown> | null): string | null {
+  const keys = withSnake(["imageUrl", "artworkUrl", "svgUrl", "thumbnailUrl", "mediaUrl", "cardImageUrl", "image"]);
+  const direct = asImageUrl(pickString(row, keys));
+  if (direct) return direct;
+  for (const key of ["card", "media", "artwork", "image"]) {
+    const found = asImageUrl(pickString(nest(row, key), keys));
+    if (found) return found;
+  }
+  return null;
 }
 
 function extractErrorToken(row: Record<string, unknown> | null, text: string): string {
@@ -442,6 +479,7 @@ export type LiveOpportunity = {
   symbol: string;
   bucket: FeedBucket | null;
   trialEligible: boolean;
+  imageUrl: string | null;
   requiredUsdt: number | null;
   requiredKrw: number | null;
   expectedUsdt: number | null;
@@ -463,6 +501,7 @@ export type MoneyRead = {
   practiceKrw: number | null;
   trialPrincipalUsdt: number;
   trialLockedUsdt: number;
+  trialPrincipalKrw: number | null;
   fxKrwPerUsdt: number | null;
 };
 
@@ -557,38 +596,45 @@ export function readTrialState(data: unknown): TrialState {
   const row = asRecord(data);
   const inner = nest(row, "trial") || nest(row, "trialState") || row;
   return {
-    grantStatus: asGrantStatus(inner ? inner.grantStatus : null),
-    trialPrincipalUsdt: pickNumber(inner, ["trialPrincipalUsdt"]) ?? 0,
-    trialLockedUsdt: pickNumber(inner, ["trialLockedUsdt"]) ?? 0,
-    welcomeTargetKrw: pickNumber(inner, ["welcomeTargetKrw"]),
-    grantAmountUsdt: pickNumber(inner, ["grantAmountUsdt"]),
-    grantAmountKrw: pickNumber(inner, ["grantAmountKrw"]),
-    maxParticipations: pickNumber(inner, ["maxParticipations"]),
-    participationsUsed: pickNumber(inner, ["participationsUsed"]),
-    participationsRemaining: pickNumber(inner, ["participationsRemaining"]),
-    profitCapKrw: pickNumber(inner, ["profitCapKrw"]),
-    profitCreditedKrw: pickNumber(inner, ["profitCreditedKrw"]),
-    profitRemainingKrw: pickNumber(inner, ["profitRemainingKrw"]),
+    grantStatus: asGrantStatus(inner ? inner.grantStatus ?? inner.grant_status : null),
+    trialPrincipalUsdt: pickNumber(inner, withSnake(["trialPrincipalUsdt"])) ?? 0,
+    trialLockedUsdt: pickNumber(inner, withSnake(["trialLockedUsdt"])) ?? 0,
+    welcomeTargetKrw: pickNumber(inner, withSnake(["welcomeTargetKrw"])),
+    grantAmountUsdt: pickNumber(inner, withSnake(["grantAmountUsdt"])),
+    grantAmountKrw: pickNumber(inner, withSnake(["grantAmountKrw"])),
+    maxParticipations: pickNumber(inner, withSnake(["maxParticipations"])),
+    participationsUsed: pickNumber(inner, withSnake(["participationsUsed"])),
+    participationsRemaining: pickNumber(inner, withSnake(["participationsRemaining"])),
+    profitCapKrw: pickNumber(inner, withSnake(["profitCapKrw"])),
+    profitCreditedKrw: pickNumber(inner, withSnake(["profitCreditedKrw"])),
+    profitRemainingKrw: pickNumber(inner, withSnake(["profitRemainingKrw"])),
     trialPrincipalWithdrawable: inner?.trialPrincipalWithdrawable === true,
     inviteSlotsGranted: pickNumber(inner, ["inviteSlotsGranted"]),
     trialEligibleOpportunityIds: asStringList(inner?.trialEligibleOpportunityIds),
   };
 }
 
+export function trialGrantKrw(trial: TrialState): number | null {
+  if (trial.grantStatus !== "active") return null;
+  return trial.grantAmountKrw ?? trial.welcomeTargetKrw;
+}
+
 function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | null {
-  const row = asRecord(item);
-  if (!row) return null;
+  const raw = asRecord(item);
+  if (!raw) return null;
+  const row = nest(raw, "opportunity") || raw;
   const id = pickString(row, ["id", "opportunityId"]);
   if (!id) return null;
   const title = pickString(row, ["asset_label", "assetLabel", "title", "label", "name"]) || "기회";
   const asset = (pickString(row, ["asset", "currency", "unit"]) || "").toUpperCase();
-  let requiredUsdt = pickNumber(row, ["requiredUsdt", "amountUsdt", "minUsdt", "entryUsdt", "requiredAmountUsdt", "usdtRequired"]);
-  let requiredKrw = pickNumber(row, ["requiredKrw", "amountKrw", "minKrw", "entryKrw"]);
+  const amountRows = [row, nest(row, "quote"), nest(row, "pricing"), nest(row, "amounts")];
+  let requiredUsdt = pickNumberFrom(amountRows, ["requiredUsdt", "amountUsdt", "minUsdt", "entryUsdt", "requiredAmountUsdt", "usdtRequired"]);
+  let requiredKrw = pickNumberFrom(amountRows, ["requiredKrw", "amountKrw", "minKrw", "entryKrw"]);
   if (requiredUsdt == null && (asset.includes("USDT") || asset === "USD")) {
-    requiredUsdt = pickNumber(row, ["required", "amount", "price", "minAmount"]);
+    requiredUsdt = pickNumberFrom(amountRows, ["required", "amount", "price", "minAmount"]);
   }
   if (requiredKrw == null && (asset.includes("KRW") || asset === "KRW")) {
-    requiredKrw = pickNumber(row, ["required", "amount", "price", "minAmount"]);
+    requiredKrw = pickNumberFrom(amountRows, ["required", "amount", "price", "minAmount"]);
   }
   const trialEligible =
     row.trial_eligible === true ||
@@ -601,24 +647,36 @@ function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | nul
     symbol: pickString(row, ["symbol", "ticker"]) || title.slice(0, 2),
     bucket: asBucket(row.bucket),
     trialEligible,
+    imageUrl: pickImageUrl(row),
     requiredUsdt,
     requiredKrw,
-    expectedUsdt: pickNumber(row, ["expectedUsdt", "expectedProfitUsdt", "profitUsdt"]),
-    expectedKrw: pickNumber(row, ["expectedKrw", "expectedProfitKrw", "expectedProfitKrwApprox", "profitKrw"]),
+    expectedUsdt: pickNumberFrom(amountRows, ["expectedUsdt", "expectedProfitUsdt", "profitUsdt"]),
+    expectedKrw: pickNumberFrom(amountRows, ["expectedKrw", "expectedProfitKrw", "expectedProfitKrwApprox", "profitKrw"]),
     lowMarket: pickString(row, ["lowMarket", "buyVenue", "fromMarket", "partnerLabel", "partner"]) || "",
     highMarket: pickString(row, ["highMarket", "sellVenue", "toMarket"]) || "",
-    seats: pickNumber(row, ["seats", "remainingSeats", "openSeats"]),
-    duration: pickString(row, ["duration", "eta"]) || durationFromSec(pickNumber(row, ["estimatedDurationSec"])),
+    seats: pickNumberFrom(amountRows, ["seats", "remainingSeats", "openSeats"]),
+    duration: pickString(row, ["duration", "eta"]) || durationFromSec(pickNumberFrom(amountRows, ["estimatedDurationSec"])),
   };
 }
 
 export function readListFeed(data: unknown, trialIds: string[] = []): LiveOpportunity[] {
   const row = asRecord(data);
-  const feed = nest(row, "listFeed") || nest(row, "feed") || row;
-  return asList(feed).flatMap((item) => {
+  const named = row ? row.listFeed ?? row.feed : undefined;
+  const source = named !== undefined ? named : data;
+  return asList(source).flatMap((item) => {
     const parsed = parseFeedItem(item, trialIds);
     return parsed ? [parsed] : [];
   });
+}
+
+export function readOpportunity(data: unknown, trialIds: string[] = []): LiveOpportunity | null {
+  const row = asRecord(data);
+  return (
+    parseFeedItem(data, trialIds) ||
+    parseFeedItem(row ? row.opportunity ?? row.data ?? row.item : null, trialIds) ||
+    readListFeed(data, trialIds)[0] ||
+    null
+  );
 }
 
 export function readPrincipalUsdt(data: unknown): number {
@@ -641,6 +699,7 @@ export function readMoney(home: unknown, buckets: unknown, trial?: TrialState | 
     practiceKrw: pickNumber(money, ["practiceKrw", "practice"]),
     trialPrincipalUsdt: trialState.trialPrincipalUsdt,
     trialLockedUsdt: trialState.trialLockedUsdt,
+    trialPrincipalKrw: trialGrantKrw(trialState),
     fxKrwPerUsdt: pickNumber(money, ["fxKrwPerUsdt", "usdtKrw", "fxRate", "krwPerUsdt"]),
   };
 
