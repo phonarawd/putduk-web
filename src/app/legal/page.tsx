@@ -6,7 +6,7 @@ import { RouteTop } from "@/components/gpt/RouteTop";
 import { useGpt } from "@/lib/gpt/GptContext";
 
 const LEGAL_MENU = [
-  { path: "/legal/recognition", title: "공식 인정·운영 확인서", copy: "운영 주체, 플랫폼 운영과 금융·공공 기준 확인서" },
+  { path: "/legal/recognition", title: "운영 정보 안내", copy: "운영 주체와 서비스 운영 기준 안내" },
   { path: "/legal/terms", title: "이용약관", copy: "앱이 하는 일, 충전, 기회 참여와 출금" },
   { path: "/legal/privacy", title: "개인정보 처리방침", copy: "모으는 정보, 쓰는 이유와 내 권리" },
   { path: "/legal/oss", title: "오픈소스 고지", copy: "화면에 사용한 공개 도구와 이용 조건" },
