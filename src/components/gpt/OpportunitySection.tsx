@@ -127,7 +127,7 @@ export function OpportunitySection() {
                 {formatMoneySecondary(selected.expectedUsdt, selected.expectedKrw) ? (
                   <small>{formatMoneySecondary(selected.expectedUsdt, selected.expectedKrw)}</small>
                 ) : null}
-                {selected.duration ? <small id="featuredProfitRate">{selected.duration}</small> : null>
+                {selected.duration ? <small id="featuredProfitRate">{selected.duration}</small> : null}
               </div>
             ) : null}
           </div>

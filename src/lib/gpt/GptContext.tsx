@@ -909,5 +909,3 @@ export function useGpt(): GptContextValue {
   if (!context) throw new Error("useGpt는 GptProvider 내부에서만 사용할 수 있습니다.");
   return context;
 }
-
-export { isTerminal };

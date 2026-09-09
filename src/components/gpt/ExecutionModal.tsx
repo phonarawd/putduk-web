@@ -17,14 +17,12 @@ function ResultAmount({ execution }: { execution: ActiveExecution }) {
   const success = execution.status === "success";
   const target = execution.expectedProfitKrw;
   const shouldAnimate = success && target != null && !prefersReducedMotion();
-  const [display, setDisplay] = useState<number | null>(() => (shouldAnimate ? 0 : target));
+  const [animated, setAnimated] = useState(0);
   const animatedForRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!shouldAnimate || target == null) {
-      setDisplay(target);
-      return;
-    }
+    if (!shouldAnimate || target == null) return;
+    const goal = target;
     if (animatedForRef.current === execution.tradeId) return;
     animatedForRef.current = execution.tradeId;
     const started = performance.now();
@@ -32,8 +30,8 @@ function ResultAmount({ execution }: { execution: ActiveExecution }) {
     let frame = 0;
     function step(now: number) {
       const progress = Math.min(1, (now - started) / duration);
-      const current = Math.round(target * (1 - Math.pow(1 - progress, 3)));
-      setDisplay(current);
+      const current = Math.round(goal * (1 - Math.pow(1 - progress, 3)));
+      setAnimated(current);
       if (progress < 1) frame = window.requestAnimationFrame(step);
     }
     frame = window.requestAnimationFrame(step);
@@ -42,7 +40,7 @@ function ResultAmount({ execution }: { execution: ActiveExecution }) {
 
   if (!success) return <>잠근 금액 전액 반환</>;
   if (target == null) return <>정산 금액은 지갑에서 확인해 주세요.</>;
-  return <>{formatSignedKrw(display ?? target)}</>;
+  return <>{formatSignedKrw(shouldAnimate ? animated : target)}</>;
 }
 
 export function ExecutionModal() {
