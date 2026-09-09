@@ -431,12 +431,22 @@ export function preflightOpportunity(id: string) {
 
 export function participateOpportunity(
   id: string,
-  body: { amountUsdt: string; idempotencyKey: string; preflightToken: string },
+  body: {
+    opportunityId: string;
+    amountUsdt: string;
+    pricingVersion: number;
+    minProfitUsdt: string;
+    idempotencyKey: string;
+    preflightToken: string;
+  },
 ) {
   return apiFetch(`/api/v1/opportunities/${id}/participate`, {
     method: "POST",
     body: JSON.stringify({
+      opportunityId: body.opportunityId,
       amountUsdt: body.amountUsdt,
+      pricingVersion: body.pricingVersion,
+      minProfitUsdt: body.minProfitUsdt,
       idempotencyKey: body.idempotencyKey,
       preflightToken: body.preflightToken,
     }),
@@ -766,6 +776,8 @@ export type LiveOpportunity = {
   requiredCapitalUsdt: string | null;
   requiredUsdt: number | null;
   requiredKrw: number | null;
+  pricingVersion: number | null;
+  expectedProfitUsdt: string | null;
   expectedUsdt: number | null;
   expectedKrw: number | null;
   lowMarket: string;
@@ -915,6 +927,12 @@ function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | nul
   const requiredCapitalUsdt = pickStringFrom(amountRows, ["requiredCapitalUsdt"]);
   const requiredUsdt = pickNumberFrom(amountRows, ["requiredCapitalUsdt", "requiredUsdt"]);
   const requiredKrw = pickNumberFrom(amountRows, ["requiredCapitalKrwApprox"]);
+  const pricingVersionRaw = pickNumber(row, withSnake(["pricingVersion"]));
+  const pricingVersion =
+    pricingVersionRaw != null && Number.isInteger(pricingVersionRaw) && pricingVersionRaw >= 1
+      ? pricingVersionRaw
+      : null;
+  const expectedProfitUsdt = pickStringFrom(amountRows, ["expectedProfitUsdt"]);
   const trialEligible =
     row.trial_eligible === true ||
     row.trialEligible === true ||
@@ -930,6 +948,8 @@ function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | nul
     requiredCapitalUsdt,
     requiredUsdt,
     requiredKrw,
+    pricingVersion,
+    expectedProfitUsdt,
     expectedUsdt: pickNumberFrom(amountRows, ["expectedProfitUsdt", "expectedUsdt"]),
     expectedKrw: pickNumberFrom(amountRows, ["expectedProfitKrwApprox", "expectedKrw"]),
     lowMarket: pickString(row, ["lowMarket", "buyVenue", "fromMarket", "partnerLabel", "partner"]) || "",

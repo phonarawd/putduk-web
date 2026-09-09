@@ -118,6 +118,8 @@ function mapKnownCode(text: string): string | null {
   if (/BIRTH_DATE_INVALID/i.test(text)) return MSG.nameBirthNeed;
   if (/REFERRAL_POOL_WAIT/i.test(text)) return MSG.referralWait;
   if (/AUTH_REQUIRED/i.test(text)) return MSG.loginNeed;
+  if (/INSUFFICIENT_PRINCIPAL|INSUFFICIENT_BALANCE/i.test(text)) return MSG.notEnoughMoney;
+  if (/VALIDATION_ERROR/i.test(text)) return MSG.participateFail;
   if (/SIGNUP_LINK_INVALID/i.test(text)) return MSG.verifyLinkBad;
   return null;
 }

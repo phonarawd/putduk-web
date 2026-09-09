@@ -238,7 +238,14 @@ export function GptProvider({ children }: { children: ReactNode }) {
       fallback.find((item) => trialVal.trialEligibleOpportunityIds.includes(item.id)) ||
       fallback.find((item) => item.trialEligible) ||
       fallback[0];
-    if (focus && (focus.requiredCapitalUsdt == null || focus.requiredKrw == null || !focus.imageUrl)) {
+    if (
+      focus &&
+      (focus.requiredCapitalUsdt == null ||
+        focus.pricingVersion == null ||
+        !focus.expectedProfitUsdt ||
+        focus.requiredKrw == null ||
+        !focus.imageUrl)
+    ) {
       try {
         const parsed = readOpportunity(await getOpportunity(focus.id), trialVal.trialEligibleOpportunityIds);
         if (parsed) {
@@ -250,7 +257,9 @@ export function GptProvider({ children }: { children: ReactNode }) {
                   requiredCapitalUsdt: parsed.requiredCapitalUsdt ?? item.requiredCapitalUsdt,
                   requiredUsdt: parsed.requiredUsdt ?? item.requiredUsdt,
                   requiredKrw: parsed.requiredKrw ?? item.requiredKrw,
+                  pricingVersion: parsed.pricingVersion ?? item.pricingVersion,
                   imageUrl: parsed.imageUrl ?? item.imageUrl,
+                  expectedProfitUsdt: parsed.expectedProfitUsdt ?? item.expectedProfitUsdt,
                   expectedUsdt: parsed.expectedUsdt ?? item.expectedUsdt,
                   expectedKrw: parsed.expectedKrw ?? item.expectedKrw,
                 }
@@ -614,7 +623,11 @@ export function GptProvider({ children }: { children: ReactNode }) {
       showToast(MSG.noOpportunity, "warning");
       return;
     }
-    if (!opportunity.requiredCapitalUsdt) {
+    if (
+      !opportunity.requiredCapitalUsdt ||
+      opportunity.pricingVersion == null ||
+      !opportunity.expectedProfitUsdt
+    ) {
       setPreflightOpen(false);
       showToast(MSG.participateNeedAmount, "warning");
       return;
@@ -622,6 +635,8 @@ export function GptProvider({ children }: { children: ReactNode }) {
     setPreflightOpen(false);
     const amountUsdt = opportunity.requiredCapitalUsdt;
     const amountUsdtNumber = Number(amountUsdt);
+    const pricingVersion = opportunity.pricingVersion;
+    const minProfitUsdt = opportunity.expectedProfitUsdt;
     const idempotencyKey = newIdempotencyKey();
 
     preflightOpportunity(opportunity.id)
@@ -631,7 +646,10 @@ export function GptProvider({ children }: { children: ReactNode }) {
           throw new Error(MSG.participateFail);
         }
         return participateOpportunity(opportunity.id, {
+          opportunityId: opportunity.id,
           amountUsdt,
+          pricingVersion,
+          minProfitUsdt,
           idempotencyKey,
           preflightToken,
         });

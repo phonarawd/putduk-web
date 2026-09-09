@@ -25,11 +25,12 @@ export interface OpportunityView extends Opportunity {
   grossKrw: number;
   expectedKrw: number | null;
   profitRate: number;
-  pricingVersion: number;
+  pricingVersion: number | null;
   fresh: boolean;
   affordable: boolean;
   requiredUsdt: number | null;
   requiredCapitalUsdt: string | null;
+  expectedProfitUsdt: string | null;
   expectedUsdt: number | null;
   bucket: FeedBucket | null;
   trialEligible: boolean;
