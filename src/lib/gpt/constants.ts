@@ -1,4 +1,8 @@
 export const STORAGE_KEY = "putduk-web-gpt-v2";
+export const DEVICE_STORAGE_KEY = "putduk-web-device-v1";
+export const ACCOUNT_STORAGE_PREFIX = "putduk-web-account-v1:";
+
+export const KRW_QUICK_AMOUNTS = [100000, 500000, 1000000] as const;
 
 export const VIEW_PATHS = {
   home: "/",
@@ -16,6 +20,7 @@ export const GATED_PATHS = [
   "/ai",
   "/me",
   "/me/peotteok",
+  "/me/records",
   "/wallet/deposit",
   "/wallet/withdraw",
   "/wallet/history",
@@ -29,6 +34,11 @@ export const GATED_PATHS = [
   "/me/notices",
   "/me/events",
 ];
+
+export function isGatedPath(pathname: string): boolean {
+  if (GATED_PATHS.includes(pathname)) return true;
+  return pathname.startsWith("/me/") || pathname.startsWith("/wallet/");
+}
 
 export const WORKSPACE_PATHS = ["/", "/work", "/ai", "/me/peotteok", "/invite", "/me"];
 

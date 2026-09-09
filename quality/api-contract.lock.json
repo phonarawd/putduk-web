@@ -1,0 +1,8 @@
+{
+  "status": "BLOCKED_CONTRACT",
+  "reason": "API_CONTRACT_SHA and SCHEMA_HASH were not provided. No OpenAPI lock was invented.",
+  "consumedBase": "https://api.hiptk.app",
+  "existingClient": "src/lib/api.ts",
+  "stageBProfileBody": ["displayName", "phoneE164", "birthDate", "email"],
+  "forbiddenProfileBody": ["gender", "birthPrefix", "name"]
+}

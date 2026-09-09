@@ -2,9 +2,13 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
+import { GenderSelect } from "@/components/gpt/GenderSelect";
+import { GoogleContinueButton } from "@/components/gpt/GoogleContinueButton";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
+import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
+import type { Gender } from "@/lib/gpt/types";
 import { birthDateFromPrefix, isAdultBirthDate, isIsoDate, signup, toE164 } from "@/lib/api";
 import { validBirthday, validEmail, validPhone, validUsername } from "@/lib/gpt/validate";
 import { MSG, toastFromError } from "@/lib/messages";
@@ -25,7 +29,10 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [birthday, setBirthday] = useState("");
+  const [gender, setGender] = useState<Gender>("");
   const [phone, setPhone] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
   const [referralCode, setReferralCode] = useState(ref);
   const [requiredTerms, setRequiredTerms] = useState(false);
   const [termsAcceptedAt, setTermsAcceptedAt] = useState("");
@@ -83,8 +90,16 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
       showToast(MSG.phoneNeed, "warning");
       return;
     }
+    if (!gender) {
+      showToast(MSG.profileNeed, "warning");
+      return;
+    }
     if (!requiredTerms || !termsAcceptedAt || !privacyAcceptedAt) {
       showToast(MSG.termsNeed, "warning");
+      return;
+    }
+    if (hasTurnstileSiteKey() && !turnstileToken) {
+      showToast(MSG.challengeNeed, "warning");
       return;
     }
     if (busy) return;
@@ -97,16 +112,19 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
         passwordConfirm,
         declaredName: nextName,
         birthDate,
+        turnstileToken: turnstileToken || undefined,
         termsAcceptedAt,
         privacyAcceptedAt,
         marketingConsent: benefitNews || undefined,
         referralCode: referralCode.trim() || undefined,
         phoneE164: phone ? toE164(phone) : undefined,
       });
-      submitClassicSignupProfile({ displayName: nextName, email: nextEmail, birthday, gender: "", phone, benefitNews });
+      submitClassicSignupProfile({ displayName: nextName, email: nextEmail, birthday, gender, phone, benefitNews });
       router.push("/auth/verify-email");
       showToast(MSG.signupOk, "success");
     } catch (error: unknown) {
+      setTurnstileToken("");
+      setTurnstileReset((value) => value + 1);
       const payload = toastFromError(error, MSG.genericError);
       showToast(payload.message, payload.kind);
     } finally {
@@ -206,6 +224,7 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
               />
             </label>
           </div>
+          <GenderSelect value={gender} onChange={setGender} group="signup" />
 
           <div className="form-grid two">
             <label className="form-field">
@@ -266,10 +285,12 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
               </span>
             </label>
           </div>
+          <TurnstileBox action="signup" onToken={setTurnstileToken} resetNonce={turnstileReset} />
           <button className="form-primary" type="submit" disabled={busy}>
             회원가입
           </button>
         </form>
+        <GoogleContinueButton disabled={busy} />
         <p className="auth-switch">
           이미 계정이 있으신가요?{" "}
           <button type="button" onClick={() => router.push("/login")}>

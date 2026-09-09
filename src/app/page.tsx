@@ -84,7 +84,7 @@ function HomeWorkspace() {
             <span className="view-kicker">리셀러 데스크</span>
             <h1 id="home-title">지금 고를 기회</h1>
             <p>
-              {state.resellerId || state.displayName || "리셀러"}님, 조건이 맞는 기회만 확인하세요.
+              {state.displayName ? `${state.displayName}님, 조건이 맞는 기회만 확인하세요.` : "조건이 맞는 기회만 확인하세요."}
             </p>
           </div>
           <button id="refreshQuotes" className="quiet-button" type="button" onClick={refreshQuotes}>

@@ -2,7 +2,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { GATED_PATHS } from "@/lib/gpt/constants";
+import { isGatedPath } from "@/lib/gpt/constants";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { MSG } from "@/lib/messages";
 import { CapitalModal } from "./CapitalModal";
@@ -18,7 +18,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { ready, sessionReady, state, setPendingRoute, showToast } = useGpt();
-  const gated = GATED_PATHS.includes(pathname);
+  const gated = isGatedPath(pathname);
   const blocked = gated && !state.loggedIn;
   const needsProfile = state.loggedIn && !state.profileCompleted && pathname !== "/auth/complete-profile";
 
@@ -51,22 +51,23 @@ function AuthGate({ children }: { children: ReactNode }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <>
+    <div className="app-frame">
       <div className="page-glow page-glow-one" aria-hidden="true" />
       <div className="page-glow page-glow-two" aria-hidden="true" />
 
-      <SiteHeader />
-
-      <main>
-        <AuthGate>{children}</AuthGate>
-      </main>
+      <div className="app-shell">
+        <SiteHeader />
+        <main>
+          <AuthGate>{children}</AuthGate>
+        </main>
+        <SiteFooter />
+      </div>
 
       <MobileNav />
-      <SiteFooter />
       <Toast />
       <CapitalModal />
       <PreflightModal />
       <ExecutionModal />
-    </>
+    </div>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GenderSelect } from "@/components/gpt/GenderSelect";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
-import { getSession, saveProfile, sessionEmail } from "@/lib/api";
+import { birthDateFromPrefix, getSession, isAdultBirthDate, isIsoDate, saveProfile, sessionEmail } from "@/lib/api";
 import { useGpt } from "@/lib/gpt/GptContext";
 import type { Gender } from "@/lib/gpt/types";
 import { validBirthday } from "@/lib/gpt/validate";
@@ -14,9 +14,9 @@ export default function CompleteProfilePage() {
   const router = useRouter();
   const { state, completeGoogleProfile, cancelGoogleOnboarding, navigateAfterAuth, showToast } = useGpt();
 
-  const [email, setEmail] = useState(state.email && state.email !== "reseller@example.com" ? state.email : "");
-  const [displayName, setDisplayName] = useState(state.displayName === "민준" ? "" : state.displayName);
-  const [birthday, setBirthday] = useState(state.birthday === "900101" ? "" : state.birthday);
+  const [email, setEmail] = useState(state.email);
+  const [displayName, setDisplayName] = useState(state.displayName);
+  const [birthday, setBirthday] = useState(state.birthday);
   const [gender, setGender] = useState<Gender>("");
   const [busy, setBusy] = useState(false);
 
@@ -47,13 +47,22 @@ export default function CompleteProfilePage() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (busy) return;
-    if (!displayName.trim() || !validBirthday(birthday) || !gender) {
+    const birthDate = birthDateFromPrefix(birthday);
+    if (!displayName.trim() || !validBirthday(birthday) || !isIsoDate(birthDate) || !gender) {
       showToast(MSG.profileNeed, "warning");
+      return;
+    }
+    if (!isAdultBirthDate(birthDate)) {
+      showToast(MSG.ageNeed, "warning");
       return;
     }
     setBusy(true);
     try {
-      await saveProfile(displayName.trim(), gender, birthday);
+      await saveProfile({
+        displayName: displayName.trim(),
+        birthDate,
+        email: email.trim() || undefined,
+      });
       completeGoogleProfile({ displayName: displayName.trim(), birthday, gender, phone: "" });
       showToast(MSG.profileSaved, "success");
       navigateAfterAuth("/");

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { QrPreview } from "@/components/gpt/QrPreview";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { WalletSummaryStrip } from "@/components/gpt/WalletSummaryStrip";
 import { copyTextToClipboard } from "@/lib/gpt/clipboard";
+import { KRW_QUICK_AMOUNTS } from "@/lib/gpt/constants";
 import { parseMoney } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import {
@@ -76,6 +76,18 @@ function KrwDepositPanel() {
           <b>원</b>
         </div>
       </label>
+      <div className="capital-presets" role="group" aria-label="빠른 금액">
+        {KRW_QUICK_AMOUNTS.map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            className={amount === preset ? "is-selected" : ""}
+            onClick={() => setAmount(preset)}
+          >
+            {(preset / 10000).toLocaleString("ko-KR")}만원
+          </button>
+        ))}
+      </div>
       <label className="form-field">
         <span>입금자 이름</span>
         <input
@@ -144,7 +156,6 @@ function UsdtDepositPanel() {
       </div>
       {address ? (
         <div className="usdt-deposit-grid">
-          <QrPreview value={address} />
           <div className="address-card">
             <span>테더 입금 주소</span>
             <strong id="usdtAddress">{address}</strong>
@@ -175,11 +186,33 @@ export default function WalletDepositPage() {
       <RouteTop kicker="운용 자본" title="입금" copy="입금은 이용료가 아니라 내 리셀 업무에 쓰는 운용 자본이에요." backPath="/me" />
       <WalletSummaryStrip />
       <section className="form-page-card wallet-form-card">
-        <div className="segmented-tabs" role="tablist" aria-label="입금 방법">
-          <button type="button" className={mode === "krw" ? "is-selected" : ""} onClick={() => setMode("krw")}>
+        <div
+          className="segmented-tabs"
+          role="tablist"
+          aria-label="입금 방법"
+          onKeyDown={(event) => {
+            if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+              event.preventDefault();
+              setMode((current) => (current === "krw" ? "usdt" : "krw"));
+            }
+          }}
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "krw"}
+            className={mode === "krw" ? "is-selected" : ""}
+            onClick={() => setMode("krw")}
+          >
             원화
           </button>
-          <button type="button" className={mode === "usdt" ? "is-selected" : ""} onClick={() => setMode("usdt")}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "usdt"}
+            className={mode === "usdt" ? "is-selected" : ""}
+            onClick={() => setMode("usdt")}
+          >
             테더(USDT)
           </button>
         </div>

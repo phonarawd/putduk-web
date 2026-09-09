@@ -53,8 +53,12 @@ export function SiteHeader() {
           >
             로그인
           </button>
-          <span id="headerReseller" className="header-reseller" hidden={!state.loggedIn}>
-            {state.resellerId || state.displayName || "리셀러"}
+          <span
+            id="headerReseller"
+            className="header-reseller"
+            hidden={!state.loggedIn || (!state.resellerId && !state.displayName)}
+          >
+            {state.resellerId || state.displayName}
           </span>
         </div>
       </div>

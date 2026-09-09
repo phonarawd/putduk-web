@@ -45,6 +45,8 @@ import {
   readTrialState,
   sessionDisplayName,
   sessionEmail,
+  sessionIssuedAt,
+  sessionUserId,
   sessionUsername,
   streamPeotteokChat,
   tradeIsOpen,
@@ -53,8 +55,17 @@ import { MSG, toastFromError, type ToastKind } from "@/lib/messages";
 import { conversationGreeting, evidenceFromDeepLink } from "./ai";
 import { EXECUTION_STEPS, VIEW_PATHS } from "./constants";
 import { allOpportunityViews, canStartOpportunity, selectedOpportunity } from "./opportunities";
-import { ticketState } from "./state";
-import { getHydratedServerSnapshot, getServerSnapshot, getSnapshot, isHydrated, setStoreState, subscribe } from "./store";
+import { readAccountSlice, ticketState } from "./state";
+import {
+  clearAccountState,
+  ensureConversation,
+  getHydratedServerSnapshot,
+  getServerSnapshot,
+  getSnapshot,
+  isHydrated,
+  setStoreState,
+  subscribe,
+} from "./store";
 import type {
   ActiveExecution,
   Conversation,
@@ -293,29 +304,33 @@ export function GptProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const applySession = useCallback((data: unknown) => {
+    const userId = sessionUserId(data);
+    const account = userId ? readAccountSlice(userId) : null;
+    setStoreState((prev) => ({
+      ...prev,
+      ...(account ?? {}),
+      loggedIn: true,
+      userId,
+      email: sessionEmail(data) || account?.email || "",
+      displayName: sessionDisplayName(data) || account?.displayName || "",
+      resellerId: sessionUsername(data),
+      issuedAt: sessionIssuedAt(data),
+    }));
+  }, []);
+
   useEffect(() => {
     if (!ready) return;
     let cancelled = false;
     getSession()
       .then((data) => {
         if (cancelled) return;
-        const username = sessionUsername(data);
-        setStoreState((prev) => ({
-          ...prev,
-          loggedIn: true,
-          email: sessionEmail(data) || prev.email,
-          displayName: sessionDisplayName(data) || prev.displayName,
-          resellerId: username || prev.resellerId,
-        }));
+        applySession(data);
         return reloadDesk();
       })
       .catch(() => {
         if (cancelled) return;
-        setStoreState((prev) =>
-          prev.loggedIn
-            ? { ...prev, loggedIn: false, deskReady: false, feed: [], trades: [], recordsError: false, trial: emptyTrial() }
-            : prev,
-        );
+        clearAccountState();
       })
       .finally(() => {
         if (!cancelled) setSessionReady(true);
@@ -323,13 +338,18 @@ export function GptProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [ready, reloadDesk]);
+  }, [ready, reloadDesk, applySession]);
 
   // ---------- 인증 ----------
   const markPasswordAuth = useCallback(() => {
     setStoreState((prev) => ({ ...prev, loggedIn: true, authMethod: "password", profileCompleted: true }));
-    void reloadDesk();
-  }, [reloadDesk]);
+    void getSession()
+      .then((data) => {
+        applySession(data);
+        return reloadDesk();
+      })
+      .catch(() => reloadDesk());
+  }, [applySession, reloadDesk]);
 
   const markGoogleAuth = useCallback((needsProfile: boolean, email?: string) => {
     setStoreState((prev) => ({
@@ -375,7 +395,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
   );
 
   const cancelGoogleOnboarding = useCallback(() => {
-    setStoreState((prev) => ({ ...prev, loggedIn: false, authMethod: "", profileCompleted: true, pendingRoute: "" }));
+    clearAccountState();
   }, []);
 
   const logout = useCallback(() => {
@@ -385,7 +405,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
         const payload = toastFromError(error, MSG.logoutFail);
         showToast(payload.message, payload.kind);
       });
-    setStoreState((prev) => ({ ...prev, loggedIn: false, pendingRoute: "", profileCompleted: true, authMethod: "" }));
+    clearAccountState();
     router.push("/login");
   }, [router, showToast]);
 
@@ -420,18 +440,23 @@ export function GptProvider({ children }: { children: ReactNode }) {
         showToast(MSG.aiBusy, "warning");
         return;
       }
-      const conversationId = state.activeConversationId;
-      const serverConversationId = state.conversations.find((item) => item.id === conversationId)?.serverConversationId;
-      setStoreState((prev) => {
-        const conversation = prev.conversations.find((item) => item.id === prev.activeConversationId);
-        if (!conversation) return prev;
-        const updated: Conversation = {
-          ...conversation,
-          title: conversation.title === "새 대화" ? text.slice(0, 24) : conversation.title,
-          updatedAt: new Date().toISOString(),
-          messages: [...conversation.messages, { role: "user", text, createdAt: new Date().toISOString() }],
-        };
-        return { ...prev, conversations: prev.conversations.map((item) => (item.id === updated.id ? updated : item)) };
+      const ready = ensureConversation(state);
+      const conversation = ready.conversations.find((item) => item.id === ready.activeConversationId);
+      if (!conversation) return;
+      const conversationId = conversation.id;
+      const serverConversationId = conversation.serverConversationId;
+      setStoreState({
+        ...ready,
+        conversations: ready.conversations.map((item) =>
+          item.id === conversationId
+            ? {
+                ...item,
+                title: item.title === "새 대화" ? text.slice(0, 24) : item.title,
+                updatedAt: new Date().toISOString(),
+                messages: [...item.messages, { role: "user", text, createdAt: new Date().toISOString() }],
+              }
+            : item,
+        ),
       });
       aiAbortRef.current?.abort();
       const ac = new AbortController();
@@ -805,7 +830,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
   const chooseProfileGender = useCallback(
     (value: Gender) => {
       setStoreState((prev) => ({ ...prev, gender: value }));
-      showToast(value === "male" ? MSG.genderMale : MSG.genderFemale, "success");
+      showToast(value === "male" ? MSG.genderMale : MSG.genderFemale, "info");
     },
     [showToast],
   );

@@ -356,10 +356,20 @@ export function googleCallback(code: string) {
   });
 }
 
-export function saveProfile(name: string, gender: string, birthPrefix: string) {
+export function saveProfile(fields: {
+  displayName: string;
+  birthDate: string;
+  phoneE164?: string;
+  email?: string;
+}) {
   return apiFetch("/api/v1/auth/profile", {
     method: "PATCH",
-    body: JSON.stringify({ name, gender, birthPrefix }),
+    body: JSON.stringify({
+      displayName: fields.displayName,
+      birthDate: fields.birthDate,
+      ...(fields.phoneE164 ? { phoneE164: fields.phoneE164 } : {}),
+      ...(fields.email ? { email: fields.email } : {}),
+    }),
   });
 }
 
@@ -408,6 +418,14 @@ export function sessionEmail(data: unknown): string {
 
 export function sessionUsername(data: unknown): string {
   return pickString(sessionUser(data), ["username", "loginId", "handle", "resellerId"]) || "";
+}
+
+export function sessionUserId(data: unknown): string {
+  return pickString(sessionUser(data), ["id", "userId", "uuid"]) || "";
+}
+
+export function sessionIssuedAt(data: unknown): string {
+  return pickString(sessionUser(data), ["issuedAt", "cardIssuedAt"]) || "";
 }
 
 export function sessionDisplayName(data: unknown): string {
@@ -1196,6 +1214,8 @@ export type JournalRow = {
   date: string;
 };
 
+export type JournalDirection = "in" | "out" | "unknown";
+
 export function readJournals(data: unknown): JournalRow[] {
   return asList(data).flatMap((item, index) => {
     const row = asRecord(item);
@@ -1215,11 +1235,39 @@ export function readJournals(data: unknown): JournalRow[] {
   });
 }
 
-export function readKycVerified(data: unknown): boolean {
+export function journalDirection(row: JournalRow): JournalDirection {
+  const type = row.type.trim().toLowerCase();
+  if (!type || type === "기록" || type === "unknown") return "unknown";
+  if (/(deposit|credit|in|profit|reward|refund|receive)/.test(type)) return "in";
+  if (/(withdraw|debit|out|fee|send|payout)/.test(type)) return "out";
+  return "unknown";
+}
+
+export function journalHasAmount(row: JournalRow): boolean {
+  const krw = row.amountKrw;
+  const usdt = row.amountUsdt;
+  return (krw != null && krw !== 0) || (usdt != null && usdt !== 0);
+}
+
+export type KycUiStatus = "verified" | "pending" | "rejected" | "none";
+
+export function readKycUiStatus(data: unknown): KycUiStatus {
   const row = asRecord(data);
-  if (!row) return false;
+  if (!row) return "none";
   const status = (pickString(row, ["status", "kycStatus", "state"]) || "").toLowerCase();
-  return status === "verified" || status === "approved" || row.verified === true;
+  if (status === "verified" || status === "approved" || row.verified === true) return "verified";
+  if (/pending|submitted|in_review|review|processing/.test(status)) return "pending";
+  if (/reject|denied|resubmit/.test(status)) return "rejected";
+  return "none";
+}
+
+export function readKycReason(data: unknown): string {
+  const row = asRecord(data);
+  return pickString(row, ["reason", "rejectReason", "rejectionReason"]) || "";
+}
+
+export function readKycVerified(data: unknown): boolean {
+  return readKycUiStatus(data) === "verified";
 }
 
 export function readStepUpMethod(data: unknown): "pin" | "email_otp" | null {
@@ -1244,6 +1292,12 @@ export function readMembershipCap(data: unknown): number | null {
   const row = asRecord(data);
   const inner = nest(row, "membership") || row;
   return pickNumber(inner, ["dailyUserMatchCap", "remainingDailyMatches", "dailyMatchCap", "remaining"]);
+}
+
+export function readMembershipDisplayName(data: unknown): string {
+  const row = asRecord(data);
+  const inner = nest(row, "membership") || row;
+  return pickString(inner, ["displayName", "tierName", "tierDisplayName"]) || "";
 }
 
 export function readReferral(data: unknown): { code: string | null; link: string | null } | null {

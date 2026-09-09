@@ -19,7 +19,7 @@ import {
   readChallengeId,
   readStepUpToken,
 } from "@/lib/api";
-import { formatKrw, formatMoneySecondary, formatUsdt } from "@/lib/gpt/format";
+import { formatKrw, formatMoneySecondary } from "@/lib/gpt/format";
 import { MSG, toastFromError } from "@/lib/messages";
 
 export default function WalletWithdrawPage() {
@@ -31,10 +31,13 @@ export default function WalletWithdrawPage() {
   const [amount, setAmount] = useState("");
   const [destination, setDestination] = useState("");
   const [stepMethod, setStepMethod] = useState<"pin" | "email_otp" | null>(null);
+  const [policyFailed, setPolicyFailed] = useState(false);
   const [challengeId, setChallengeId] = useState("");
   const [code, setCode] = useState("");
   const [stepUpToken, setStepUpToken] = useState("");
   const [busy, setBusy] = useState<"challenge" | "verify" | "withdraw" | "">("");
+  const [lockedAmount, setLockedAmount] = useState("");
+  const [lockedDestination, setLockedDestination] = useState("");
 
   useEffect(() => {
     getKycStatus()
@@ -49,10 +52,27 @@ export default function WalletWithdrawPage() {
         setProfitUsdt(null);
         setProfitKrw(null);
       });
-    getWithdrawStepUpPolicy()
-      .then((data) => setStepMethod(readStepUpMethod(data)))
-      .catch(() => setStepMethod(null));
+    loadPolicy();
   }, []);
+
+  function loadPolicy() {
+    getWithdrawStepUpPolicy()
+      .then((data) => {
+        setStepMethod(readStepUpMethod(data));
+        setPolicyFailed(false);
+      })
+      .catch(() => {
+        setStepMethod(null);
+        setPolicyFailed(true);
+      });
+  }
+
+  function dropStepUp() {
+    setStepUpToken("");
+    setChallengeId("");
+    setLockedAmount("");
+    setLockedDestination("");
+  }
 
   async function onChallenge() {
     if (busy || !stepMethod) return;
@@ -85,6 +105,8 @@ export default function WalletWithdrawPage() {
         return;
       }
       setStepUpToken(token);
+      setLockedAmount(amount);
+      setLockedDestination(destination);
       showToast(MSG.withdrawConfirmOk, "success");
     } catch (error: unknown) {
       const payload = toastFromError(error, MSG.withdrawConfirmFail);
@@ -176,7 +198,11 @@ export default function WalletWithdrawPage() {
               required
               placeholder="0.00"
               value={amount}
-              onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g, ""))}
+              onChange={(event) => {
+                const next = event.target.value.replace(/[^0-9.]/g, "");
+                setAmount(next);
+                if (stepUpToken && next !== lockedAmount) dropStepUp();
+              }}
             />
           </label>
           <label className="form-field">
@@ -186,9 +212,21 @@ export default function WalletWithdrawPage() {
               required
               placeholder="테더를 받을 주소"
               value={destination}
-              onChange={(event) => setDestination(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value;
+                setDestination(next);
+                if (stepUpToken && next !== lockedDestination) dropStepUp();
+              }}
             />
           </label>
+          {policyFailed ? (
+            <div className="plain-notice">
+              <strong>{MSG.withdrawPolicyFail}</strong>
+              <button type="button" className="text-action" onClick={loadPolicy}>
+                {MSG.withdrawPolicyRetry}
+              </button>
+            </div>
+          ) : null}
           {stepMethod ? (
             <label className="form-field">
               <span>{stepMethod === "email_otp" ? "확인 코드" : "PIN 또는 코드"}</span>
@@ -212,9 +250,11 @@ export default function WalletWithdrawPage() {
                 확인 시작
               </button>
             ) : null}
-            <button type="button" disabled={!!busy || !stepMethod} onClick={onVerify}>
-              코드 확인
-            </button>
+            {stepMethod ? (
+              <button type="button" disabled={!!busy} onClick={onVerify}>
+                코드 확인
+              </button>
+            ) : null}
           </div>
           <button className="form-primary" type="submit" disabled={!verified || busy === "withdraw"}>
             출금 요청하기

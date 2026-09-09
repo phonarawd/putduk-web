@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { GoogleContinueButton } from "@/components/gpt/GoogleContinueButton";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
+import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { login } from "@/lib/api";
 import { MSG, toastFromError } from "@/lib/messages";
@@ -17,6 +19,8 @@ export default function LoginPage() {
   const { markPasswordAuth, navigateAfterAuth, showToast } = useGpt();
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(event: React.FormEvent) {
@@ -29,14 +33,20 @@ export default function LoginPage() {
       showToast(MSG.passwordShort, "warning");
       return;
     }
+    if (hasTurnstileSiteKey() && !turnstileToken) {
+      showToast(MSG.challengeNeed, "warning");
+      return;
+    }
     if (busy) return;
     setBusy(true);
     try {
-      await login(loginId, password);
+      await login(loginId, password, turnstileToken || undefined);
       markPasswordAuth();
       showToast(MSG.loginOk, "success");
       navigateAfterAuth("/");
     } catch (error: unknown) {
+      setTurnstileToken("");
+      setTurnstileReset((value) => value + 1);
       const payload = toastFromError(error, MSG.loginFail);
       showToast(payload.message, payload.kind);
     } finally {
@@ -74,10 +84,12 @@ export default function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
               />
             </label>
+            <TurnstileBox action="login" onToken={setTurnstileToken} resetNonce={turnstileReset} />
             <button className="form-primary" type="submit" disabled={busy}>
               로그인
             </button>
           </form>
+          <GoogleContinueButton disabled={busy} />
           <div className="auth-links">
             <button type="button" onClick={() => router.push("/auth/find-id")}>
               아이디 찾기

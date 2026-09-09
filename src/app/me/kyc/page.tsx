@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { useGpt } from "@/lib/gpt/GptContext";
-import { getKycStatus, readKycVerified, submitKyc, toE164 } from "@/lib/api";
+import { getKycStatus, readKycReason, readKycUiStatus, submitKyc, toE164, type KycUiStatus } from "@/lib/api";
 import { validPhone } from "@/lib/gpt/validate";
 import { MSG, toastFromError } from "@/lib/messages";
 
@@ -18,8 +18,9 @@ const ID_DOC_TYPES = [
 export default function MeKycPage() {
   const router = useRouter();
   const { showToast } = useGpt();
-  const [verified, setVerified] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState<KycUiStatus>("none");
+  const [reason, setReason] = useState("");
+  const [statusReady, setStatusReady] = useState(false);
   const [legalName, setLegalName] = useState("");
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -30,9 +31,23 @@ export default function MeKycPage() {
 
   useEffect(() => {
     getKycStatus()
-      .then((data) => setVerified(readKycVerified(data)))
-      .catch(() => setVerified(false));
+      .then((data) => {
+        setStatus(readKycUiStatus(data));
+        setReason(readKycReason(data));
+        setStatusReady(true);
+      })
+      .catch(() => {
+        setStatus("none");
+        setReason("");
+        setStatusReady(true);
+      });
   }, []);
+
+  function fileHint(file: File | null) {
+    if (!file) return null;
+    const kb = Math.max(1, Math.round(file.size / 1024));
+    return `${file.name} · ${kb}KB`;
+  }
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -55,7 +70,9 @@ export default function MeKycPage() {
         idDoc,
         selfie,
       });
-      setSubmitted(true);
+      const next = await getKycStatus();
+      setStatus(readKycUiStatus(next));
+      setReason(readKycReason(next));
       showToast(MSG.kycOk, "success");
     } catch (error: unknown) {
       const payload = toastFromError(error, MSG.kycFail);
@@ -65,7 +82,18 @@ export default function MeKycPage() {
     }
   }
 
-  if (verified) {
+  if (!statusReady) {
+    return (
+      <RouteScreen>
+        <section className="status-page-card">
+          <span className="view-kicker">본인확인</span>
+          <h1>상태를 확인하고 있어요</h1>
+        </section>
+      </RouteScreen>
+    );
+  }
+
+  if (status === "verified") {
     return (
       <RouteScreen>
         <section className="status-page-card">
@@ -90,7 +118,7 @@ export default function MeKycPage() {
     );
   }
 
-  if (submitted) {
+  if (status === "pending") {
     return (
       <RouteScreen>
         <section className="status-page-card">
@@ -98,14 +126,25 @@ export default function MeKycPage() {
             📌
           </span>
           <span className="view-kicker">본인확인</span>
-          <h1>요청을 보냈어요</h1>
-          <p>
-            확인이 끝나면 출금할 수 있어요.
-            <br />
-            지금은 결과를 기다리면 됩니다.
-          </p>
+          <h1>{MSG.kycPending}</h1>
+          <p>새로고침해도 서버에 있는 상태만 보여 드려요.</p>
           <button className="form-primary" type="button" onClick={() => router.push("/me")}>
             나로 돌아가기
+          </button>
+        </section>
+      </RouteScreen>
+    );
+  }
+
+  if (status === "rejected") {
+    return (
+      <RouteScreen>
+        <section className="status-page-card">
+          <span className="view-kicker">본인확인</span>
+          <h1>{MSG.kycRejected}</h1>
+          <p>{reason || MSG.kycReasonEmpty}</p>
+          <button className="form-primary" type="button" onClick={() => setStatus("none")}>
+            다시 제출하기
           </button>
         </section>
       </RouteScreen>
@@ -193,6 +232,7 @@ export default function MeKycPage() {
               onChange={(event) => setIdDoc(event.target.files?.[0] ?? null)}
             />
             <small>주민번호 뒤쪽이 보이지 않게 가려 주세요.</small>
+            {fileHint(idDoc) ? <small>{fileHint(idDoc)}</small> : null}
           </label>
           <label className="form-field">
             <span>
@@ -205,6 +245,7 @@ export default function MeKycPage() {
               required
               onChange={(event) => setSelfie(event.target.files?.[0] ?? null)}
             />
+            {fileHint(selfie) ? <small>{fileHint(selfie)}</small> : null}
           </label>
           <button className="form-primary" type="submit" disabled={busy}>
             본인확인 요청

@@ -40,9 +40,23 @@ html {
   scroll-behavior: smooth;
 }
 
+.app-frame {
+  min-block-size: 100dvh;
+}
+
+.app-shell {
+  min-block-size: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.app-shell > main {
+  min-block-size: 0;
+}
+
 body {
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   overflow-x: hidden;
   color: var(--ink);
@@ -286,7 +300,7 @@ a:focus-visible {
 /* Intro */
 
 .intro-screen {
-  min-height: calc(100vh - 76px);
+  min-height: calc(100dvh - 76px);
   display: grid;
   align-items: center;
   padding: 72px 0 56px;
@@ -730,7 +744,7 @@ a:focus-visible {
 /* Workspace */
 
 .workspace {
-  min-height: calc(100vh - 76px);
+  min-height: calc(100dvh - 76px);
   padding-top: 54px;
   padding-bottom: 76px;
 }
@@ -2103,7 +2117,7 @@ a:focus-visible {
   position: relative;
   z-index: 1;
   width: min(100%, 610px);
-  max-height: calc(100vh - 44px);
+  max-height: calc(100dvh - 44px);
   padding: 30px;
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.72);
@@ -2978,15 +2992,15 @@ a:focus-visible {
   }
 
   .workspace {
-    min-height: calc(100vh - 68px);
+    min-height: calc(100dvh - 68px);
     padding-top: 38px;
-    padding-bottom: 105px;
+    padding-bottom: calc(105px + env(safe-area-inset-bottom));
   }
 
   .mobile-nav {
     position: fixed;
     right: 12px;
-    bottom: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
     left: 12px;
     z-index: 60;
     display: grid;
@@ -3525,7 +3539,7 @@ a:focus-visible {
 
   .modal-card {
     width: 100%;
-    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
     padding: 25px 19px calc(22px + env(safe-area-inset-bottom));
     border-right: 0;
     border-bottom: 0;
@@ -6481,7 +6495,7 @@ textarea:focus-visible {
   }
 
   .ai-chat-card {
-    min-height: calc(100vh - 190px);
+    min-height: calc(100dvh - 190px);
     border-radius: 20px;
   }
 

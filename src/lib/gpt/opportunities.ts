@@ -38,7 +38,7 @@ export function toOpportunityView(item: LiveOpportunity): OpportunityView {
     profitRate: 0,
     pricingVersion: item.pricingVersion,
     fresh: true,
-    affordable: item.bucket === "affordable" || (item.bucket == null && (item.trialEligible || Boolean(item.requiredCapitalUsdt))),
+    affordable: item.bucket === "affordable",
     requiredUsdt: item.requiredUsdt,
     requiredCapitalUsdt: item.requiredCapitalUsdt,
     expectedProfitUsdt: item.expectedProfitUsdt,
@@ -88,8 +88,8 @@ export function canStartOpportunity(
   item: Pick<OpportunityView, "trialEligible" | "affordable">,
   trial: Pick<TrialState, "grantStatus" | "participationsRemaining">,
 ): boolean {
-  if (item.trialEligible && trial.grantStatus === "active" && trial.participationsRemaining !== 0) {
-    return true;
+  if (item.trialEligible) {
+    return trial.grantStatus === "active" && trial.participationsRemaining !== 0;
   }
   return item.affordable;
 }
