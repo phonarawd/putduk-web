@@ -4,30 +4,29 @@ import { useEffect, useState } from "react";
 import { ReadyNotice } from "@/components/gpt/ReadyNotice";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
-import { getMembership, readMembershipCap, readMembershipDisplayName } from "@/lib/api";
+import { getMembership, readMembershipView, type MembershipView } from "@/lib/api";
 import { MSG } from "@/lib/messages";
 
 export default function MeMembershipPage() {
-  const [name, setName] = useState("");
-  const [cap, setCap] = useState<number | null>(null);
+  const [view, setView] = useState<MembershipView | null>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     getMembership()
       .then((data) => {
-        setName(readMembershipDisplayName(data));
-        setCap(readMembershipCap(data));
+        setView(readMembershipView(data));
         setFailed(false);
         setReady(true);
       })
       .catch(() => {
-        setName("");
-        setCap(null);
+        setView(null);
         setFailed(true);
         setReady(true);
       });
   }, []);
+
+  const empty = !view || (!view.labelKo && view.dailyUserMatchCap == null && view.dailyMatchesUsed == null);
 
   return (
     <RouteScreen>
@@ -36,13 +35,14 @@ export default function MeMembershipPage() {
         <ReadyNotice title="등급을 확인하고 있어요." copy="잠시만 기다려 주세요." />
       ) : failed ? (
         <ReadyNotice title={MSG.genericError} copy={MSG.featureSoon} />
-      ) : !name && cap == null ? (
+      ) : empty ? (
         <ReadyNotice title={MSG.membershipEmpty} copy="계정에 정해진 값이 있으면 여기에 보여 드려요." />
       ) : (
         <section className="level-card">
           <span>현재 등급</span>
-          <h2>{name || MSG.membershipEmpty}</h2>
-          {cap != null ? <strong>하루 기회 {cap}번</strong> : <strong>{MSG.membershipCapEmpty}</strong>}
+          <h2>{view.labelKo || MSG.membershipEmpty}</h2>
+          {view.dailyUserMatchCap != null ? <strong>하루 기회 {view.dailyUserMatchCap}번</strong> : <strong>{MSG.membershipCapEmpty}</strong>}
+          {view.dailyMatchesUsed != null ? <small>오늘 {view.dailyMatchesUsed}번 사용</small> : null}
         </section>
       )}
     </RouteScreen>
