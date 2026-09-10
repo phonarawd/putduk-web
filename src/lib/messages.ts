@@ -19,6 +19,8 @@ export const MSG = {
   googleUrlFail: "😥 구글 연결 주소를 받지 못했어요. 잠시 후 다시 시도해 주세요.",
   googleFail: "😥 구글 로그인을 마치지 못했어요. 다시 시도해 주세요.",
   googleCallbackNeed: "⚠️ 구글 연결 정보가 부족해요. 처음부터 다시 시도해 주세요.",
+  googleBindFail: "😥 구글 연결이 맞지 않아요. 처음부터 다시 시도해 주세요.",
+  googlePendingFail: "😥 약관 확인 시간이 지났어요. 처음부터 다시 시도해 주세요.",
   signupOk: "📬 인증 메일을 보냈어요. 메일함을 확인해 주세요.",
   signupFail: "😥 가입을 마치지 못했어요. 입력한 정보를 다시 확인해 주세요.",
   signupBusy: "⏳ 지금은 가입과 로그인을 받을 수 없어요. 잠시 뒤 다시 시도해 주세요.",
@@ -73,6 +75,9 @@ export const MSG = {
   withdrawFail: "😥 출금 요청을 보내지 못했어요. 다시 시도해 주세요.",
   kycNeed: "⚠️ 이름, 휴대폰, 생년월일을 알려 주세요.",
   kycNeedFiles: "⚠️ 신분증과 얼굴 사진을 준비해 주세요.",
+  kycFileTooLarge: "⚠️ 사진 한 장은 더 작게 준비해 주세요.",
+  kycTotalTooLarge: "⚠️ 두 장의 사진이 너무 커요. 더 작게 준비해 주세요.",
+  kycFileType: "⚠️ 신분증과 얼굴 사진은 정해진 사진 형식만 올릴 수 있어요.",
   kycOk: "📌 본인확인 요청을 보냈어요. 확인이 끝나면 알려 드릴게요.",
   kycFail: "😥 본인확인 요청을 보내지 못했어요. 다시 시도해 주세요.",
   supportNeed: "⚠️ 문의 내용을 입력해 주세요.",
@@ -126,6 +131,12 @@ function mapKnownCode(text: string): string | null {
   if (/TURNSTILE_UNAVAILABLE/i.test(text)) return MSG.signupBusy;
   if (/TURNSTILE_FAILED/i.test(text)) return MSG.challengeRetry;
   if (/TERMS_REQUIRED/i.test(text)) return MSG.termsNeed;
+  if (/OAUTH_BIND_MISMATCH/i.test(text)) return MSG.googleBindFail;
+  if (/OAUTH_PENDING_INVALID/i.test(text)) return MSG.googlePendingFail;
+  if (/KYC_ID_SELFIE_REQUIRED|KYC_FILE_REQUIRED/i.test(text)) return MSG.kycNeedFiles;
+  if (/KYC_TOTAL_TOO_LARGE/i.test(text)) return MSG.kycTotalTooLarge;
+  if (/KYC_FILE_TOO_LARGE/i.test(text)) return MSG.kycFileTooLarge;
+  if (/KYC_FILE_TYPE/i.test(text)) return MSG.kycFileType;
   if (/PASSWORD_TOO_SHORT/i.test(text)) return MSG.passwordShort;
   if (/PASSWORD_PWNED/i.test(text)) return MSG.passwordPwned;
   if (/PASSWORD_CONFIRM_MISMATCH/i.test(text)) return MSG.passwordMismatch;

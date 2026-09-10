@@ -1,4 +1,4 @@
-/** 백엔드 4c6f22f에서 확인한 요청·응답 키만 읽는다. 별칭 fallback을 늘리지 않는다. */
+/** 확정 계약 키만 읽는다. 별칭 fallback·부호 추측을 늘리지 않는다. */
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
@@ -52,26 +52,40 @@ export function isStageBDisplayName(value: string): boolean {
   return name.length >= STAGE_B_NAME_MIN && name.length <= STAGE_B_NAME_MAX;
 }
 
-export type JournalEntryView = {
-  direction: "debit" | "credit" | null;
+export type JournalDisplay = {
+  displayKey: string | null;
+  labelKo: string | null;
+  direction: "debit" | "credit" | "neutral" | null;
+  customerVisible: boolean;
   amountUsdt: string | null;
-  bucket: string | null;
+  amountSource: string | null;
+  multiEntryPolicy: string | null;
+  status: string | null;
 };
 
 export type JournalRow = {
   key: string;
   journalType: string | null;
   createdAt: string;
-  entries: JournalEntryView[];
+  display: JournalDisplay | null;
 };
 
-function readEntry(value: unknown): JournalEntryView | null {
+function readDisplay(value: unknown): JournalDisplay | null {
   const row = asRecord(value);
   if (!row) return null;
-  const direction = row.direction === "debit" || row.direction === "credit" ? row.direction : null;
+  const direction =
+    row.direction === "debit" || row.direction === "credit" || row.direction === "neutral" ? row.direction : null;
   const amountUsdt = typeof row.amountUsdt === "string" && row.amountUsdt.trim() ? row.amountUsdt.trim() : null;
-  const bucket = readString(row.bucket);
-  return { direction, amountUsdt, bucket };
+  return {
+    displayKey: readString(row.displayKey),
+    labelKo: readString(row.labelKo),
+    direction,
+    customerVisible: row.customerVisible === true,
+    amountUsdt,
+    amountSource: readString(row.amountSource),
+    multiEntryPolicy: readString(row.multiEntryPolicy),
+    status: readString(row.status),
+  };
 }
 
 export function readJournals(data: unknown): JournalRow[] {
@@ -81,22 +95,58 @@ export function readJournals(data: unknown): JournalRow[] {
   for (const [index, item] of items.entries()) {
     const journal = asRecord(item);
     if (!journal) continue;
-    const rawEntries = Array.isArray(journal.entries) ? journal.entries : [];
-    const entries = rawEntries.map(readEntry).filter((entry): entry is JournalEntryView => entry != null);
+    const display = readDisplay(journal.display);
+    if (display && display.customerVisible === false) continue;
     out.push({
       key: readString(journal.id) || `journal-${index}`,
       journalType: readString(journal.journalType),
       createdAt: readString(journal.createdAt) || "",
-      entries,
+      display,
     });
   }
   return out;
 }
 
-/** 한 줄 축약이 안전한 단일 entry만 금액을 보여 준다. 부호·화살표는 호출부가 붙이지 않는다. */
+/** display.amountUsdt만 보여 준다. entries·부호·화살표는 추측하지 않는다. */
 export function journalSingleAmount(row: JournalRow): string | null {
-  if (row.entries.length !== 1) return null;
-  return row.entries[0].amountUsdt;
+  return row.display?.amountUsdt ?? null;
+}
+
+export const KYC_MAX_FILE_BYTES = 5_242_880;
+export const KYC_MAX_TOTAL_BYTES = 8_388_608;
+export const KYC_FILE_ACCEPT =
+  "image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif";
+
+const KYC_MIME = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"]);
+const KYC_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"]);
+
+function kycExt(name: string): string {
+  const index = name.lastIndexOf(".");
+  return index >= 0 ? name.slice(index).toLowerCase() : "";
+}
+
+export function kycFileIssue(file: File | null): "KYC_FILE_REQUIRED" | "KYC_FILE_TOO_LARGE" | "KYC_FILE_TYPE" | null {
+  if (!file) return "KYC_FILE_REQUIRED";
+  if (file.size > KYC_MAX_FILE_BYTES) return "KYC_FILE_TOO_LARGE";
+  const mime = file.type.trim().toLowerCase();
+  const ext = kycExt(file.name);
+  if (mime && !KYC_MIME.has(mime)) return "KYC_FILE_TYPE";
+  if (ext && !KYC_EXT.has(ext)) return "KYC_FILE_TYPE";
+  if (!mime && !ext) return "KYC_FILE_TYPE";
+  return null;
+}
+
+export function kycPairIssue(
+  idDoc: File | null,
+  selfie: File | null,
+): "KYC_ID_SELFIE_REQUIRED" | "KYC_FILE_TOO_LARGE" | "KYC_TOTAL_TOO_LARGE" | "KYC_FILE_TYPE" | null {
+  if (!idDoc || !selfie) return "KYC_ID_SELFIE_REQUIRED";
+  const first = kycFileIssue(idDoc);
+  if (first === "KYC_FILE_TOO_LARGE" || first === "KYC_FILE_TYPE") return first;
+  const second = kycFileIssue(selfie);
+  if (second === "KYC_FILE_TOO_LARGE" || second === "KYC_FILE_TYPE") return second;
+  if (idDoc.size + selfie.size > KYC_MAX_TOTAL_BYTES) return "KYC_TOTAL_TOO_LARGE";
+  return null;
 }
 
 export type KycUiStatus = "none" | "pending" | "verified" | "rejected";

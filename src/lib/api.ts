@@ -4,6 +4,11 @@ export {
   type DepositAddressView,
   isKrwConfigNotReady,
   journalSingleAmount,
+  kycFileIssue,
+  kycPairIssue,
+  KYC_FILE_ACCEPT,
+  KYC_MAX_FILE_BYTES,
+  KYC_MAX_TOTAL_BYTES,
   needsCompleteProfile,
   readBenefitItems,
   readJournals,
@@ -15,6 +20,7 @@ export {
   shouldRotateWithdrawIntent,
   withdrawLockedMismatch,
   type BenefitItemView,
+  type JournalDisplay,
   type JournalRow,
   type KycUiStatus,
   type MembershipView,
@@ -126,7 +132,26 @@ const AUTH_NO_REFRESH = new Set([
   "/api/v1/auth/email/resend",
   "/api/v1/auth/oauth/google/start",
   "/api/v1/auth/oauth/google/callback",
+  "/api/v1/auth/oauth/google/complete",
 ]);
+
+export class ApiError extends Error {
+  readonly code: string;
+  readonly pendingToken: string | null;
+  readonly status: number;
+
+  constructor(message: string, extras?: { code?: string; pendingToken?: string | null; status?: number }) {
+    super(message);
+    this.name = "ApiError";
+    this.code = extras?.code || message;
+    this.pendingToken = extras?.pendingToken ?? null;
+    this.status = extras?.status ?? 0;
+  }
+}
+
+export function readTermsPending(error: unknown): string | null {
+  return error instanceof ApiError && error.code === "TERMS_REQUIRED" ? error.pendingToken : null;
+}
 
 type ApiInit = RequestInit & { skipRefresh?: boolean };
 
@@ -179,23 +204,25 @@ function toUserMessage(message: string, status?: number): string {
   return message;
 }
 
-async function readErrorMessage(res: Response): Promise<string> {
+async function readApiError(res: Response): Promise<ApiError> {
   try {
     const text = await res.text();
-    if (!text) return toUserMessage("", res.status);
+    if (!text) return new ApiError(toUserMessage("", res.status), { status: res.status });
     try {
       const json = JSON.parse(text) as unknown;
       const row = asRecord(json);
       const raw = extractErrorToken(row, text);
-      if (/^[A-Z][A-Z0-9_]+$/.test(raw)) return raw;
-      return toUserMessage(raw, res.status);
+      const pendingToken = row ? readString(row.pendingToken) : null;
+      const code = /^[A-Z][A-Z0-9_]+$/.test(raw) ? raw : "";
+      const message = code || toUserMessage(raw, res.status);
+      return new ApiError(message, { code: code || message, pendingToken, status: res.status });
     } catch {
       const trimmed = text.trim();
-      if (/^[A-Z][A-Z0-9_]+$/.test(trimmed)) return trimmed;
-      return toUserMessage(text, res.status);
+      if (/^[A-Z][A-Z0-9_]+$/.test(trimmed)) return new ApiError(trimmed, { code: trimmed, status: res.status });
+      return new ApiError(toUserMessage(text, res.status), { status: res.status });
     }
   } catch {
-    return toUserMessage("", res.status);
+    return new ApiError(toUserMessage("", res.status), { status: res.status });
   }
 }
 
@@ -229,7 +256,7 @@ export async function apiFetch<T>(path: string, init?: ApiInit): Promise<T> {
   }
 
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
+    throw await readApiError(res);
   }
 
   if (res.status === 204) {
@@ -391,6 +418,25 @@ export function googleCallbackOnce(code: string, state: string) {
   return request;
 }
 
+export function googleComplete(fields: {
+  pendingToken: string;
+  termsAcceptedAt: string;
+  privacyAcceptedAt: string;
+  marketingConsent?: boolean;
+  referralCode?: string;
+}) {
+  return apiFetch<unknown>("/api/v1/auth/oauth/google/complete", {
+    method: "POST",
+    body: JSON.stringify({
+      pendingToken: fields.pendingToken,
+      termsAcceptedAt: fields.termsAcceptedAt,
+      privacyAcceptedAt: fields.privacyAcceptedAt,
+      ...(fields.marketingConsent === true ? { marketingConsent: true } : {}),
+      ...(fields.referralCode ? { referralCode: fields.referralCode } : {}),
+    }),
+  });
+}
+
 export function saveProfile(fields: {
   displayName: string;
   birthDate: string;
@@ -406,6 +452,20 @@ export function saveProfile(fields: {
       ...(fields.email ? { email: fields.email } : {}),
     }),
   });
+}
+
+export function saveProfileGender(gender: "male" | "female") {
+  return apiFetch<unknown>("/api/v1/auth/profile", {
+    method: "PATCH",
+    body: JSON.stringify({ gender }),
+  });
+}
+
+export function readProfileGender(data: unknown): "" | "male" | "female" {
+  const row = asRecord(data);
+  const value = row?.gender;
+  if (value === "male" || value === "female") return value;
+  return "";
 }
 
 export function getSession() {
@@ -442,6 +502,14 @@ export function sessionIssuedAt(data: unknown): string {
 
 export function sessionDisplayName(data: unknown): string {
   return pickString(sessionUser(data), ["declaredName", "displayName", "name"]) || "";
+}
+
+export function sessionGender(data: unknown): "" | "male" | "female" {
+  const row = asRecord(data);
+  const nested = sessionUser(data);
+  const value = row?.gender ?? nested?.gender;
+  if (value === "male" || value === "female") return value;
+  return "";
 }
 
 export function listOpportunities() {
@@ -717,7 +785,7 @@ export async function streamPeotteokChat(input: {
   }
 
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
+    throw await readApiError(res);
   }
   if (!res.body) {
     throw new Error("답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.");

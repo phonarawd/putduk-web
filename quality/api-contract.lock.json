@@ -1,22 +1,30 @@
 {
   "status": "PARTIAL",
-  "reason": "로컬 백엔드 4c6f22f 소스와 화면 호출을 대조했다. api.hiptk.app 런타임 SHA는 확인하지 못했다. OpenAPI lock은 만들지 않았다.",
+  "reason": "백엔드 PR #222 @ 0fa38d77 계약 문서를 화면 호출과 대조했다. api.hiptk.app 런타임 SHA는 확인하지 못했다. 운영 마이그레이션 미적용. OpenAPI lock은 만들지 않았다.",
   "consumedBase": "https://api.hiptk.app",
   "existingClient": "src/lib/api.ts",
   "readOnlyBackendRepo": "phonarawd/AI-Profit-OS",
-  "readOnlyBackendPath": "C:\\Users\\PC\\Desktop\\AI_PROFIT_OS",
-  "readSha": "4c6f22fabc485a8ac910582bd41dcb7bd1b53575",
+  "readOnlyBackendPr": "https://github.com/phonarawd/AI-Profit-OS/pull/222",
+  "readOnlyContractPath": "C:\\Users\\PC\\Desktop\\AI_PROFIT_OS_CONTRACT_P0\\quality\\customer-web-contract-p0.md",
+  "readSha": "0fa38d77",
   "githubMainSha": "c4ebcd870557c74f214735bfc9e6c4dac37aaeac",
   "githubProductionDeploySha": "3366bbe6cac8b1b188550ba651927ecc58f011bf",
   "runtimeSha": null,
+  "merged": false,
+  "deployed": false,
   "confirmed": {
-    "googleStart": { "method": "POST", "path": "/api/v1/auth/oauth/google/start", "response": ["ok", "provider", "status", "authorizeUrl"] },
-    "googleCallback": { "method": "POST", "path": "/api/v1/auth/oauth/google/callback", "body": ["code", "state"], "optionalNewUser": ["termsAcceptedAt", "privacyAcceptedAt"], "response": ["ok", "stage", "onboarding", "session", "accessToken", "issuer"], "newUserWithoutTerms": "TERMS_REQUIRED after prove" },
-    "stageB": { "method": "PATCH", "path": "/api/v1/auth/profile", "body": ["displayName", "phoneE164", "birthDate", "email?"], "forbidden": ["gender", "birthPrefix"] },
-    "session": { "method": "GET", "path": "/api/v1/auth/session", "response": ["sessionId", "userId", "issuer", "issuedAt", "expiresAt", "revoked", "onboardingStage"] },
+    "prefix": "/api/v1",
+    "health": "GET /health outside prefix",
+    "googleStart": { "method": "POST", "path": "/api/v1/auth/oauth/google/start", "body": {}, "response": ["ok", "provider", "status", "authorizeUrl"], "cookie": "aipo_oauth_bind" },
+    "googleCallback": { "method": "POST", "path": "/api/v1/auth/oauth/google/callback", "body": ["code", "state"], "existing": 200, "newWithoutTerms": { "status": 400, "code": "TERMS_REQUIRED", "pendingToken": true, "expiresInSec": 600, "resendCodeState": false } },
+    "googleComplete": { "method": "POST", "path": "/api/v1/auth/oauth/google/complete", "body": ["pendingToken", "termsAcceptedAt", "privacyAcceptedAt"], "optional": ["marketingConsent", "referralCode"], "errors": ["OAUTH_BIND_MISMATCH", "OAUTH_PENDING_INVALID", "TERMS_REQUIRED"] },
+    "stageB": { "method": "PATCH", "path": "/api/v1/auth/profile", "body": ["displayName", "phoneE164", "birthDate", "email?"], "forbiddenOnStageB": ["gender"] },
+    "genderWrite": { "method": "PATCH", "path": "/api/v1/auth/profile", "body": { "gender": ["male", "female"] }, "response": ["ok", "onboardingStage", "gender"] },
+    "session": { "method": "GET", "path": "/api/v1/auth/session", "gender": ["male", "female", null] },
     "emailResendTurnstileAction": "email-resend",
-    "ledgerJournals": { "method": "GET", "path": "/api/v1/me/ledger/journals", "list": ["items", "total", "limit", "offset"], "journal": ["id", "journalType", "createdAt", "referenceType", "referenceId", "entries"], "entry": ["id", "direction", "amountUsdt", "bucket", "accountKind"], "journalTypes": ["deposit_usdt", "deposit_krw", "withdraw", "withdraw_refund", "participate_lock", "participate_unlock", "settlement", "merge_profit_to_principal", "admin_adjust", "referral_reward", "referral_clawback", "practice_grant", "practice_expire", "trial_grant", "mission_reward", "mission_clawback", "fee", "other"] },
+    "ledgerJournals": { "method": "GET", "path": "/api/v1/me/ledger/journals", "list": ["items", "total", "limit", "offset"], "display": ["displayKey", "labelKo", "direction", "customerVisible", "amountUsdt", "amountSource", "multiEntryPolicy", "status"], "unknown": { "displayKey": "ledger.unknown", "direction": "neutral", "labelKo": "확인 필요" } },
     "kycStatus": { "method": "GET", "path": "/api/v1/compliance/kyc/status", "response": ["userId", "kycStatus", "submissionId?", "decidedAt?", "rejectReason?"], "kycStatus": ["none", "pending", "approved", "rejected"] },
+    "kycSubmit": { "method": "POST", "path": "/api/v1/compliance/kyc/submit", "files": ["idDoc", "selfie"], "types": ["jpeg", "png", "webp", "heic"], "maxFileBytes": 5242880, "maxTotalBytes": 8388608, "errors": ["KYC_FILE_REQUIRED", "KYC_FILE_TOO_LARGE", "KYC_TOTAL_TOO_LARGE", "KYC_FILE_TYPE", "KYC_ID_SELFIE_REQUIRED"], "conflict": 409, "success": 200 },
     "withdraw": { "idempotency": "body.idempotencyKey minLength 8", "stepUpToken": "body.stepUpToken" },
     "membership": { "method": "GET", "path": "/api/v1/me/membership", "response": ["membership", "labelKo", "dailyUserMatchCap", "dailyMatchesUsed", "maxCapitalBand", "matchStrictness", "aiPerkFlags", "current", "ladder"] },
     "benefits": { "list": "GET /api/v1/me/benefits", "summary": "GET /api/v1/me/benefits/summary" },
@@ -24,9 +32,7 @@
     "depositAddress": { "method": "GET", "path": "/api/v1/wallet/my-deposit-address", "response": ["userId", "trc20Address", "derivationIndex", "qrPayload", "createdAt", "lastSeenTxAt?"], "qrImageUrl": false }
   },
   "blocked": {
-    "genderWrite": "FORBIDDEN_USER_AUTH_FIELDS includes gender",
-    "ledgerDisplayKo": "no user-facing journalType labels",
-    "kycMimeLimit": "no backend MIME/size cap",
-    "runtimeSha": "api.hiptk.app process SHA unknown"
+    "runtimeSha": "api.hiptk.app process SHA unknown",
+    "liveApi": "backend PR 222 not merged, migration not applied — mock E2E only"
   }
 }

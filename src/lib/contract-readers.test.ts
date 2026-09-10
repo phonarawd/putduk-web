@@ -4,6 +4,8 @@ import {
   googleAuthorizeUrl,
   isAllowedAuthorizeUrl,
   journalSingleAmount,
+  kycFileIssue,
+  kycPairIssue,
   needsCompleteProfile,
   readBenefitItems,
   readJournals,
@@ -37,35 +39,103 @@ test("needsCompleteProfile는 onboarding과 onboardingStage만 본다", () => {
   assert.equal(needsCompleteProfile({ needsProfile: true, isNewUser: true }), null);
 });
 
-test("원장은 items[].journalType과 entries만 읽는다", () => {
+test("원장은 items[].display만 읽고 숨김·부호를 추측하지 않는다", () => {
   const rows = readJournals({
     items: [
       {
         id: "j1",
         journalType: "deposit_usdt",
         createdAt: "2026-09-09T00:00:00.000Z",
-        referenceType: "deposit",
-        referenceId: "d1",
-        entries: [{ id: "e1", direction: "credit", amountUsdt: "10.000000", bucket: "principal", accountKind: "user" }],
+        display: {
+          displayKey: "ledger.deposit_usdt",
+          labelKo: "USDT 입금",
+          direction: "credit",
+          customerVisible: true,
+          amountUsdt: "10.000000",
+          amountSource: "user_bucket_net",
+          multiEntryPolicy: "single",
+          status: "posted",
+        },
+        entries: [{ id: "e1", direction: "credit", amountUsdt: "99.000000", bucket: "principal" }],
       },
       {
         id: "j2",
         journalType: "settlement",
         createdAt: "2026-09-09T01:00:00.000Z",
+        display: {
+          displayKey: "ledger.settlement",
+          labelKo: "정산",
+          direction: "credit",
+          customerVisible: true,
+          amountUsdt: "3.000000",
+          amountSource: "user_bucket_net",
+          multiEntryPolicy: "sum_user_bucket_signed",
+          status: "posted",
+        },
         entries: [
           { id: "e2", direction: "debit", amountUsdt: "3.000000", bucket: "locked" },
           { id: "e3", direction: "credit", amountUsdt: "3.000000", bucket: "profit" },
         ],
       },
+      {
+        id: "j-hidden",
+        journalType: "admin_adjust",
+        createdAt: "2026-09-09T01:30:00.000Z",
+        display: {
+          displayKey: "ledger.admin_adjust",
+          labelKo: "숨김",
+          direction: "neutral",
+          customerVisible: false,
+          amountUsdt: "1.000000",
+          amountSource: "unknown",
+          multiEntryPolicy: "single",
+          status: "posted",
+        },
+      },
+      {
+        id: "j-unknown",
+        journalType: null,
+        createdAt: "2026-09-09T02:00:00.000Z",
+        display: {
+          displayKey: "ledger.unknown",
+          labelKo: "확인 필요",
+          direction: "neutral",
+          customerVisible: true,
+          amountUsdt: "0.100000",
+          amountSource: "unknown",
+          multiEntryPolicy: "single",
+          status: "posted",
+        },
+      },
+      {
+        id: "j-bare",
+        journalType: "fee",
+        createdAt: "2026-09-09T03:00:00.000Z",
+        entries: [{ id: "e9", direction: "debit", amountUsdt: "0.500000", bucket: "profit" }],
+      },
     ],
-    total: 2,
+    total: 5,
     limit: 20,
     offset: 0,
   });
-  assert.equal(rows.length, 2);
-  assert.equal(rows[0].journalType, "deposit_usdt");
+  assert.equal(rows.length, 4);
+  assert.equal(rows[0].display?.labelKo, "USDT 입금");
   assert.equal(journalSingleAmount(rows[0]), "10.000000");
-  assert.equal(journalSingleAmount(rows[1]), null);
+  assert.equal(journalSingleAmount(rows[1]), "3.000000");
+  assert.equal(rows[2].display?.labelKo, "확인 필요");
+  assert.equal(journalSingleAmount(rows[3]), null);
+});
+
+test("KYC 클라이언트는 MIME·확장자·크기만 본다", () => {
+  const png = new File([new Uint8Array(12)], "a.png", { type: "image/png" });
+  const face = new File([new Uint8Array(12)], "b.png", { type: "image/png" });
+  assert.equal(kycFileIssue(png), null);
+  assert.equal(kycPairIssue(png, face), null);
+  assert.equal(kycFileIssue(new File([new Uint8Array(5_242_881)], "a.png", { type: "image/png" })), "KYC_FILE_TOO_LARGE");
+  assert.equal(kycFileIssue(new File([new Uint8Array(12)], "a.pdf", { type: "application/pdf" })), "KYC_FILE_TYPE");
+  assert.equal(kycPairIssue(null, face), "KYC_ID_SELFIE_REQUIRED");
+  const huge = new File([new Uint8Array(4_200_000)], "a.png", { type: "image/png" });
+  assert.equal(kycPairIssue(huge, huge), "KYC_TOTAL_TOO_LARGE");
 });
 
 test("KYC는 kycStatus와 rejectReason만 매핑한다", () => {
