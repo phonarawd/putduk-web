@@ -43,9 +43,12 @@ import {
   readPreflightToken,
   readTrades,
   readTradeSnapshot,
+  readProfileGender,
   readTrialState,
+  saveProfileGender,
   sessionDisplayName,
   sessionEmail,
+  sessionGender,
   sessionIssuedAt,
   sessionUserId,
   sessionUsername,
@@ -318,6 +321,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
       displayName: sessionDisplayName(data) || account?.displayName || "",
       resellerId: sessionUsername(data),
       issuedAt: sessionIssuedAt(data),
+      gender: sessionGender(data),
       profileCompleted: needProfile == null ? prev.profileCompleted : !needProfile,
     }));
   }, []);
@@ -841,8 +845,21 @@ export function GptProvider({ children }: { children: ReactNode }) {
   // ---------- 프로필 / 지갑 ----------
   const chooseProfileGender = useCallback(
     (value: Gender) => {
-      setStoreState((prev) => ({ ...prev, gender: value }));
-      showToast(value === "male" ? MSG.genderMale : MSG.genderFemale, "info");
+      if (value !== "male" && value !== "female") return;
+      void saveProfileGender(value)
+        .then((data) => {
+          const gender = readProfileGender(data);
+          if (gender !== value) {
+            showToast(MSG.profileSaveFail, "error");
+            return;
+          }
+          setStoreState((prev) => ({ ...prev, gender }));
+          showToast(gender === "male" ? MSG.genderMale : MSG.genderFemale, "info");
+        })
+        .catch((error: unknown) => {
+          const payload = toastFromError(error, MSG.profileSaveFail);
+          showToast(payload.message, payload.kind);
+        });
     },
     [showToast],
   );

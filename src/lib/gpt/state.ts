@@ -104,10 +104,6 @@ function asObject(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
-function readGender(value: unknown): Gender {
-  return value === "male" || value === "female" ? value : "";
-}
-
 function readConversations(value: unknown): Conversation[] {
   return Array.isArray(value) ? (value as Conversation[]).slice(0, 12) : [];
 }
@@ -175,7 +171,7 @@ export function readAccountSlice(userId: string): AccountSlice {
     displayName: typeof saved.displayName === "string" ? saved.displayName : "",
     email: typeof saved.email === "string" ? saved.email : "",
     birthday: typeof saved.birthday === "string" ? saved.birthday : "",
-    gender: readGender(saved.gender),
+    gender: "",
     phone: typeof saved.phone === "string" ? saved.phone : "",
     conversations: readConversations(saved.conversations),
     activeConversationId: typeof saved.activeConversationId === "string" ? saved.activeConversationId : "",
@@ -193,7 +189,6 @@ export function writeAccountSlice(userId: string, state: GptState): void {
         displayName: state.displayName,
         email: state.email,
         birthday: state.birthday,
-        gender: state.gender,
         phone: state.phone,
         conversations: state.conversations,
         activeConversationId: state.activeConversationId,

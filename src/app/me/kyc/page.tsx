@@ -5,9 +5,20 @@ import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { useGpt } from "@/lib/gpt/GptContext";
-import { getKycStatus, readKycReason, readKycUiStatus, submitKyc, toE164, type KycUiStatus } from "@/lib/api";
+import {
+  ApiError,
+  getKycStatus,
+  KYC_FILE_ACCEPT,
+  kycFileIssue,
+  kycPairIssue,
+  readKycReason,
+  readKycUiStatus,
+  submitKyc,
+  toE164,
+  type KycUiStatus,
+} from "@/lib/api";
 import { validPhone } from "@/lib/gpt/validate";
-import { MSG, toastFromError } from "@/lib/messages";
+import { MSG, toastFromError, userFacingError } from "@/lib/messages";
 
 const ID_DOC_TYPES = [
   { idDocType: "kr_id", label: "주민등록증" },
@@ -92,8 +103,9 @@ export default function MeKycPage() {
       showToast(MSG.kycNeed, "warning");
       return;
     }
-    if (!idDoc || !selfie) {
-      showToast(MSG.kycNeedFiles, "warning");
+    const pairIssue = kycPairIssue(idDoc, selfie);
+    if (pairIssue) {
+      showToast(userFacingError(pairIssue, MSG.kycNeedFiles), "warning");
       return;
     }
     setBusy(true);
@@ -103,13 +115,17 @@ export default function MeKycPage() {
         phoneE164: toE164(phone),
         birthDate,
         idDocType,
-        idDoc,
-        selfie,
+        idDoc: idDoc as File,
+        selfie: selfie as File,
       });
       const next = await getKycStatus();
       applyStatus(next);
       showToast(MSG.kycOk, "success");
     } catch (error: unknown) {
+      if (error instanceof ApiError && error.status === 409) {
+        await fetchStatus();
+        return;
+      }
       const payload = toastFromError(error, MSG.kycFail);
       showToast(payload.message, payload.kind);
     } finally {
@@ -276,9 +292,19 @@ export default function MeKycPage() {
             <input
               name="idDoc"
               type="file"
-              accept="image/*"
+              accept={KYC_FILE_ACCEPT}
               required
-              onChange={(event) => setIdDoc(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                const issue = kycFileIssue(file);
+                if (file && issue) {
+                  showToast(userFacingError(issue, MSG.kycNeedFiles), "warning");
+                  event.target.value = "";
+                  setIdDoc(null);
+                  return;
+                }
+                setIdDoc(file);
+              }}
             />
             <small>주민번호 뒤쪽이 보이지 않게 가려 주세요.</small>
             <FilePreview file={idDoc} />
@@ -290,9 +316,19 @@ export default function MeKycPage() {
             <input
               name="selfie"
               type="file"
-              accept="image/*"
+              accept={KYC_FILE_ACCEPT}
               required
-              onChange={(event) => setSelfie(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                const issue = kycFileIssue(file);
+                if (file && issue) {
+                  showToast(userFacingError(issue, MSG.kycNeedFiles), "warning");
+                  event.target.value = "";
+                  setSelfie(null);
+                  return;
+                }
+                setSelfie(file);
+              }}
             />
             <FilePreview file={selfie} />
           </label>

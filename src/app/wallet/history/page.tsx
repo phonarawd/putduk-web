@@ -11,8 +11,11 @@ import { MSG } from "@/lib/messages";
 function amountLabel(row: JournalRow) {
   const amount = journalSingleAmount(row);
   if (amount == null) return MSG.ledgerDetailNeed;
-  if (amount === "0") return amount;
   return amount;
+}
+
+function rowLabel(row: JournalRow) {
+  return row.display?.labelKo || MSG.ledgerDetailNeed;
 }
 
 export default function WalletHistoryPage() {
@@ -64,7 +67,7 @@ export default function WalletHistoryPage() {
                 ·
               </span>
               <div>
-                <strong>{row.journalType || MSG.ledgerDetailNeed}</strong>
+                <strong>{rowLabel(row)}</strong>
                 <small>{row.createdAt ? formatTime(row.createdAt) : ""}</small>
               </div>
               <b>{amountLabel(row)}</b>
