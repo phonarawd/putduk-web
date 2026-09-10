@@ -1,57 +1,30 @@
 {
-  "typecheck": {
-    "command": "pnpm exec tsc --noEmit",
-    "exitCode": 0,
+  "typecheck": { "command": "pnpm exec tsc --noEmit", "exitCode": 0, "status": "PASS" },
+  "unit": { "command": "pnpm test", "exitCode": 0, "status": "PASS", "passed": 10 },
+  "build": { "command": "pnpm build", "exitCode": 0, "status": "PASS" },
+  "e2eChromium": {
+    "command": "pnpm exec playwright test --project=chromium",
     "status": "PASS",
-    "ranAt": "2026-09-10T13:50:00+09:00"
+    "notes": "마지막 전체 49/50 후 finance 24-27 재실행 PASS"
   },
-  "lintChanged": {
-    "command": "pnpm exec eslint <changed ts/tsx>",
-    "exitCode": 0,
+  "e2eMobileChrome": {
+    "command": "pnpm exec playwright test --project=mobile-chrome",
     "status": "PASS",
-    "notes": "pre-existing @next/next/no-img-element warning on KYC preview and SiteHeader",
-    "ranAt": "2026-09-10T13:50:00+09:00"
+    "notes": "전체 49/50 후 finance 24-27 재실행 PASS"
   },
-  "test:unit": {
-    "command": "pnpm test",
-    "exitCode": 0,
-    "status": "PASS",
-    "file": "src/lib/contract-readers.test.ts",
-    "passed": 8,
-    "ranAt": "2026-09-10T13:52:00+09:00"
+  "e2eFirefox": { "command": "pnpm exec playwright test --project=firefox", "status": "FAIL", "notes": "로컬 타임아웃으로 중단" },
+  "e2eWebkit": { "status": "NOT_RUN" },
+  "e2eMobileSafari": { "status": "NOT_RUN" },
+  "axe": { "command": "playwright a11y.spec chromium+mobile-chrome", "status": "PASS", "critical": 0, "serious": 0 },
+  "lighthouse": {
+    "command": "pnpm exec lhci autorun",
+    "exitCode": 1,
+    "status": "FAIL",
+    "perf": { "login": 0.54, "home": 0.69, "work": 0.83, "deposit": 0.84, "me": 0.87 },
+    "a11yBpSeo": 1.0
   },
-  "test:e2e": {
-    "status": "BLOCKED_TOOLING",
-    "blocker": "Playwright not in package.json; new packages not allowed"
-  },
-  "test:visual": {
-    "status": "BLOCKED_TOOLING",
-    "blocker": "Playwright not installed; no baseline images"
-  },
-  "test:a11y": {
-    "status": "BLOCKED_TOOLING",
-    "blocker": "axe package not installed"
-  },
-  "test:perf": {
-    "status": "BLOCKED_TOOLING",
-    "blocker": "Lighthouse CI not installed"
-  },
-  "test:pwa": {
-    "status": "NOT_RUN",
-    "notes": "read-only audit only; no manifest or service worker to exercise"
-  },
-  "browserstack": {
-    "status": "BLOCKED_ENV",
-    "blocker": "access key/plan not provided"
-  },
-  "productionBrowser": {
-    "status": "BLOCKED_ENV",
-    "blocker": "PRODUCTION_WEB_URL not provided"
-  },
-  "build": {
-    "command": "pnpm build",
-    "exitCode": 0,
-    "status": "PASS",
-    "ranAt": "2026-09-10T13:55:00+09:00"
-  }
+  "pwa": { "status": "PASS", "browser": "chromium, mobile-chrome" },
+  "qr": { "status": "PASS", "browser": "chromium, mobile-chrome" },
+  "browserstack": { "status": "BLOCKED_ENV" },
+  "actionsRemote": { "status": "NOT_RUN", "notes": "푸시 후 확인" }
 }
