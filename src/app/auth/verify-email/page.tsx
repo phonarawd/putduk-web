@@ -3,6 +3,7 @@
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
+import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { resendSignupEmail, verifyClassicSignup } from "@/lib/api";
 import { MSG, toastFromError } from "@/lib/messages";
@@ -17,6 +18,8 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
     (typeof query.code === "string" && query.code) ||
     "";
   const [typedToken, setTypedToken] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
   const [busy, setBusy] = useState(false);
   const token = linkToken || typedToken;
   const startedLinkRef = useRef("");
@@ -47,11 +50,19 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
       showToast(MSG.emailNeed, "warning");
       return;
     }
+    if (hasTurnstileSiteKey() && !turnstileToken) {
+      showToast(MSG.challengeNeed, "warning");
+      return;
+    }
     setBusy(true);
     try {
-      await resendSignupEmail(state.email);
+      await resendSignupEmail(state.email, turnstileToken || undefined);
+      setTurnstileToken("");
+      setTurnstileReset((value) => value + 1);
       showToast(MSG.resendOk, "success");
     } catch (error: unknown) {
+      setTurnstileToken("");
+      setTurnstileReset((value) => value + 1);
       const payload = toastFromError(error, MSG.genericError);
       showToast(payload.message, payload.kind);
     } finally {
@@ -93,6 +104,7 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
         </button>
         {state.email ? (
           <>
+            <TurnstileBox action="email-resend" onToken={setTurnstileToken} resetNonce={turnstileReset} />
             <button className="route-back-link" type="button" disabled={busy} onClick={() => void onResend()}>
               인증 메일 다시 받기
             </button>
