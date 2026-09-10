@@ -4600,6 +4600,12 @@ textarea:focus-visible {
   font-style: normal;
 }
 
+.form-field img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 .form-field input,
 .form-field textarea {
   width: 100%;
