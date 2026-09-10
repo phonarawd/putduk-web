@@ -49,9 +49,10 @@ export async function loginThroughForm(page: Page, who: "a" | "b" = "a") {
 
 export async function loginSeeded(page: Page, who: "a" | "b", conversationTitle?: string) {
   const user = who === "b" ? USER_B : USER_A;
-  await page.goto("/");
-  await seedAccountSlice(page, user, conversationTitle ? { conversationTitle } : undefined);
   await becomeUser(page);
+  await seedAccountSlice(page, user, conversationTitle ? { conversationTitle } : undefined);
+  await page.reload();
+  await expect(page.locator("#logoutButton")).toBeVisible({ timeout: 15_000 });
 }
 
 export { USER_A, USER_B };
