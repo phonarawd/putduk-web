@@ -19,6 +19,7 @@ import {
 
 export type MockUser = "a" | "b" | "none";
 export type KycMode = "none" | "pending" | "approved" | "rejected" | "error" | "slow";
+export type KycSubmitMode = "ok" | "conflict-pending" | "conflict-approved";
 export type LedgerMode = "full" | "empty" | "error";
 export type GoogleStartMode = "ok" | "javascript" | "invalid";
 export type GoogleCallbackMode = "existing" | "new-terms" | "incomplete" | "missing-skip";
@@ -29,6 +30,7 @@ export type MockOptions = {
   user?: MockUser;
   onboarding?: "complete" | "incomplete";
   kyc?: KycMode;
+  kycSubmit?: KycSubmitMode;
   ledger?: LedgerMode;
   googleStart?: GoogleStartMode;
   googleCallback?: GoogleCallbackMode;
@@ -44,6 +46,7 @@ type Captured = {
   resendBodies: unknown[];
   callbackBodies: unknown[];
   callbackCount: number;
+  completeBodies: unknown[];
   withdrawBodies: unknown[];
   profileBodies: unknown[];
   kycSubmits: number;
@@ -86,12 +89,15 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
     resendBodies: [],
     callbackBodies: [],
     callbackCount: 0,
+    completeBodies: [],
     withdrawBodies: [],
     profileBodies: [],
     kycSubmits: 0,
   };
   let withdrawFails = options.withdrawFailCount ?? (options.withdrawFailOnce ? 8 : 0);
   let policyFails = options.withdrawPolicy === "fail-once" ? 1 : options.withdrawPolicy === "fail" ? 99 : 0;
+  const sessionGender = new Map<string, "male" | "female">();
+  let kycLive: Exclude<KycMode, "error" | "slow"> = options.kyc === "error" || options.kyc === "slow" || !options.kyc ? "none" : options.kyc;
 
   await page.context().route(
     (url) => url.hostname === "api.hiptk.app" || url.pathname.startsWith("/api/v1/"),
@@ -116,7 +122,8 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
 
     if (path === "/api/v1/auth/session" && method === "GET") {
       if (!options.user || options.user === "none") return json(route, { message: "AUTH_REQUIRED" }, 401);
-      return json(route, sessionDto(userOf(options.user), options.onboarding ?? "complete"));
+      const user = userOf(options.user);
+      return json(route, sessionDto(user, options.onboarding ?? "complete", sessionGender.get(user.userId) ?? null));
     }
 
     if (path === "/api/v1/auth/login" && method === "POST") {
@@ -149,14 +156,35 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
     if (path === "/api/v1/auth/oauth/google/callback" && method === "POST") {
       captured.callbackCount += 1;
       captured.callbackBodies.push(body);
-      if (options.googleCallback === "new-terms") return json(route, { message: "TERMS_REQUIRED" }, 400);
+      if (options.googleCallback === "new-terms") {
+        return json(
+          route,
+          { code: "TERMS_REQUIRED", message: "TERMS_REQUIRED", pendingToken: "qa-pending-token", expiresInSec: 600 },
+          400,
+        );
+      }
       if (options.googleCallback === "incomplete") return json(route, googleCallbackDto("incomplete"));
+      return json(route, googleCallbackDto("complete"));
+    }
+
+    if (path === "/api/v1/auth/oauth/google/complete" && method === "POST") {
+      captured.completeBodies.push(body);
+      if (body.pendingToken !== "qa-pending-token") {
+        return json(route, { code: "OAUTH_PENDING_INVALID", message: "OAUTH_PENDING_INVALID" }, 400);
+      }
       return json(route, googleCallbackDto("complete"));
     }
 
     if (path === "/api/v1/auth/profile" && method === "PATCH") {
       captured.profileBodies.push(body);
-      return json(route, { ok: true, onboarding: "complete", onboardingStage: "B_complete" });
+      const gender = body.gender === "male" || body.gender === "female" ? body.gender : undefined;
+      if (gender && options.user && options.user !== "none") {
+        sessionGender.set(userOf(options.user).userId, gender);
+      }
+      const stored =
+        gender ??
+        (options.user && options.user !== "none" ? sessionGender.get(userOf(options.user).userId) ?? null : null);
+      return json(route, { ok: true, onboarding: "complete", onboardingStage: "B_complete", gender: stored ?? null });
     }
 
     if (path === "/api/v1/me/home-read" && method === "GET") return json(route, { listFeed: OPPORTUNITY_LIST.items });
@@ -216,10 +244,19 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
         await new Promise((resolve) => setTimeout(resolve, 1200));
         return json(route, kycDto("none"));
       }
-      return json(route, kycDto(options.kyc ?? "none"));
+      return json(route, kycDto(kycLive));
     }
     if (path === "/api/v1/compliance/kyc/submit" && method === "POST") {
       captured.kycSubmits += 1;
+      if (options.kycSubmit === "conflict-pending") {
+        kycLive = "pending";
+        return json(route, { message: "pending" }, 409);
+      }
+      if (options.kycSubmit === "conflict-approved") {
+        kycLive = "approved";
+        return json(route, { message: "approved" }, 409);
+      }
+      kycLive = "pending";
       return json(route, { ok: true });
     }
 

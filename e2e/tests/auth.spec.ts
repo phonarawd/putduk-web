@@ -60,11 +60,22 @@ test.describe("인증 1-12", () => {
     await expect(page.getByRole("button", { name: /로그인하고 데스크 열기/ })).toHaveCount(0);
   });
 
-  test("7. 신규 사용자 callback 후 약관 대기", async ({ page }) => {
-    await openPage(page, { user: "none", googleCallback: "new-terms" });
+  test("7. 신규 사용자 callback 후 약관 확정", async ({ page }) => {
+    const { mock } = await openPage(page, { user: "none", googleCallback: "new-terms" });
     await page.goto("/auth/oauth/google/callback?code=qa-code&state=qa-state");
-    await expect(page.getByText(MSG.termsNeed)).toBeVisible();
+    await expect(page.locator('form[data-form="google-complete"]')).toBeVisible();
     await expect(page).toHaveURL(/\/auth\/oauth\/google\/callback/);
+    await page.locator('input[name="requiredTerms"]').check();
+    await page.getByRole("button", { name: "약관에 동의하고 계속" }).click();
+    await expect(page).toHaveURL(/\/$/);
+    expect(mock.captured.callbackCount).toBe(1);
+    expect(mock.captured.completeBodies).toHaveLength(1);
+    const complete = mock.captured.completeBodies[0] as Record<string, unknown>;
+    expect(complete).toMatchObject({ pendingToken: "qa-pending-token" });
+    expect(typeof complete.termsAcceptedAt).toBe("string");
+    expect(typeof complete.privacyAcceptedAt).toBe("string");
+    expect(complete).not.toHaveProperty("code");
+    expect(complete).not.toHaveProperty("state");
   });
 
   test("8. 필수정보 입력 후 홈", async ({ page }) => {

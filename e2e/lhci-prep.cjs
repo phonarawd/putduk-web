@@ -12,6 +12,7 @@ const session = {
   username: "qaaccounta",
   declaredName: "테스터갑",
   onboarding: "complete",
+  gender: null,
 };
 
 function bodyFor(url) {
@@ -51,7 +52,16 @@ async function attach(page) {
   await page.setRequestInterception(true);
   page.on("request", (request) => {
     try {
-      if (!request.url().startsWith(API)) {
+      const url = request.url();
+      if (url.includes("challenges.cloudflare.com") || /turnstile/i.test(url)) {
+        request.respond({
+          status: 200,
+          contentType: "application/javascript; charset=utf-8",
+          body: "window.turnstile={render(el,opt){if(opt&&typeof opt.callback==='function')opt.callback('lhci-token');return 'lh';},reset(){},remove(){},ready(fn){if(typeof fn==='function')fn();}};",
+        });
+        return;
+      }
+      if (!url.startsWith(API)) {
         request.continue();
         return;
       }
@@ -77,7 +87,7 @@ async function attach(page) {
           status: 401,
           contentType: "application/json",
           headers,
-          body: JSON.stringify({ message: "unauthorized" }),
+          body: JSON.stringify({ message: "AUTH_REQUIRED" }),
         });
         return;
       }

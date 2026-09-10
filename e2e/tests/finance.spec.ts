@@ -10,16 +10,20 @@ async function clickWithdraw(page: import("@playwright/test").Page) {
 }
 
 test.describe("금융 20-28", () => {
-  test("20-23. 원장은 journalType과 안전한 금액만 보여 준다", async ({ page }) => {
+  test("20-23. 원장은 display 한글과 서버 금액만 보여 준다", async ({ page }) => {
     await openPage(page, { user: "a" });
     await becomeUser(page);
     await page.goto("/wallet/history");
-    await expect(page.getByText("deposit_usdt")).toBeVisible();
-    await expect(page.getByText("withdraw", { exact: true })).toBeVisible();
-    await expect(page.getByText("participate_lock")).toBeVisible();
-    await expect(page.getByText("withdraw_refund")).toBeVisible();
-    await expect(page.getByText(MSG.ledgerDetailNeed)).toHaveCount(2);
+    await expect(page.getByText("USDT 입금")).toBeVisible();
+    await expect(page.getByText("출금", { exact: true })).toBeVisible();
+    await expect(page.getByText("참여 잠금")).toBeVisible();
+    await expect(page.getByText("출금 반환")).toBeVisible();
+    await expect(page.getByText("수수료")).toBeVisible();
+    await expect(page.getByText("정산")).toBeVisible();
+    await expect(page.getByText("확인 필요")).toBeVisible();
+    await expect(page.getByText("deposit_usdt")).toHaveCount(0);
     await expect(page.getByText("10.000000")).toBeVisible();
+    await expect(page.getByText("3.000000")).toBeVisible();
     await expect(page.getByText("0", { exact: true })).toBeVisible();
   });
 
