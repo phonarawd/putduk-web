@@ -1,0 +1,88 @@
+name: PR quality
+
+on:
+  pull_request:
+  push:
+    branches: [ui/p0-account-truth]
+
+concurrency:
+  group: pr-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+      - name: Lint
+        run: pnpm lint
+      - name: Unit
+        run: pnpm test
+      - name: Production build
+        run: pnpm build
+      - name: Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: E2E Chromium
+        run: pnpm exec playwright test --project=chromium --project=mobile-chrome
+      - name: Lighthouse CI
+        run: |
+          CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -type f -name chrome | head -n 1)"
+          export CHROME_PATH
+          pnpm exec lhci autorun
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-quality
+          if-no-files-found: ignore
+          path: |
+            playwright-report
+            test-results
+            quality/artifacts
+            .lighthouseci
+
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Production build
+        run: pnpm build
+      - name: Playwright Firefox WebKit
+        run: pnpm exec playwright install --with-deps firefox webkit
+      - name: E2E Firefox
+        run: pnpm exec playwright test --project=firefox
+      - name: E2E WebKit
+        run: pnpm exec playwright test --project=webkit --project=mobile-safari
+      - name: Upload browser artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-quality-browsers
+          if-no-files-found: ignore
+          path: |
+            playwright-report
+            test-results
