@@ -19,6 +19,26 @@ const SCREENS: Array<{ name: string; path: string; auth?: boolean; extra?: Recor
   { name: "membership", path: "/me/membership", auth: true },
   { name: "benefits", path: "/me/benefits", auth: true },
   { name: "ai", path: "/ai", auth: true },
+  // /me/peotteok는 /ai와 같은 PeotteokAiView라 중복 스캔하지 않는다.
+  { name: "invite", path: "/invite", auth: true },
+  { name: "find-id", path: "/auth/find-id" },
+  { name: "reset-password", path: "/auth/reset-password" },
+  { name: "verify-email", path: "/auth/verify-email" },
+  { name: "legal", path: "/legal" },
+  { name: "legal-privacy", path: "/legal/privacy" },
+  { name: "legal-terms", path: "/legal/terms" },
+  { name: "legal-license", path: "/legal/license" },
+  { name: "legal-oss", path: "/legal/oss" },
+  { name: "legal-recognition", path: "/legal/recognition" },
+  { name: "me-inbox", path: "/me/inbox", auth: true },
+  { name: "me-settings", path: "/me/settings", auth: true },
+  { name: "me-support", path: "/me/support", auth: true },
+  { name: "me-notices", path: "/me/notices", auth: true },
+  { name: "me-events", path: "/me/events", auth: true },
+  { name: "me-records", path: "/me/records", auth: true },
+  { name: "usdt-guide", path: "/wallet/usdt-guide", auth: true },
+  { name: "offline", path: "/offline" },
+  { name: "not-found", path: "/putduk-qa-no-such-route" },
 ];
 
 test.describe("접근성 axe", () => {
