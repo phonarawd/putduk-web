@@ -27,6 +27,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" data-scroll-behavior="smooth">
+      <head>
+        <link rel="preload" href="/fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+      </head>
       <body>
         <GptProvider>
           <AppShell>{children}</AppShell>

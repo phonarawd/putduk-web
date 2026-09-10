@@ -8,24 +8,63 @@ const AMBASSADOR_LABEL = "퍼뜩 공식 앰버서더";
 
 export const AMBASSADOR_HERO = {
   src: "/assets/ambassadors/01_putduk_main_hero.png",
-  width: 1672,
-  height: 941,
+  webp: "/assets/ambassadors/01_putduk_main_hero.webp",
+  width: 1280,
+  height: 720,
   alt: "퍼뜩 공식 앰버서더가 휴대폰으로 리셀러 데스크를 보여주는 모습",
 } as const;
 
 export const AMBASSADOR_OPPORTUNITY = {
   src: "/assets/ambassadors/02_putduk_opportunity_ambassador.png",
-  width: 1122,
-  height: 1402,
+  webp: "/assets/ambassadors/02_putduk_opportunity_ambassador.webp",
+  width: 800,
+  height: 1000,
   alt: "퍼뜩 공식 앰버서더가 오늘 기회와 잔여 자리를 안내하는 모습",
 } as const;
 
 export const AMBASSADOR_TRUST = {
   src: "/assets/ambassadors/03_putduk_trust_ambassador.png",
-  width: 1122,
-  height: 1402,
+  webp: "/assets/ambassadors/03_putduk_trust_ambassador.webp",
+  width: 800,
+  height: 1000,
   alt: "퍼뜩 공식 앰버서더가 자본 잠금과 안전 중단을 안내하는 모습",
 } as const;
+
+function AmbassadorPhoto({
+  src,
+  webp,
+  width,
+  height,
+  alt,
+  fetchPriority,
+  loading,
+  onError,
+}: {
+  src: string;
+  webp: string;
+  width: number;
+  height: number;
+  alt: string;
+  fetchPriority?: "high" | "low" | "auto";
+  loading?: "lazy" | "eager";
+  onError: () => void;
+}) {
+  return (
+    <picture>
+      <source type="image/webp" srcSet={webp} />
+      <img
+        src={src}
+        width={width}
+        height={height}
+        alt={alt}
+        fetchPriority={fetchPriority}
+        loading={loading}
+        decoding="async"
+        onError={onError}
+      />
+    </picture>
+  );
+}
 
 function useImageFailed() {
   const [failed, setFailed] = useState(false);
@@ -40,13 +79,13 @@ export function AmbassadorHero() {
     <div className="intro-visual" aria-label={AMBASSADOR_LABEL}>
       <div className={"ambassador-hero" + (failed ? " is-failed" : "")}>
         <div className="ambassador-hero-media">
-          <img
+          <AmbassadorPhoto
             src={AMBASSADOR_HERO.src}
+            webp={AMBASSADOR_HERO.webp}
             width={AMBASSADOR_HERO.width}
             height={AMBASSADOR_HERO.height}
             alt={AMBASSADOR_HERO.alt}
             fetchPriority="high"
-            decoding="async"
             onError={onError}
           />
         </div>
@@ -122,13 +161,13 @@ export function AmbassadorMoment() {
       }}
     >
       <span className="ambassador-moment-photo">
-        <img
+        <AmbassadorPhoto
           src={photo.src}
+          webp={photo.webp}
           width={photo.width}
           height={photo.height}
           alt={photo.alt}
           loading="lazy"
-          decoding="async"
           onError={onError}
         />
       </span>

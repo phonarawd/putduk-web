@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { AmbassadorHero, AmbassadorMoment } from "@/components/gpt/AmbassadorVisual";
 import { OpportunitySection } from "@/components/gpt/OpportunitySection";
+import { ReadyNotice } from "@/components/gpt/ReadyNotice";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
 import { trialGrantKrw } from "@/lib/api";
 import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
+import { MSG } from "@/lib/messages";
 import { principalSuggestion } from "@/lib/gpt/opportunities";
 
 function IntroScreen() {
@@ -217,6 +219,13 @@ function ProfileCapitalCard() {
 }
 
 export default function HomePage() {
-  const { state } = useGpt();
+  const { state, sessionReady } = useGpt();
+  if (!sessionReady) {
+    return (
+      <section className="route-screen shell" aria-live="polite">
+        <ReadyNotice title={MSG.screenWait} copy={MSG.screenWaitCopy} />
+      </section>
+    );
+  }
   return state.loggedIn ? <HomeWorkspace /> : <IntroScreen />;
 }

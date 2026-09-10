@@ -66,6 +66,21 @@ async function attach(page) {
         request.respond({ status: 204, headers });
         return;
       }
+      let pagePath = "";
+      try {
+        pagePath = new URL(page.url()).pathname;
+      } catch {
+        pagePath = "";
+      }
+      if (pagePath === "/login" && request.url().includes("/auth/session")) {
+        request.respond({
+          status: 401,
+          contentType: "application/json",
+          headers,
+          body: JSON.stringify({ message: "unauthorized" }),
+        });
+        return;
+      }
       request.respond({
         status: 200,
         contentType: "application/json",

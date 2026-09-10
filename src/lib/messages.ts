@@ -41,6 +41,8 @@ export const MSG = {
   resendOk: "📬 인증 메일을 다시 보냈어요.",
   moneyPreparing: "준비 중",
   referralWait: "잠시 기다려 주세요.",
+  screenWait: "잠시만 기다려 주세요",
+  screenWaitCopy: "화면을 준비하고 있어요.",
   profileSaved: "✅ 내 정보를 저장했어요.",
   profileSaveFail: "😥 정보를 저장하지 못했어요. 다시 시도해 주세요.",
   verifyNeed: "⚠️ 메일 안의 인증 링크로 들어와 주세요.",

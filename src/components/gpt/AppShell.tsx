@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { isGatedPath } from "@/lib/gpt/constants";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { MSG } from "@/lib/messages";
+import { ReadyNotice } from "./ReadyNotice";
 import { CapitalModal } from "./CapitalModal";
 import { ExecutionModal } from "./ExecutionModal";
 import { MobileNav } from "./MobileNav";
@@ -39,10 +40,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   if ((!sessionReady && gated) || blocked || needsProfile) {
     return (
       <section className="route-screen shell" aria-live="polite">
-        <div className="plain-notice">
-          <strong>잠시만 기다려 주세요</strong>
-          <p>화면을 준비하고 있어요.</p>
-        </div>
+        <ReadyNotice title={MSG.screenWait} copy={MSG.screenWaitCopy} />
       </section>
     );
   }
