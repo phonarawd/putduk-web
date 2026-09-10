@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { googleRedirectUrl, startGoogle } from "@/lib/api";
+import { googleAuthorizeUrl, startGoogle } from "@/lib/api";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { MSG, toastFromError } from "@/lib/messages";
 
@@ -14,7 +14,7 @@ export function GoogleContinueButton({ disabled = false }: { disabled?: boolean 
     setBusy(true);
     try {
       const data = await startGoogle();
-      const url = googleRedirectUrl(data);
+      const url = googleAuthorizeUrl(data);
       if (!url) {
         showToast(MSG.googleUrlFail, "error");
         return;

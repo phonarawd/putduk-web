@@ -18,6 +18,7 @@ export const MSG = {
   googleStartFail: "😥 구글 로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요.",
   googleUrlFail: "😥 구글 연결 주소를 받지 못했어요. 잠시 후 다시 시도해 주세요.",
   googleFail: "😥 구글 로그인을 마치지 못했어요. 다시 시도해 주세요.",
+  googleCallbackNeed: "⚠️ 구글 연결 정보가 부족해요. 처음부터 다시 시도해 주세요.",
   signupOk: "📬 인증 메일을 보냈어요. 메일함을 확인해 주세요.",
   signupFail: "😥 가입을 마치지 못했어요. 입력한 정보를 다시 확인해 주세요.",
   signupBusy: "⏳ 지금은 가입과 로그인을 받을 수 없어요. 잠시 뒤 다시 시도해 주세요.",
@@ -26,7 +27,7 @@ export const MSG = {
   usernameTaken: "⚠️ 이미 쓰는 아이디예요. 다른 아이디를 입력해 주세요.",
   emailNeed: "⚠️ 이메일을 정확하게 입력해 주세요.",
   passwordMismatch: "⚠️ 비밀번호 확인이 서로 달라요.",
-  profileNeed: "⚠️ 이름, 생년월일 앞자리와 성별을 알려 주세요.",
+  profileNeed: "⚠️ 이름, 생년월일, 휴대폰 번호와 이메일을 알려 주세요.",
   nameBirthNeed: "⚠️ 이름과 생년월일 앞자리를 알려 주세요.",
   nameInvalid: "⚠️ 이름을 다시 확인해 주세요.",
   ageNeed: "⚠️ 만 19세 이상만 가입할 수 있어요.",
@@ -103,9 +104,13 @@ export const MSG = {
   kycPending: "본인확인을 살펴보고 있어요. 끝나면 알려 드릴게요.",
   kycRejected: "본인확인을 다시 제출해 주세요.",
   kycReasonEmpty: "자세한 사유는 아직 없어요.",
+  kycLoadFail: "본인확인 상태를 확인하지 못했어요.",
   withdrawPolicyFail: "출금 전 확인 방법을 가져오지 못했어요.",
   withdrawPolicyRetry: "다시 시도",
   ledgerAmountEmpty: "금액 확인 중",
+  ledgerDetailNeed: "상세 확인 필요",
+  depositGuideEmpty: "아직 입금 안내가 없어요.",
+  depositGuideFail: "입금 안내를 가져오지 못했어요.",
   aiWait: "⏳ 답변을 준비하고 있어요.",
   aiUnavailable: "😥 답변을 아직 연결하지 못했어요. 홈에서 기회와 지갑을 직접 확인해 주세요.",
   aiSendFail: "😥 답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.",
@@ -114,6 +119,7 @@ export const MSG = {
 const TECHNICAL_RE = /unauthorized|forbidden|not found|internal server|bad request|network error|request failed|invalid token|api error|timeout|econn|fetch|exception|payload|endpoint|stack|sql|jwt|oauth|status|http\/|error code|\b\d{3}\b/i;
 
 function mapKnownCode(text: string): string | null {
+  if (/CONFIG_NOT_READY/i.test(text)) return MSG.depositGuideEmpty;
   if (/TURNSTILE_UNAVAILABLE/i.test(text)) return MSG.signupBusy;
   if (/TURNSTILE_FAILED/i.test(text)) return MSG.challengeRetry;
   if (/TERMS_REQUIRED/i.test(text)) return MSG.termsNeed;

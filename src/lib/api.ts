@@ -1,3 +1,23 @@
+export {
+  googleAuthorizeUrl,
+  isKrwConfigNotReady,
+  journalSingleAmount,
+  needsCompleteProfile,
+  readBenefitItems,
+  readJournals,
+  readKycReason,
+  readKycUiStatus,
+  readKycVerified,
+  readKrwInstructions,
+  readMembershipView,
+  shouldRotateWithdrawIntent,
+  withdrawLockedMismatch,
+  type BenefitItemView,
+  type JournalRow,
+  type KycUiStatus,
+  type MembershipView,
+} from "./contract-readers";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://api.hiptk.app";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -102,6 +122,8 @@ const AUTH_NO_REFRESH = new Set([
   "/api/v1/auth/password-reset/request",
   "/api/v1/auth/password-reset/complete",
   "/api/v1/auth/email/resend",
+  "/api/v1/auth/oauth/google/start",
+  "/api/v1/auth/oauth/google/callback",
 ]);
 
 type ApiInit = RequestInit & { skipRefresh?: boolean };
@@ -349,17 +371,28 @@ export function startGoogle() {
   });
 }
 
-export function googleCallback(code: string) {
+export function googleCallback(code: string, state: string) {
   return apiFetch<unknown>("/api/v1/auth/oauth/google/callback", {
     method: "POST",
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, state }),
   });
+}
+
+const googleCallbackMemory = new Map<string, Promise<unknown>>();
+
+export function googleCallbackOnce(code: string, state: string) {
+  const key = `${code}:${state}`;
+  const existing = googleCallbackMemory.get(key);
+  if (existing) return existing;
+  const request = googleCallback(code, state);
+  googleCallbackMemory.set(key, request);
+  return request;
 }
 
 export function saveProfile(fields: {
   displayName: string;
   birthDate: string;
-  phoneE164?: string;
+  phoneE164: string;
   email?: string;
 }) {
   return apiFetch("/api/v1/auth/profile", {
@@ -367,7 +400,7 @@ export function saveProfile(fields: {
     body: JSON.stringify({
       displayName: fields.displayName,
       birthDate: fields.birthDate,
-      ...(fields.phoneE164 ? { phoneE164: fields.phoneE164 } : {}),
+      phoneE164: fields.phoneE164,
       ...(fields.email ? { email: fields.email } : {}),
     }),
   });
@@ -381,29 +414,6 @@ export function logout() {
   return apiFetch("/api/v1/auth/logout", { method: "POST" });
 }
 
-export function googleRedirectUrl(data: unknown): string | null {
-  if (typeof data === "string" && data.startsWith("http")) {
-    return data;
-  }
-  const row = asRecord(data);
-  if (!row) return null;
-  for (const key of ["url", "redirectUrl", "authorizationUrl"]) {
-    const value = readString(row[key]);
-    if (value && value.startsWith("http")) return value;
-  }
-  return null;
-}
-
-export function needsCompleteProfile(data: unknown): boolean {
-  const row = asRecord(data);
-  if (!row) return false;
-  if (row.needsProfile === true || row.isNewUser === true || row.profileComplete === false) return true;
-  const user = nest(row, "user") || nest(row, "session");
-  if (user && (user.needsProfile === true || user.profileComplete === false || user.profileCompleted === false)) {
-    return true;
-  }
-  return false;
-}
 
 function sessionUser(data: unknown): Record<string, unknown> | null {
   const row = asRecord(data);
@@ -604,6 +614,10 @@ export function submitKyc(fields: {
 
 export function getMembership() {
   return apiFetch<unknown>("/api/v1/me/membership");
+}
+
+export function getBenefits() {
+  return apiFetch<unknown>("/api/v1/me/benefits");
 }
 
 export function getReferralMe() {
@@ -1193,83 +1207,6 @@ export function readDepositAddress(data: unknown): { address: string; network: s
   };
 }
 
-export function readKrwInstructions(data: unknown): { bank: string | null; account: string | null; holder: string | null; memo: string | null } | null {
-  const row = asRecord(data);
-  if (!row) return null;
-  const inner = nest(row, "instructions") || nest(row, "account") || row;
-  const bank = pickString(inner, ["bank", "bankName", "bankNameKo"]);
-  const account = pickString(inner, ["account", "accountNumber", "accountNo"]);
-  const holder = pickString(inner, ["holder", "accountHolder", "depositorName", "name"]);
-  const memo = pickString(inner, ["memo", "message", "guide", "copy"]);
-  if (!bank && !account && !holder && !memo) return null;
-  return { bank, account, holder, memo };
-}
-
-export type JournalRow = {
-  key: string;
-  type: string;
-  amountKrw: number | null;
-  amountUsdt: number | null;
-  status: string;
-  date: string;
-};
-
-export type JournalDirection = "in" | "out" | "unknown";
-
-export function readJournals(data: unknown): JournalRow[] {
-  return asList(data).flatMap((item, index) => {
-    const row = asRecord(item);
-    if (!row) return [];
-    const amountKrw = pickNumber(row, ["amountKrw", "krw", "amount"]);
-    const amountUsdt = pickNumber(row, ["amountUsdt", "usdt"]);
-    return [
-      {
-        key: pickString(row, ["id", "journalId", "key"]) || `journal-${index}`,
-        type: pickString(row, ["type", "kind", "title", "label"]) || "기록",
-        amountKrw,
-        amountUsdt,
-        status: pickString(row, ["status", "state"]) || "",
-        date: pickString(row, ["createdAt", "occurredAt", "date", "at"]) || "",
-      },
-    ];
-  });
-}
-
-export function journalDirection(row: JournalRow): JournalDirection {
-  const type = row.type.trim().toLowerCase();
-  if (!type || type === "기록" || type === "unknown") return "unknown";
-  if (/(deposit|credit|in|profit|reward|refund|receive)/.test(type)) return "in";
-  if (/(withdraw|debit|out|fee|send|payout)/.test(type)) return "out";
-  return "unknown";
-}
-
-export function journalHasAmount(row: JournalRow): boolean {
-  const krw = row.amountKrw;
-  const usdt = row.amountUsdt;
-  return (krw != null && krw !== 0) || (usdt != null && usdt !== 0);
-}
-
-export type KycUiStatus = "verified" | "pending" | "rejected" | "none";
-
-export function readKycUiStatus(data: unknown): KycUiStatus {
-  const row = asRecord(data);
-  if (!row) return "none";
-  const status = (pickString(row, ["status", "kycStatus", "state"]) || "").toLowerCase();
-  if (status === "verified" || status === "approved" || row.verified === true) return "verified";
-  if (/pending|submitted|in_review|review|processing/.test(status)) return "pending";
-  if (/reject|denied|resubmit/.test(status)) return "rejected";
-  return "none";
-}
-
-export function readKycReason(data: unknown): string {
-  const row = asRecord(data);
-  return pickString(row, ["reason", "rejectReason", "rejectionReason"]) || "";
-}
-
-export function readKycVerified(data: unknown): boolean {
-  return readKycUiStatus(data) === "verified";
-}
-
 export function readStepUpMethod(data: unknown): "pin" | "email_otp" | null {
   const row = asRecord(data);
   const priority = row && Array.isArray(row.priority) ? row.priority.map(String) : [];
@@ -1280,24 +1217,12 @@ export function readStepUpMethod(data: unknown): "pin" | "email_otp" | null {
 
 export function readChallengeId(data: unknown): string | null {
   const row = asRecord(data);
-  return pickString(row, ["challengeId", "id"]) || pickString(nest(row, "challenge"), ["id", "challengeId"]);
+  return pickString(row, ["challengeId"]);
 }
 
 export function readStepUpToken(data: unknown): string | null {
   const row = asRecord(data);
-  return pickString(row, ["stepUpToken", "token"]) || pickString(nest(row, "stepUp"), ["token", "stepUpToken"]);
-}
-
-export function readMembershipCap(data: unknown): number | null {
-  const row = asRecord(data);
-  const inner = nest(row, "membership") || row;
-  return pickNumber(inner, ["dailyUserMatchCap", "remainingDailyMatches", "dailyMatchCap", "remaining"]);
-}
-
-export function readMembershipDisplayName(data: unknown): string {
-  const row = asRecord(data);
-  const inner = nest(row, "membership") || row;
-  return pickString(inner, ["displayName", "tierName", "tierDisplayName"]) || "";
+  return pickString(row, ["stepUpToken"]);
 }
 
 export function readReferral(data: unknown): { code: string | null; link: string | null } | null {

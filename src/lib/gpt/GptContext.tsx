@@ -30,6 +30,7 @@ import {
   listTrades,
   logout as logoutSession,
   mergeApiRows,
+  needsCompleteProfile,
   newIdempotencyKey,
   participateOpportunity,
   preflightOpportunity,
@@ -131,7 +132,7 @@ interface GptContextValue {
     phone: string;
     benefitNews: boolean;
   }) => void;
-  completeGoogleProfile: (fields: { displayName: string; birthday: string; gender: Gender; phone?: string }) => void;
+  completeGoogleProfile: (fields: { displayName: string; birthday: string; phone: string; email: string }) => void;
   cancelGoogleOnboarding: () => void;
   logout: () => void;
   setPendingRoute: (path: string) => void;
@@ -307,6 +308,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
   const applySession = useCallback((data: unknown) => {
     const userId = sessionUserId(data);
     const account = userId ? readAccountSlice(userId) : null;
+    const needProfile = needsCompleteProfile(data);
     setStoreState((prev) => ({
       ...prev,
       ...(account ?? {}),
@@ -316,6 +318,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
       displayName: sessionDisplayName(data) || account?.displayName || "",
       resellerId: sessionUsername(data),
       issuedAt: sessionIssuedAt(data),
+      profileCompleted: needProfile == null ? prev.profileCompleted : !needProfile,
     }));
   }, []);
 
@@ -359,7 +362,15 @@ export function GptProvider({ children }: { children: ReactNode }) {
       profileCompleted: !needsProfile,
       email: email || prev.email,
     }));
-  }, []);
+    void getSession()
+      .then((data) => {
+        applySession(data);
+        return needsProfile ? undefined : reloadDesk();
+      })
+      .catch(() => {
+        if (!needsProfile) return reloadDesk();
+      });
+  }, [applySession, reloadDesk]);
 
   // 고전(아이디) 가입 폼의 나머지 항목(표시 이름 등)은 연습 상태에만 반영한다. 로그인 처리는 이메일 인증 이후에 한다.
   const submitClassicSignupProfile = useCallback(
@@ -380,13 +391,13 @@ export function GptProvider({ children }: { children: ReactNode }) {
   );
 
   const completeGoogleProfile = useCallback(
-    (fields: { displayName: string; birthday: string; gender: Gender; phone?: string }) => {
+    (fields: { displayName: string; birthday: string; phone: string; email: string }) => {
       setStoreState((prev) => ({
         ...prev,
         displayName: fields.displayName,
         birthday: fields.birthday,
-        gender: fields.gender,
-        phone: fields.phone || prev.phone,
+        phone: fields.phone,
+        email: fields.email,
         profileCompleted: true,
         loggedIn: true,
       }));
