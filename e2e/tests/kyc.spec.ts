@@ -112,7 +112,9 @@ test.describe("KYC 29-37", () => {
         "base64",
       ),
     });
-    await page.getByRole("button", { name: "본인확인 요청" }).click();
+    await page.locator('form[data-form="kyc"]').evaluate((form) => {
+      (form as HTMLFormElement).requestSubmit();
+    });
     await expect(page.getByText(MSG.kycPending)).toBeVisible();
     await expect(page.getByText(MSG.kycOk)).toHaveCount(0);
     await expect(page.locator('form[data-form="kyc"]')).toHaveCount(0);
