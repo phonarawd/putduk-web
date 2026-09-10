@@ -1,5 +1,5 @@
 /* 퍼뜩 고객 웹 서비스 워커. 금융·인증·개인정보는 캐시하지 않는다. */
-const SW_VERSION = "putduk-web-sw-v1";
+const SW_VERSION = "putduk-web-sw-v2";
 const STATIC_CACHE = `putduk-static-${SW_VERSION}`;
 const OFFLINE_URL = "/offline";
 const PRECACHE = [OFFLINE_URL, "/manifest.webmanifest", "/putduk-mark.svg", "/icons/icon-192.png", "/icons/icon-512.png"];
@@ -20,6 +20,13 @@ function isPrivatePath(pathname) {
     pathname === "/invite" ||
     pathname === "/ai"
   );
+}
+
+async function navigateOffline(pathname) {
+  if (pathname === OFFLINE_URL || pathname === `${OFFLINE_URL}/`) {
+    return (await caches.match(OFFLINE_URL)) || new Response("", { status: 503, statusText: "offline" });
+  }
+  return Response.redirect(new URL(OFFLINE_URL, self.location.origin).href, 303);
 }
 
 function isStaticAsset(pathname) {
@@ -68,10 +75,7 @@ self.addEventListener("fetch", (event) => {
   if (isPrivatePath(url.pathname)) {
     event.respondWith(
       fetch(request).catch(async () => {
-        if (request.mode === "navigate") {
-          const offline = await caches.match(OFFLINE_URL);
-          if (offline) return offline;
-        }
+        if (request.mode === "navigate") return navigateOffline(url.pathname);
         return new Response("", { status: 503, statusText: "offline" });
       }),
     );
@@ -79,12 +83,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request).catch(async () => {
-        const offline = await caches.match(OFFLINE_URL);
-        return offline || new Response("", { status: 503, statusText: "offline" });
-      }),
-    );
+    event.respondWith(fetch(request).catch(() => navigateOffline(url.pathname)));
     return;
   }
 

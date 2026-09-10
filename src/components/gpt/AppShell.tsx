@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { isGatedPath } from "@/lib/gpt/constants";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { MSG } from "@/lib/messages";
+import { OfflineNotice } from "./OfflineNotice";
 import { ReadyNotice } from "./ReadyNotice";
 import { CapitalModal } from "./CapitalModal";
 import { ExecutionModal } from "./ExecutionModal";
@@ -14,16 +15,31 @@ import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 import { Toast } from "./Toast";
 
+function subscribeOnline(onStoreChange: () => void) {
+  window.addEventListener("online", onStoreChange);
+  window.addEventListener("offline", onStoreChange);
+  return () => {
+    window.removeEventListener("online", onStoreChange);
+    window.removeEventListener("offline", onStoreChange);
+  };
+}
+
+function readOffline(): boolean {
+  return navigator.onLine === false;
+}
+
 // 로그인 필요한 경로를 지키고, 아니면 /login 으로 보낸다 (원본 GATED_PATHS 리다이렉트 그대로).
 function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { ready, sessionReady, state, setPendingRoute, showToast } = useGpt();
+  const netOffline = useSyncExternalStore(subscribeOnline, readOffline, () => false);
   const gated = isGatedPath(pathname);
   const blocked = gated && !state.loggedIn;
   const needsProfile = state.loggedIn && !state.profileCompleted && pathname !== "/auth/complete-profile";
 
   useEffect(() => {
+    if (netOffline) return;
     if (!ready || !sessionReady) return;
     if (blocked) {
       setPendingRoute(pathname);
@@ -35,7 +51,11 @@ function AuthGate({ children }: { children: ReactNode }) {
       router.replace("/auth/complete-profile");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, sessionReady, blocked, needsProfile, pathname]);
+  }, [netOffline, ready, sessionReady, blocked, needsProfile, pathname]);
+
+  if (netOffline && gated) {
+    return <OfflineNotice />;
+  }
 
   if ((!sessionReady && gated) || blocked || needsProfile) {
     return (
