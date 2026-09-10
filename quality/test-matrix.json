@@ -1,34 +1,41 @@
 {
-  "typecheck": { "command": "pnpm exec tsc --noEmit", "exitCode": 0, "status": "PASS", "where": "CI run 34475447091" },
-  "lint": { "command": "pnpm lint", "exitCode": 0, "status": "PASS", "where": "CI run 34475447091" },
-  "unit": { "command": "pnpm test", "exitCode": 0, "status": "PASS", "passed": 11, "where": "CI and local" },
-  "build": { "command": "pnpm build", "exitCode": 0, "status": "PASS", "where": "CI run 34475447091" },
+  "typecheck": { "command": "pnpm exec tsc --noEmit", "exitCode": 0, "status": "PASS", "where": "CI run 34479208007 and local" },
+  "lint": { "command": "pnpm lint", "exitCode": 0, "status": "PASS", "where": "CI run 34479208007" },
+  "unit": { "command": "pnpm test", "exitCode": 0, "status": "PASS", "passed": 11, "where": "CI run 34479208007 and local" },
+  "build": { "command": "pnpm build", "exitCode": 0, "status": "PASS", "where": "CI run 34479208007" },
   "e2eChromium": {
     "command": "pnpm exec playwright test --project=chromium --project=mobile-chrome",
     "status": "PASS",
-    "where": "CI run 34475447091"
+    "where": "CI run 34479208007"
   },
   "e2eFirefox": {
     "command": "pnpm exec playwright test --project=firefox",
-    "status": "FAIL",
-    "where": "CI run 34475447091",
-    "notes": "pwa.spec 오프라인 금융 문구. 직전 2a51de6 PASS"
+    "status": "PASS",
+    "where": "CI run 34479208007"
   },
-  "e2eWebkit": { "status": "NOT_RUN", "notes": "b68bf54 browsers는 Firefox 실패 후 WebKit 생략. 2a51de6는 PASS" },
-  "e2eMobileSafari": { "status": "NOT_RUN" },
-  "axe": { "status": "PASS", "where": "CI Chromium + Mobile Chrome 34475447091" },
+  "e2eWebkit": {
+    "command": "pnpm exec playwright test --project=webkit",
+    "status": "PASS",
+    "where": "CI run 34479208007"
+  },
+  "e2eMobileSafari": {
+    "command": "pnpm exec playwright test --project=mobile-safari",
+    "status": "PASS",
+    "where": "CI run 34479208007 same browsers step as WebKit"
+  },
+  "axe": { "status": "PASS", "where": "CI Chromium + Mobile Chrome 34479208007" },
   "lighthouse": {
     "command": "pnpm exec lhci autorun",
     "exitCode": 1,
     "status": "FAIL",
-    "where": "CI run 34475447091 SHA b68bf54",
-    "perf": { "login": 0.89, "home": ">=0.90", "work": 0.89, "deposit": 0.86, "me": 0.88 },
+    "where": "CI run 34479208007 SHA 0caf192",
+    "perf": { "login": 0.88, "home": 0.89, "work": 0.88, "deposit": ">=0.90", "me": 0.89 },
     "thresholdLowered": false
   },
-  "pwa": { "status": "FAIL", "where": "Firefox offline finance on 34475447091. Chromium PASS" },
-  "qr": { "status": "PASS", "where": "CI Chromium + Mobile Chrome" },
+  "pwa": { "status": "PASS", "where": "Firefox/Chromium/WebKit offline finance on 34479208007" },
+  "qr": { "status": "PASS", "where": "CI Chromium + Mobile Chrome 34479208007" },
   "regression3x": { "status": "NOT_RUN" },
   "browserstack": { "status": "BLOCKED_ENV" },
   "liveApi": { "status": "BLOCKED_ENV", "notes": "backend PR 222 0fa38d77 MERGED NO DEPLOYED NO" },
-  "actionsRemote": { "status": "FAIL", "notes": "quality LH Perf. browsers Firefox PWA 1. WebKit NOT_RUN" }
+  "actionsRemote": { "status": "FAIL", "notes": "quality LH Perf. browsers PASS" }
 }
