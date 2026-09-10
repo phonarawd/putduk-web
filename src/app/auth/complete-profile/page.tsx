@@ -2,12 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GenderSelect } from "@/components/gpt/GenderSelect";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
-import { birthDateFromPrefix, getSession, isAdultBirthDate, isIsoDate, saveProfile, sessionEmail } from "@/lib/api";
+import {
+  birthDateFromPrefix,
+  getSession,
+  isAdultBirthDate,
+  isIsoDate,
+  saveProfile,
+  sessionEmail,
+  toE164,
+} from "@/lib/api";
+import { isStageBDisplayName, isStageBPhoneE164 } from "@/lib/contract-readers";
 import { useGpt } from "@/lib/gpt/GptContext";
-import type { Gender } from "@/lib/gpt/types";
-import { validBirthday } from "@/lib/gpt/validate";
+import { validBirthday, validEmail, validPhone } from "@/lib/gpt/validate";
 import { MSG, toastFromError } from "@/lib/messages";
 
 export default function CompleteProfilePage() {
@@ -17,7 +24,10 @@ export default function CompleteProfilePage() {
   const [email, setEmail] = useState(state.email);
   const [displayName, setDisplayName] = useState(state.displayName);
   const [birthday, setBirthday] = useState(state.birthday);
-  const [gender, setGender] = useState<Gender>("");
+  const [phone, setPhone] = useState(() => {
+    const digits = state.phone.replace(/[^0-9]/g, "");
+    return validPhone(digits) ? digits : "";
+  });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -41,14 +51,22 @@ export default function CompleteProfilePage() {
     }
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cancelGoogleOnboarding, router]);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (busy) return;
     const birthDate = birthDateFromPrefix(birthday);
-    if (!displayName.trim() || !validBirthday(birthday) || !isIsoDate(birthDate) || !gender) {
+    const phoneE164 = toE164(phone);
+    const nextEmail = email.trim().toLowerCase();
+    if (
+      !isStageBDisplayName(displayName) ||
+      !validBirthday(birthday) ||
+      !isIsoDate(birthDate) ||
+      !validPhone(phone) ||
+      !isStageBPhoneE164(phoneE164) ||
+      !validEmail(nextEmail)
+    ) {
       showToast(MSG.profileNeed, "warning");
       return;
     }
@@ -61,9 +79,15 @@ export default function CompleteProfilePage() {
       await saveProfile({
         displayName: displayName.trim(),
         birthDate,
-        email: email.trim() || undefined,
+        phoneE164,
+        email: nextEmail,
       });
-      completeGoogleProfile({ displayName: displayName.trim(), birthday, gender, phone: "" });
+      completeGoogleProfile({
+        displayName: displayName.trim(),
+        birthday,
+        phone: phoneE164,
+        email: nextEmail,
+      });
       showToast(MSG.profileSaved, "success");
       navigateAfterAuth("/");
     } catch (error: unknown) {
@@ -88,9 +112,18 @@ export default function CompleteProfilePage() {
           </div>
         </div>
         <form className="stack-form" data-form="complete-profile" noValidate onSubmit={onSubmit}>
-          <label className="form-field readonly-field">
-            <span>구글 이메일</span>
-            <input value={email} readOnly aria-readonly="true" />
+          <label className="form-field">
+            <span>
+              이메일 <b>필수</b>
+            </span>
+            <input
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
           </label>
           <label className="form-field">
             <span>
@@ -120,7 +153,20 @@ export default function CompleteProfilePage() {
               onChange={(event) => setBirthday(event.target.value.replace(/[^0-9]/g, ""))}
             />
           </label>
-          <GenderSelect value={gender} onChange={setGender} group="complete" />
+          <label className="form-field">
+            <span>
+              휴대폰 <b>필수</b>
+            </span>
+            <input
+              name="phone"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="01012345678"
+              required
+              value={phone}
+              onChange={(event) => setPhone(event.target.value.replace(/[^0-9]/g, ""))}
+            />
+          </label>
           <button className="form-primary" type="submit" disabled={busy}>
             내 데스크 준비하기
           </button>
