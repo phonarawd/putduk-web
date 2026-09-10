@@ -1,50 +1,27 @@
 {
-  "typecheck": { "command": "pnpm exec tsc --noEmit", "exitCode": 0, "status": "PASS", "where": "CI quality after production build" },
-  "lint": { "command": "pnpm lint", "exitCode": 0, "status": "PASS", "where": "CI quality" },
-  "unit": { "command": "pnpm test", "exitCode": 0, "status": "PASS", "passed": 10, "where": "CI quality" },
-  "build": { "command": "pnpm build", "exitCode": 0, "status": "PASS", "where": "CI quality" },
-  "e2eChromium": {
-    "command": "pnpm exec playwright test --project=chromium --project=mobile-chrome",
-    "status": "PASS",
-    "where": "CI run 34469740629",
-    "notes": "필수 1-47 + axe + PWA + QR. Chromium·Mobile Chrome"
-  },
-  "e2eFirefox": {
-    "command": "pnpm exec playwright test --project=firefox",
-    "status": "PASS",
-    "where": "CI browsers run 34469740629"
-  },
-  "e2eWebkit": {
-    "command": "pnpm exec playwright test --project=webkit --project=mobile-safari",
-    "status": "PASS",
-    "where": "CI browsers run 34469740629"
-  },
-  "e2eMobileSafari": { "status": "PASS", "where": "CI browsers, same WebKit step" },
-  "axe": {
-    "command": "playwright a11y.spec",
-    "status": "PASS",
-    "critical": 0,
-    "serious": 0,
-    "where": "CI Chromium + Mobile Chrome artifacts"
-  },
+  "typecheck": { "command": "pnpm exec tsc --noEmit", "exitCode": 0, "status": "PASS", "where": "local after contract wiring" },
+  "lint": { "command": "pnpm lint", "status": "NOT_RUN" },
+  "unit": { "command": "pnpm test", "exitCode": 0, "status": "PASS", "passed": 11, "where": "local after contract wiring" },
+  "build": { "command": "pnpm build", "status": "NOT_RUN" },
+  "e2eChromium": { "status": "NOT_RUN", "notes": "저사양 로컬 생략. 이전 CI run 34469740629는 옛 코드 PASS. 이번 계약 연결 후는 새 Actions" },
+  "e2eFirefox": { "status": "NOT_RUN" },
+  "e2eWebkit": { "status": "NOT_RUN" },
+  "e2eMobileSafari": { "status": "NOT_RUN" },
+  "axe": { "status": "NOT_RUN" },
   "lighthouse": {
     "command": "pnpm exec lhci autorun",
-    "exitCode": 1,
-    "status": "FAIL",
-    "where": "CI run 34469740629",
-    "perf": { "login": 0.86, "home": 0.9, "work": 0.89, "deposit": 0.87, "me": 0.88 },
-    "a11y": 1.0,
-    "bestPractices": { "login": 0.96, "others": 1.0 },
-    "seo": 1.0,
-    "cls": "<0.1 all",
-    "thresholdLowered": false
+    "status": "NOT_RUN",
+    "previousCi": {
+      "where": "CI run 34469740629 cdae756",
+      "status": "FAIL",
+      "perf": { "login": 0.86, "home": 0.9, "work": 0.89, "deposit": 0.87, "me": 0.88 },
+      "thresholdLowered": false
+    }
   },
-  "pwa": { "status": "PASS", "where": "CI Chromium + Mobile Chrome" },
-  "qr": { "status": "PASS", "where": "CI Chromium + Mobile Chrome" },
+  "pwa": { "status": "NOT_RUN" },
+  "qr": { "status": "NOT_RUN" },
   "regression3x": { "status": "NOT_RUN", "notes": "저사양으로 로컬 3회 연속 없음. CI는 push마다 1회" },
   "browserstack": { "status": "BLOCKED_ENV" },
-  "actionsRemote": {
-    "status": "FAIL",
-    "notes": "quality 잡은 Lighthouse Perf<0.9. typecheck/lint/unit/build/e2e는 PASS. browsers PASS"
-  }
+  "liveApi": { "status": "BLOCKED_ENV", "notes": "backend PR 222 0fa38d77 MERGED NO DEPLOYED NO" },
+  "actionsRemote": { "status": "NOT_RUN", "notes": "이번 푸시 Actions 대기" }
 }
