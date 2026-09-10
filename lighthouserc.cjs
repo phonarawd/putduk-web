@@ -12,10 +12,12 @@ module.exports = {
         "http://127.0.0.1:4174/me",
       ],
       puppeteerScript: "./e2e/lhci-prep.cjs",
+      puppeteerLaunchOptions: {
+        args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+      },
       settings: {
         preset: "desktop",
         chromePath: process.env.CHROME_PATH,
-        chromeFlags: "--no-sandbox --disable-dev-shm-usage --disable-gpu",
         onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
         skipAudits: ["uses-http2"],
       },
