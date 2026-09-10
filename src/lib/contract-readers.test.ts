@@ -9,6 +9,7 @@ import {
   readJournals,
   readKycReason,
   readKycUiStatus,
+  readDepositAddress,
   readKrwInstructions,
   readMembershipView,
   shouldRotateWithdrawIntent,
@@ -96,6 +97,19 @@ test("혜택은 items[].titleKo만 연결한다", () => {
   assert.equal(items[0]?.titleKo, "출석");
 });
 
+test("입금 주소는 trc20Address와 qrPayload만 읽는다", () => {
+  const found = readDepositAddress({
+    userId: "00000000-0000-4000-8000-00000000000a",
+    trc20Address: "TQaDepositAddressForFixture0000001",
+    derivationIndex: 0,
+    qrPayload: "TQaDepositAddressForFixture0000001",
+    createdAt: "2026-09-10T00:00:00.000Z",
+  });
+  assert.equal(found?.address, "TQaDepositAddressForFixture0000001");
+  assert.equal(found?.qrPayload, "TQaDepositAddressForFixture0000001");
+  assert.equal(readDepositAddress({ address: "TlegacyAliasMustNotWin00000000001" }), null);
+});
+
 test("원화 안내는 확인된 키만 읽는다", () => {
   const guide = readKrwInstructions({
     bankName: "국민",
@@ -105,6 +119,15 @@ test("원화 안내는 확인된 키만 읽는다", () => {
   });
   assert.equal(guide?.bankName, "국민");
   assert.equal(readKrwInstructions({ bank: "국민", account: "123" }), null);
+});
+
+test("QR은 서버 주소 문자열만 인코딩한다", async () => {
+  const { default: QRCode } = await import("qrcode");
+  const payload = "TQaDepositAddressForFixture0000001";
+  const url = await QRCode.toDataURL(payload, { errorCorrectionLevel: "M", margin: 1, width: 192 });
+  assert.match(url, /^data:image\/png;base64,/);
+  const created = QRCode.create(payload);
+  assert.ok(created.modules.size > 0);
 });
 
 test("출금 의도는 금액·주소 변경과 성공에서만 key를 바꾼다", () => {

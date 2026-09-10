@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DepositQr } from "@/components/gpt/DepositQr";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { WalletSummaryStrip } from "@/components/gpt/WalletSummaryStrip";
@@ -161,6 +162,7 @@ function UsdtDepositPanel() {
   const router = useRouter();
   const { showToast } = useGpt();
   const [address, setAddress] = useState<string | null>(null);
+  const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [network, setNetwork] = useState<string | null>(null);
 
   useEffect(() => {
@@ -168,10 +170,12 @@ function UsdtDepositPanel() {
       .then((data) => {
         const found = readDepositAddress(data);
         setAddress(found?.address ?? null);
+        setQrPayload(found?.qrPayload ?? null);
         setNetwork(found?.network ?? null);
       })
       .catch(() => {
         setAddress(null);
+        setQrPayload(null);
         setNetwork(null);
       });
   }, []);
@@ -193,6 +197,9 @@ function UsdtDepositPanel() {
       </div>
       {address ? (
         <div className="usdt-deposit-grid">
+          <div className="qr-preview" data-qr-payload={qrPayload || address}>
+            <DepositQr payload={qrPayload || address} />
+          </div>
           <div className="address-card">
             <span>테더 입금 주소</span>
             <strong id="usdtAddress">{address}</strong>

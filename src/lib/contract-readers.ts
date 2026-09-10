@@ -166,6 +166,25 @@ export type KrwGuide = {
   noticeKo: string | null;
 };
 
+export type DepositAddressView = {
+  address: string;
+  qrPayload: string;
+  network: string | null;
+};
+
+/** UserDepositAddressV1 확정 키만 읽는다. 체인을 추측하지 않는다. */
+export function readDepositAddress(data: unknown): DepositAddressView | null {
+  const row = asRecord(data);
+  if (!row) return null;
+  const address = readString(row.trc20Address);
+  if (!address) return null;
+  return {
+    address,
+    qrPayload: readString(row.qrPayload) || address,
+    network: readString(row.network),
+  };
+}
+
 export function readKrwInstructions(data: unknown): KrwGuide | null {
   const row = asRecord(data);
   if (!row) return null;

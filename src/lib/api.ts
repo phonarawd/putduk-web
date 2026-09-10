@@ -1,5 +1,7 @@
 export {
   googleAuthorizeUrl,
+  readDepositAddress,
+  type DepositAddressView,
   isKrwConfigNotReady,
   journalSingleAmount,
   needsCompleteProfile,
@@ -1188,23 +1190,6 @@ export function readTradeStatus(data: unknown): string {
 export function tradeIsOpen(status: string): boolean {
   const value = status.toLowerCase();
   return value === "running" || value === "pending" || value === "in_progress" || value === "open" || value === "active";
-}
-
-export function readDepositAddress(data: unknown): { address: string; network: string | null } | null {
-  const row = asRecord(data);
-  if (!row) {
-    if (typeof data === "string" && data.trim()) return { address: data.trim(), network: null };
-    return null;
-  }
-  const address =
-    pickString(row, ["address", "depositAddress", "usdtAddress", "tronAddress"]) ||
-    pickString(nest(row, "deposit"), ["address"]) ||
-    pickString(nest(row, "usdt"), ["address"]);
-  if (!address) return null;
-  return {
-    address,
-    network: pickString(row, ["network", "chain", "asset"]) || pickString(nest(row, "usdt"), ["network"]),
-  };
 }
 
 export function readStepUpMethod(data: unknown): "pin" | "email_otp" | null {
