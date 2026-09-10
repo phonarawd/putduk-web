@@ -33,6 +33,11 @@ test.describe("접근성 axe", () => {
         await becomeUser(page);
       }
       await page.goto(screen.path);
+      if (screen.path === "/") {
+        await expect(page.locator("#availableCapital, #beginExperience")).toBeVisible();
+      } else if (screen.auth) {
+        await expect(page.locator("h1, h2, .route-screen, .plain-notice").first()).toBeVisible();
+      }
       const results = await new AxeBuilder({ page }).analyze();
       const blocking = results.violations.filter((item) => item.impact === "critical" || item.impact === "serious");
       const dir = path.join("quality", "artifacts", "axe");

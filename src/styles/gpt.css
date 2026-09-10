@@ -11,12 +11,12 @@
   --line-dark: #d0d5dd;
   --navy: #111b32;
   --navy-soft: #1c2947;
-  --coral: #c24122;
-  --coral-dark: #b82e18;
+  --coral: #9a3412;
+  --coral-dark: #7c2d12;
   --coral-soft: #fff0ec;
-  --green: #0a6b4f;
+  --green: #065f46;
   --green-soft: #e9f8f2;
-  --amber: #d27a13;
+  --amber: #92400e;
   --amber-soft: #fff6e8;
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.05);
   --shadow-md: 0 18px 55px rgba(17, 24, 39, 0.1);
@@ -2591,7 +2591,7 @@ a:focus-visible {
   width: 0;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--coral), #ff8b72);
+  background: linear-gradient(90deg, var(--coral-dark), var(--coral));
   box-shadow: 0 0 15px rgba(255, 90, 60, 0.3);
   transition: width 180ms linear;
 }
