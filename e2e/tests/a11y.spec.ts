@@ -38,6 +38,10 @@ test.describe("접근성 axe", () => {
       } else if (screen.auth) {
         await expect(page.locator("h1, h2, .route-screen, .plain-notice").first()).toBeVisible();
       }
+      // .route-screen/.app-view/.ask-ai-card 진입 애니메이션(최대 420ms)이 opacity를 0→1로 올린다.
+      // 애니메이션 도중 스캔하면 배경과 섞인 순간 색이 잡혀 axe가 일시적인 명암비 미달을 보고한다.
+      // 실제 명암 대비 기준을 낮추는 게 아니라, 자리 잡은 최종 상태를 스캔하도록 기다린다.
+      await page.waitForTimeout(600);
       const results = await new AxeBuilder({ page }).analyze();
       const blocking = results.violations.filter((item) => item.impact === "critical" || item.impact === "serious");
       const dir = path.join("quality", "artifacts", "axe");
