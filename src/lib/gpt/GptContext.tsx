@@ -333,6 +333,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (cancelled) return;
+        if (getSnapshot().loggedIn) return;
         clearAccountState();
       })
       .finally(() => {
