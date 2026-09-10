@@ -42,6 +42,8 @@ jobs:
         run: |
           CHROME_PATH="$(find "$HOME/.cache/ms-playwright" -type f -name chrome | head -n 1)"
           export CHROME_PATH
+          test -n "$CHROME_PATH"
+          echo "CHROME_PATH=$CHROME_PATH"
           pnpm exec lhci autorun
       - name: Upload artifacts
         if: always()
@@ -58,7 +60,6 @@ jobs:
   browsers:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: quality
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

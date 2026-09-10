@@ -15,6 +15,7 @@ module.exports = {
       settings: {
         preset: "desktop",
         chromePath: process.env.CHROME_PATH,
+        chromeFlags: "--no-sandbox --disable-dev-shm-usage --disable-gpu",
         onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
         skipAudits: ["uses-http2"],
       },
