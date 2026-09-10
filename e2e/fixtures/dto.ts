@@ -91,6 +91,7 @@ export const OPPORTUNITY_LIST = {
       id: "opp-qa-1",
       assetLabel: "점검용 기회",
       category: "기회",
+      bucket: "affordable",
       requiredCapitalUsdt: "10.000000",
       requiredCapitalKrwApprox: 14500,
       pricingVersion: 1,

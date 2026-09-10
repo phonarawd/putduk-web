@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { MSG } from "../../src/lib/messages.ts";
 import { becomeUser, openPage, resetRoutes, waitChallenge } from "../helpers/auth.ts";
+import { consoleErrors } from "../helpers/observe.ts";
 
 async function overflowX(page: import("@playwright/test").Page) {
   return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -287,5 +288,188 @@ test.describe("UI/UX 38-47", () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.locator('form[data-form="login"] button[type="submit"]')).toBeVisible();
+  });
+
+  // 로그아웃 상태의 세션 조회 401, 일부러 접속한 404 경로는 정상 동작이라 브라우저가 남기는
+  // "Failed to load resource" 로그다(축소 X, 실제 버그만 잡으려고 이 두 개만 예외로 둔다).
+  function unexpectedConsoleErrors(errors: string[]): string[] {
+    return errors.filter((text) => !/Failed to load resource.*40[14]/.test(text));
+  }
+
+  test("50. 주요 화면에서 콘솔 오류·페이지 오류·실패한 요청이 없다", async ({ page }) => {
+    const screens: Array<{ path: string; auth?: boolean }> = [
+      { path: "/login" },
+      { path: "/signup" },
+      { path: "/auth/find-id" },
+      { path: "/auth/reset-password" },
+      { path: "/legal" },
+      { path: "/putduk-qa-no-such-route" },
+      { path: "/offline" },
+      { path: "/", auth: true },
+      { path: "/work", auth: true },
+      { path: "/ai", auth: true },
+      { path: "/me", auth: true },
+      { path: "/me/kyc", auth: true },
+      { path: "/me/membership", auth: true },
+      { path: "/me/benefits", auth: true },
+      { path: "/wallet/deposit", auth: true },
+      { path: "/wallet/withdraw", auth: true },
+      { path: "/wallet/history", auth: true },
+    ];
+    const problems: Record<string, { console: string[]; failed: string[] }> = {};
+
+    await test.step("공개 화면", async () => {
+      const { signals } = await openPage(page, { user: "none", kyc: "none" });
+      for (const screen of screens.filter((s) => !s.auth)) {
+        await page.goto(screen.path);
+        await page.waitForTimeout(300);
+        const errors = unexpectedConsoleErrors(consoleErrors(signals));
+        const failed = signals.failed.map((item) => item.url);
+        if (errors.length || failed.length) problems[screen.path] = { console: errors, failed };
+        signals.consoles.length = 0;
+        signals.pageErrors.length = 0;
+        signals.failed.length = 0;
+      }
+    });
+
+    await test.step("로그인 후 워크스페이스 화면", async () => {
+      await resetRoutes(page);
+      const { signals } = await openPage(page, { user: "a", kyc: "none", depositAddress: true });
+      await becomeUser(page);
+      signals.consoles.length = 0;
+      signals.pageErrors.length = 0;
+      signals.failed.length = 0;
+      for (const screen of screens.filter((s) => s.auth)) {
+        await page.goto(screen.path);
+        await page.waitForTimeout(300);
+        const errors = unexpectedConsoleErrors(consoleErrors(signals));
+        const failed = signals.failed.map((item) => item.url);
+        if (errors.length || failed.length) problems[screen.path] = { console: errors, failed };
+        signals.consoles.length = 0;
+        signals.pageErrors.length = 0;
+        signals.failed.length = 0;
+      }
+    });
+
+    expect(problems, JSON.stringify(problems, null, 2)).toEqual({});
+  });
+
+  test("51. 모달은 Tab을 안에 가두고 배경 스크롤을 잠그며 닫으면 원래 초점으로 되돌린다", async ({ page }) => {
+    await openPage(page, { user: "a" });
+    await becomeUser(page);
+    await page.goto("/work");
+    const trigger = page.locator("#startMatch");
+    await expect(trigger).toBeVisible();
+    await trigger.focus();
+    await trigger.press("Enter");
+
+    const modal = page.locator("#preflightModal");
+    await expect(modal).toBeVisible();
+    await expect(page.locator("body")).toHaveClass(/modal-open/);
+    const bodyOverflow = await page.evaluate(() => getComputedStyle(document.body).overflow);
+    expect(bodyOverflow).toBe("hidden");
+
+    // 모달 안의 마지막 포커스 가능 요소에서 Tab을 누르면 모달 밖으로 안 나가고 첫 요소로 돌아온다.
+    const focusables = modal.locator("button:not([disabled]), input:not([disabled]), summary");
+    const count = await focusables.count();
+    expect(count).toBeGreaterThan(0);
+    await focusables.nth(count - 1).focus();
+    await page.keyboard.press("Tab");
+    const activeInModalAfterTab = await page.evaluate((sel) => {
+      const modalEl = document.querySelector(sel);
+      return Boolean(modalEl && modalEl.contains(document.activeElement));
+    }, "#preflightModal");
+    expect(activeInModalAfterTab).toBeTruthy();
+
+    await page.keyboard.press("Escape");
+    await expect(modal).toBeHidden();
+    await expect(page.locator("body")).not.toHaveClass(/modal-open/);
+    await expect(trigger).toBeFocused();
+  });
+
+  test("52. 브라우저 뒤로가기로 이전 화면과 로그인 상태가 정확히 돌아온다", async ({ page }) => {
+    await openPage(page, { user: "a" });
+    await becomeUser(page);
+    await page.goto("/work");
+    await page.goto("/me");
+    await expect(page.locator("h1#me-title")).toBeVisible();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/work$/);
+    await expect(page.locator("#logoutButton")).toHaveCount(0);
+    expect(await overflowX(page)).toBeLessThanOrEqual(1);
+
+    await page.goForward();
+    await expect(page).toHaveURL(/\/me$/);
+    await expect(page.locator("h1#me-title")).toBeVisible();
+  });
+
+  test("53. 200% 확대(축소된 뷰포트)에서도 로그인과 핵심 동작에 닿을 수 있다", async ({ page }) => {
+    // 실제 브라우저 줌 API는 없어 640x360(=1280x720의 절반, 흔히 쓰는 200% 확대 근사)로 대신한다.
+    await openPage(page, { user: "none" });
+    await page.setViewportSize({ width: 640, height: 360 });
+    await page.goto("/login");
+    await waitChallenge(page);
+    expect(await overflowX(page)).toBeLessThanOrEqual(1);
+    await page.locator('input[name="identifier"]').fill("qa-account-a@putduk.test");
+    await page.locator('input[name="password"]').fill("password1");
+    await expect(page.locator('form[data-form="login"] button[type="submit"]')).toBeVisible();
+
+    await openPage(page, { user: "a" });
+    await becomeUser(page);
+    await page.setViewportSize({ width: 640, height: 360 });
+    await page.goto("/me");
+    expect(await overflowX(page)).toBeLessThanOrEqual(1);
+    await expect(page.locator("#logoutButton")).toBeVisible();
+  });
+
+  test("54. 긴 한국어 이름·문구도 잘리거나 다른 요소와 겹치지 않는다", async ({ page }) => {
+    const longName = "가".repeat(40) + " " + "나".repeat(40);
+    await openPage(page, { user: "a" });
+    // session의 declaredName이 로컬 account slice보다 우선이라(GptContext) 세션 응답 자체를 더 구체적인
+    // 라우트로 덮어써서 긴 이름을 만든다 (나중에 등록한 route가 먼저 매칭되는 Playwright 규칙 이용).
+    await page.route("**/api/v1/auth/session", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: { "access-control-allow-origin": "http://127.0.0.1:4173", "access-control-allow-credentials": "true" },
+        body: JSON.stringify({
+          sessionId: "sess-a",
+          userId: "00000000-0000-4000-8000-00000000000a",
+          issuer: "ai-profit-os-nest",
+          issuedAt: "2026-09-10T00:00:00.000Z",
+          expiresAt: "2026-09-10T01:00:00.000Z",
+          revoked: false,
+          onboardingStage: "B_complete",
+          email: "qa-account-a@putduk.test",
+          username: "qaaccounta",
+          declaredName: longName,
+          onboarding: "complete",
+          gender: null,
+        }),
+      }),
+    );
+    await becomeUser(page);
+    for (const viewport of [{ width: 320, height: 700 }, { width: 1280, height: 720 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/me");
+      await expect(page.locator("#profileDisplayName")).toBeVisible();
+      expect(await overflowX(page), `${viewport.width}x${viewport.height} /me`).toBeLessThanOrEqual(1);
+      const overlap = await page.evaluate(() => {
+        const name = document.querySelector("#profileDisplayName");
+        if (!name) return false;
+        const r1 = name.getBoundingClientRect();
+        const siblings = Array.from(document.querySelectorAll(".profile-pass, .pass-top *"));
+        return siblings.some((el) => {
+          if (el === name || el.contains(name) || name.contains(el)) return false;
+          const r2 = el.getBoundingClientRect();
+          if (r2.width === 0 || r2.height === 0) return false;
+          const overlapArea = Math.max(0, Math.min(r1.right, r2.right) - Math.max(r1.left, r2.left)) * Math.max(0, Math.min(r1.bottom, r2.bottom) - Math.max(r1.top, r2.top));
+          const nameArea = Math.max(1, r1.width * r1.height);
+          return overlapArea / nameArea > 0.3;
+        });
+      });
+      expect(overlap, `${viewport.width}x${viewport.height} 이름이 다른 카드 요소와 겹침`).toBeFalsy();
+    }
   });
 });
