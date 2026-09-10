@@ -1,13 +1,48 @@
 {
-  "public": ["/", "/login", "/signup", "/auth/find-id", "/auth/reset-password", "/auth/verify-email", "/legal", "/legal/privacy", "/legal/terms", "/legal/license", "/legal/oss", "/legal/recognition"],
-  "gated": ["/", "/work", "/ai", "/invite", "/me", "/me/records", "/me/kyc", "/me/membership", "/me/benefits", "/me/inbox", "/me/settings", "/me/support", "/me/notices", "/me/events", "/me/peotteok", "/wallet/deposit", "/wallet/withdraw", "/wallet/history", "/wallet/usdt-guide", "/auth/complete-profile"],
+  "public": [
+    "/",
+    "/login",
+    "/signup",
+    "/auth/find-id",
+    "/auth/reset-password",
+    "/auth/verify-email",
+    "/auth/oauth/google/callback",
+    "/legal",
+    "/legal/privacy",
+    "/legal/terms",
+    "/legal/license",
+    "/legal/oss",
+    "/legal/recognition"
+  ],
+  "gated": [
+    "/work",
+    "/ai",
+    "/invite",
+    "/me",
+    "/me/records",
+    "/me/kyc",
+    "/me/membership",
+    "/me/benefits",
+    "/me/inbox",
+    "/me/settings",
+    "/me/support",
+    "/me/notices",
+    "/me/events",
+    "/me/peotteok",
+    "/wallet/deposit",
+    "/wallet/withdraw",
+    "/wallet/history",
+    "/wallet/usdt-guide"
+  ],
+  "notGatedButProfileRedirect": ["/auth/complete-profile"],
   "header": "SiteHeader",
   "footer": "SiteFooter",
   "mobileNav": "MobileNav",
   "gatedHelper": "isGatedPath",
   "notes": [
-    "/me/records is gated",
-    "footer geometry is app-shell 100dvh grid, single SiteFooter",
-    "surface still uses useAppSurface path contract"
+    "/ and /auth/complete-profile are not in GATED_PATHS and isGatedPath returns false",
+    "/auth/complete-profile is reached when loggedIn && !profileCompleted",
+    "isGatedPath also treats any /me/* and /wallet/* as gated",
+    "footer geometry is app-shell 100dvh grid, single SiteFooter"
   ]
 }

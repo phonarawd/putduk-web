@@ -1,12 +1,57 @@
 {
-  "typecheck": { "command": "pnpm exec tsc --noEmit", "exitCode": 0, "status": "PASS" },
-  "lintChanged": { "command": "pnpm exec eslint <changed files>", "exitCode": 0, "status": "PASS", "notes": "pre-existing no-img-element warnings only" },
-  "test:unit": { "status": "BLOCKED", "blocker": "script and runner not in package.json; ALLOW_NEW_DEPENDENCIES=false" },
-  "test:e2e": { "status": "BLOCKED", "blocker": "Playwright not installed" },
-  "test:visual": { "status": "BLOCKED", "blocker": "Playwright not installed" },
-  "test:a11y": { "status": "BLOCKED", "blocker": "axe package not installed" },
-  "test:perf": { "status": "BLOCKED", "blocker": "Lighthouse CI not installed" },
-  "test:pwa": { "status": "BLOCKED", "blocker": "PWA lane deferred; no new PWA tooling" },
-  "browserstack": { "status": "BLOCKED_BROWSERSTACK", "blocker": "access key/plan not provided" },
-  "productionBrowser": { "status": "BLOCKED", "blocker": "PRODUCTION_WEB_URL not provided" }
+  "typecheck": {
+    "command": "pnpm exec tsc --noEmit",
+    "exitCode": 0,
+    "status": "PASS",
+    "ranAt": "2026-09-10T13:50:00+09:00"
+  },
+  "lintChanged": {
+    "command": "pnpm exec eslint <changed ts/tsx>",
+    "exitCode": 0,
+    "status": "PASS",
+    "notes": "pre-existing @next/next/no-img-element warning on KYC preview and SiteHeader",
+    "ranAt": "2026-09-10T13:50:00+09:00"
+  },
+  "test:unit": {
+    "command": "pnpm test",
+    "exitCode": 0,
+    "status": "PASS",
+    "file": "src/lib/contract-readers.test.ts",
+    "passed": 8,
+    "ranAt": "2026-09-10T13:52:00+09:00"
+  },
+  "test:e2e": {
+    "status": "BLOCKED_TOOLING",
+    "blocker": "Playwright not in package.json; new packages not allowed"
+  },
+  "test:visual": {
+    "status": "BLOCKED_TOOLING",
+    "blocker": "Playwright not installed; no baseline images"
+  },
+  "test:a11y": {
+    "status": "BLOCKED_TOOLING",
+    "blocker": "axe package not installed"
+  },
+  "test:perf": {
+    "status": "BLOCKED_TOOLING",
+    "blocker": "Lighthouse CI not installed"
+  },
+  "test:pwa": {
+    "status": "NOT_RUN",
+    "notes": "read-only audit only; no manifest or service worker to exercise"
+  },
+  "browserstack": {
+    "status": "BLOCKED_ENV",
+    "blocker": "access key/plan not provided"
+  },
+  "productionBrowser": {
+    "status": "BLOCKED_ENV",
+    "blocker": "PRODUCTION_WEB_URL not provided"
+  },
+  "build": {
+    "command": "pnpm build",
+    "exitCode": 0,
+    "status": "PASS",
+    "ranAt": "2026-09-10T13:55:00+09:00"
+  }
 }

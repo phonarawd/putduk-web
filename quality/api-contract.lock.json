@@ -1,8 +1,24 @@
 {
   "status": "BLOCKED_CONTRACT",
-  "reason": "API_CONTRACT_SHA and SCHEMA_HASH were not provided. No OpenAPI lock was invented.",
+  "reason": "지정 SHA 4c6f22f는 GitHub main(c4ebcd87) 및 production deploy 기록(3366bbe)과 다르다. api.hiptk.app 런타임 SHA는 확인하지 못했다. OpenAPI lock은 만들지 않았다.",
   "consumedBase": "https://api.hiptk.app",
   "existingClient": "src/lib/api.ts",
-  "stageBProfileBody": ["displayName", "phoneE164", "birthDate", "email"],
-  "forbiddenProfileBody": ["gender", "birthPrefix", "name"]
+  "readOnlyBackendRepo": "phonarawd/AI-Profit-OS",
+  "readSha": "4c6f22fabc485a8ac910582bd41dcb7bd1b53575",
+  "githubMainSha": "c4ebcd870557c74f214735bfc9e6c4dac37aaeac",
+  "githubProductionDeploySha": "3366bbe6cac8b1b188550ba651927ecc58f011bf",
+  "runtimeSha": null,
+  "confirmed": {
+    "googleStart": { "method": "POST", "path": "/api/v1/auth/oauth/google/start", "response": ["ok", "provider", "status", "authorizeUrl"] },
+    "googleCallback": { "method": "POST", "path": "/api/v1/auth/oauth/google/callback", "body": ["code", "state"], "optionalNewUser": ["termsAcceptedAt", "privacyAcceptedAt"], "response": ["ok", "stage", "onboarding", "session", "accessToken", "issuer"] },
+    "stageB": { "method": "PATCH", "path": "/api/v1/auth/profile", "body": ["displayName", "phoneE164", "birthDate", "email?"], "forbidden": ["gender", "birthPrefix"] },
+    "session": { "method": "GET", "path": "/api/v1/auth/session", "response": ["sessionId", "userId", "issuer", "issuedAt", "expiresAt", "revoked", "onboardingStage"] },
+    "emailResendTurnstileAction": "email-resend",
+    "ledgerJournals": { "method": "GET", "path": "/api/v1/me/ledger/journals", "list": ["items", "total", "limit", "offset"], "journal": ["id", "journalType", "createdAt", "referenceType", "referenceId", "entries"], "entry": ["id", "direction", "amountUsdt", "bucket", "accountKind"] },
+    "kycStatus": { "method": "GET", "path": "/api/v1/compliance/kyc/status", "response": ["userId", "kycStatus", "submissionId?", "decidedAt?", "rejectReason?"], "kycStatus": ["none", "pending", "approved", "rejected"] },
+    "withdraw": { "idempotency": "body.idempotencyKey minLength 8", "stepUpToken": "body.stepUpToken" },
+    "membership": { "method": "GET", "path": "/api/v1/me/membership", "response": ["membership", "labelKo", "dailyUserMatchCap", "dailyMatchesUsed", "maxCapitalBand", "matchStrictness", "aiPerkFlags", "current", "ladder"] },
+    "benefits": { "list": "GET /api/v1/me/benefits", "summary": "GET /api/v1/me/benefits/summary" },
+    "krwInstructions": { "method": "GET", "path": "/api/v1/wallet/krw-deposit-instructions", "success": ["bankName", "accountNumber", "accountHolder", "noticeKo"], "notReady": "503 CONFIG_NOT_READY" }
+  }
 }
