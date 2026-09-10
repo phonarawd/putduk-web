@@ -43,10 +43,22 @@ test.describe("PWA", () => {
     await becomeUser(page);
     await page.goto("/offline");
     await expect(page.getByText(MSG.offlineFinance)).toBeVisible();
+    await expect.poll(async () =>
+      page.evaluate(async () => {
+        const controlled = Boolean(navigator.serviceWorker.controller);
+        const keys = await caches.keys();
+        for (const key of keys) {
+          if (await (await caches.open(key)).match("/offline")) return controlled;
+        }
+        return false;
+      }),
+    ).toBeTruthy();
     await expect(page.locator("#availableCapital, #availableUsdt, #settledProfit")).toHaveCount(0);
     await expect(page.getByText(/12\.50 USDT|18,000원/)).toHaveCount(0);
     await context.setOffline(true);
     await page.goto("/wallet/deposit").catch(() => undefined);
     await expect(page.getByText(MSG.offlineFinance)).toBeVisible();
+    await expect(page.locator("#availableCapital, #availableUsdt, #settledProfit")).toHaveCount(0);
+    await expect(page.getByText(/12\.50 USDT|18,000원/)).toHaveCount(0);
   });
 });
