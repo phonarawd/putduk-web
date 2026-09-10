@@ -4,16 +4,15 @@ import { useEffect, useState } from "react";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { WalletSummaryStrip } from "@/components/gpt/WalletSummaryStrip";
-import { formatKrw, formatTime, formatUsdt } from "@/lib/gpt/format";
-import { getLedgerJournals, journalDirection, journalHasAmount, readJournals, type JournalRow } from "@/lib/api";
+import { formatTime } from "@/lib/gpt/format";
+import { getLedgerJournals, journalSingleAmount, readJournals, type JournalRow } from "@/lib/api";
 import { MSG } from "@/lib/messages";
 
-function amountLabel(row: JournalRow, direction: ReturnType<typeof journalDirection>) {
-  if (!journalHasAmount(row)) return MSG.ledgerAmountEmpty;
-  const prefix = direction === "in" ? "+" : direction === "out" ? "−" : "";
-  if (row.amountKrw != null && row.amountKrw !== 0) return prefix + formatKrw(Math.abs(row.amountKrw));
-  if (row.amountUsdt != null && row.amountUsdt !== 0) return prefix + formatUsdt(Math.abs(row.amountUsdt));
-  return MSG.ledgerAmountEmpty;
+function amountLabel(row: JournalRow) {
+  const amount = journalSingleAmount(row);
+  if (amount == null) return MSG.ledgerDetailNeed;
+  if (amount === "0") return amount;
+  return amount;
 }
 
 export default function WalletHistoryPage() {
@@ -59,28 +58,18 @@ export default function WalletHistoryPage() {
             <p>신청이 반영되면 여기에 모여요.</p>
           </div>
         ) : (
-          rows.map((row) => {
-            const direction = journalDirection(row);
-            return (
-              <article className="ledger-row" key={row.key}>
-                <span className={"ledger-icon" + (direction === "in" ? " positive" : "")} aria-hidden="true">
-                  {direction === "in" ? "↓" : direction === "out" ? "↑" : "·"}
-                </span>
-                <div>
-                  <strong>{row.type}</strong>
-                  <small>
-                    {[row.status, row.date ? formatTime(row.date) : ""].filter(Boolean).join(" · ")}
-                  </small>
-                </div>
-                <b className={direction === "in" ? "positive" : ""}>{amountLabel(row, direction)}</b>
-                {journalHasAmount(row) && row.amountUsdt != null && row.amountKrw != null && row.amountUsdt !== 0 ? (
-                  <small>
-                    {(direction === "in" ? "+" : direction === "out" ? "−" : "") + formatUsdt(Math.abs(row.amountUsdt))}
-                  </small>
-                ) : null}
-              </article>
-            );
-          })
+          rows.map((row) => (
+            <article className="ledger-row" key={row.key}>
+              <span className="ledger-icon" aria-hidden="true">
+                ·
+              </span>
+              <div>
+                <strong>{row.journalType || MSG.ledgerDetailNeed}</strong>
+                <small>{row.createdAt ? formatTime(row.createdAt) : ""}</small>
+              </div>
+              <b>{amountLabel(row)}</b>
+            </article>
+          ))
         )}
       </section>
     </RouteScreen>
