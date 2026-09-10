@@ -14,3 +14,4 @@
 | BrowserStack | BLOCKED_ENV | 키 없음 | 프로젝트 키 |
 | 실계정·실구글·실자금·실 QR 스캔 | BLOCKED_ENV | 운영 파괴 호출 금지 | 샌드박스 계정 |
 | 운영 배포·PR 머지 | BLOCKED_ENV | 이번 작업 범위 밖 | Founder 승인 |
+| GitHub Actions quality (첫 실행) | FAIL | 빌드 전 tsc가 생성 타입(PageProps)을 못 찾음. 워크플로를 빌드 우선으로 고침 | 재실행 |
