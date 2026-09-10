@@ -111,6 +111,7 @@ export const MSG = {
   ledgerDetailNeed: "상세 확인 필요",
   depositGuideEmpty: "아직 입금 안내가 없어요.",
   depositGuideFail: "입금 안내를 가져오지 못했어요.",
+  offlineFinance: "지금은 연결이 없어 입출금과 잔액을 확인할 수 없어요.",
   aiWait: "⏳ 답변을 준비하고 있어요.",
   aiUnavailable: "😥 답변을 아직 연결하지 못했어요. 홈에서 기회와 지갑을 직접 확인해 주세요.",
   aiSendFail: "😥 답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.",
