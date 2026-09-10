@@ -6,36 +6,49 @@
 
 성별·원장 display·Google complete·KYC 한도는 화면+mock E2E로 연결했다. 실 API는 BLOCKED_ENV.
 
+근거 run: https://github.com/phonarawd/putduk-web/actions/runs/34473966640 (`2a51de6`). artifact `pr-quality`.
+
 ## 게이트
 
 | 검사 | 명령 | 횟수 | 종료 코드 | 상태 |
 |---|---|---|---|---|
-| typecheck | `pnpm exec tsc --noEmit` | 로컬 1 | 0 | PASS |
-| unit | `pnpm test` | 로컬 1 | 0 | PASS (11) |
-| lint | `pnpm lint` | 0 | — | NOT_RUN |
-| production build | `pnpm build` | 0 | — | NOT_RUN |
+| typecheck | `pnpm exec tsc --noEmit` | CI 1 | 0 | PASS |
+| lint | `pnpm lint` | CI 1 | 0 | PASS (경고만) |
+| unit | `pnpm test` | CI 1 + 로컬 1 | 0 | PASS (11) |
+| production build | `pnpm build` | CI 1 | 0 | PASS |
 
 ## Playwright
 
 | 검사 | 명령 | 브라우저 | 횟수 | 상태 |
 |---|---|---|---|---|
-| 계약 연결 E2E | 로컬 전 브라우저 | - | 0 | NOT_RUN (저사양). CI push 1회 대기 |
+| E2E Chromium + Mobile Chrome | `playwright test --project=chromium --project=mobile-chrome` | Chromium, Pixel 7 | CI 1 | PASS (104) |
+| Firefox | `--project=firefox` | Firefox | CI 1 | PASS |
+| WebKit | `--project=webkit --project=mobile-safari` | WebKit | CI 1 | PASS (browsers job success) |
 | 연속 3회 전체 회귀 | 전 브라우저 | - | 0 | NOT_RUN |
 
-직전 CI (`cdae756`, run 34469740629) E2E는 그때 코드 기준 PASS. 이번 계약 연결 후 결과는 새 Actions를 따른다.
+Google complete는 pendingToken만 보내고 code/state를 다시 보내지 않는다. 원장은 `display.labelKo`/`amountUsdt`. 성별 PATCH 200 전 성공 없음. KYC 과대 파일·409는 성공으로 보지 않음.
 
-## Lighthouse
+## Lighthouse (CI production, desktop)
 
-임계값 하향 없음. 기능 숨김·테스트 skip 없음. Pretendard preload만 제거. 측정용 lhci-prep Turnstile 스텁은 제품에서 위젯을 빼지 않는다.
+명령: `pnpm exec lhci autorun`. 횟수 1. 종료 1. 임계값 하향 없음.
 
-직전 CI (`cdae756`): 로그인 0.86 / 홈 0.90 / 기회 0.89 / 입금 0.87 / 나 0.88. 이번 푸시 점수는 Actions 전 NOT_RUN.
+| 화면 | Perf (`2a51de6` preload 제거) | Perf (`cdae756` preload 유지) | 상태 |
+|---|---|---|---|
+| 로그인 | 0.77 | 0.86 | FAIL |
+| 홈 `/` | 0.79 | 0.90 | FAIL |
+| 기회 `/work` | 0.79 | 0.89 | FAIL |
+| 입금 | 0.79 | 0.87 | FAIL |
+| 나 `/me` | 0.79 | 0.88 | FAIL |
+
+preload 제거는 점수를 떨어뜨려 되돌렸다. 2MB Pretendard·클라이언트 셸은 그대로다. 기능 숨김 없음.
 
 ## 기타
 
 | 항목 | 상태 |
 |---|---|
-| 성별 서버 저장 | 화면 연결. 실 API BLOCKED_ENV |
-| Google complete | 화면 연결. code/state 재전송 없음. 실 API BLOCKED_ENV |
-| 원장 display | 화면 연결. 실 API BLOCKED_ENV |
-| KYC 한도 | 화면 연결. 실 API BLOCKED_ENV |
+| 성별 서버 저장 | 화면+mock PASS. 실 API BLOCKED_ENV |
+| Google complete | 화면+mock PASS. 실 API BLOCKED_ENV |
+| 원장 display | 화면+mock PASS. 실 API BLOCKED_ENV |
+| KYC 한도 | 화면+mock PASS. 실 API BLOCKED_ENV |
+| GitHub Actions quality | FAIL (Lighthouse Perf만). 그 앞 게이트·E2E PASS |
 | 사용자 dirty `.cursorignore`, `SiteFooter.tsx` | 보존, 커밋 안 함 |
