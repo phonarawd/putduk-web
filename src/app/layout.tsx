@@ -28,7 +28,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" data-scroll-behavior="smooth">
       <head>
-        <link rel="preload" href="/fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        {/* 모든 화면 공통 헤더/푸터/내비에서 가장 많이 쓰는 두 조각만 미리 가져온다.
+            (조각 90=한글 고빈도, 91=라틴/숫자/기호+고빈도 한글. 소스 스캔 기준 상위 2개, 나머지는 필요할 때만) */}
+        <link rel="preload" href="/fonts/pretendard-subset/PretendardVariable.subset.90.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/pretendard-subset/PretendardVariable.subset.91.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       </head>
       <body>
         <GptProvider>
