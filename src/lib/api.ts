@@ -226,7 +226,9 @@ async function readApiError(res: Response): Promise<ApiError> {
   }
 }
 
-export async function apiFetch<T>(path: string, init?: ApiInit): Promise<T> {
+const getInflight = new Map<string, Promise<unknown>>();
+
+async function apiFetchNetwork<T>(path: string, init?: ApiInit): Promise<T> {
   const { skipRefresh, ...requestInit } = init ?? {};
   const headers = new Headers(requestInit.headers);
   const isForm = typeof FormData !== "undefined" && requestInit.body instanceof FormData;
@@ -269,6 +271,21 @@ export async function apiFetch<T>(path: string, init?: ApiInit): Promise<T> {
   }
 
   return JSON.parse(text) as T;
+}
+
+export function apiFetch<T>(path: string, init?: ApiInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const joinKey = method === "GET" && init?.body == null ? `${path}::${init?.skipRefresh ? "1" : "0"}` : "";
+  if (joinKey) {
+    const existing = getInflight.get(joinKey);
+    if (existing) return existing as Promise<T>;
+  }
+
+  const pending = apiFetchNetwork<T>(path, init).finally(() => {
+    if (joinKey) getInflight.delete(joinKey);
+  });
+  if (joinKey) getInflight.set(joinKey, pending);
+  return pending;
 }
 
 export function newIdempotencyKey(): string {
