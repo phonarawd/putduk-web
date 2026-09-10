@@ -18,6 +18,8 @@ import {
   verifyWithdrawStepUp,
   readChallengeId,
   readStepUpToken,
+  shouldRotateWithdrawIntent,
+  withdrawLockedMismatch,
 } from "@/lib/api";
 import { formatKrw, formatMoneySecondary } from "@/lib/gpt/format";
 import { MSG, toastFromError } from "@/lib/messages";
@@ -38,6 +40,7 @@ export default function WalletWithdrawPage() {
   const [busy, setBusy] = useState<"challenge" | "verify" | "withdraw" | "">("");
   const [lockedAmount, setLockedAmount] = useState("");
   const [lockedDestination, setLockedDestination] = useState("");
+  const [intentKey, setIntentKey] = useState(() => newIdempotencyKey());
 
   useEffect(() => {
     getKycStatus()
@@ -72,6 +75,13 @@ export default function WalletWithdrawPage() {
     setChallengeId("");
     setLockedAmount("");
     setLockedDestination("");
+  }
+
+  function rotateIntent(event: Parameters<typeof shouldRotateWithdrawIntent>[0]) {
+    dropStepUp();
+    if (shouldRotateWithdrawIntent(event)) {
+      setIntentKey(newIdempotencyKey());
+    }
   }
 
   async function onChallenge() {
@@ -140,6 +150,11 @@ export default function WalletWithdrawPage() {
       showToast(MSG.withdrawNeedConfirm, "security");
       return;
     }
+    if (withdrawLockedMismatch(amount, destination, lockedAmount, lockedDestination)) {
+      rotateIntent("amount-change");
+      showToast(MSG.withdrawNeedConfirm, "security");
+      return;
+    }
     setBusy("withdraw");
     try {
       await requestWithdraw({
@@ -147,9 +162,10 @@ export default function WalletWithdrawPage() {
         asset: "USDT",
         amountUsdt,
         destination: destination.trim(),
-        idempotencyKey: newIdempotencyKey(),
+        idempotencyKey: intentKey,
         stepUpToken,
       });
+      rotateIntent("success");
       showToast(MSG.withdrawOk, "success");
       router.push("/wallet/history");
     } catch (error: unknown) {
@@ -201,7 +217,7 @@ export default function WalletWithdrawPage() {
               onChange={(event) => {
                 const next = event.target.value.replace(/[^0-9.]/g, "");
                 setAmount(next);
-                if (stepUpToken && next !== lockedAmount) dropStepUp();
+                if (next !== amount) rotateIntent("amount-change");
               }}
             />
           </label>
@@ -215,7 +231,7 @@ export default function WalletWithdrawPage() {
               onChange={(event) => {
                 const next = event.target.value;
                 setDestination(next);
-                if (stepUpToken && next !== lockedDestination) dropStepUp();
+                if (next !== destination) rotateIntent("destination-change");
               }}
             />
           </label>
