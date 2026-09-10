@@ -82,7 +82,10 @@ async function attach(page) {
       } catch {
         pagePath = "";
       }
-      if (pagePath === "/login" && request.url().includes("/auth/session")) {
+      if (
+        pagePath === "/login" &&
+        (request.url().includes("/auth/session") || request.url().includes("/auth/refresh"))
+      ) {
         request.respond({
           status: 401,
           contentType: "application/json",
