@@ -131,7 +131,7 @@ export default function ResetPasswordPage({ searchParams }: PageProps<"/auth/res
                 onChange={(event) => setEmail(event.target.value)}
               />
             </label>
-            <TurnstileBox action="password-reset" onToken={setTurnstileToken} resetNonce={turnstileReset} />
+            <TurnstileBox key={turnstileReset} action="password-reset" onToken={setTurnstileToken} />
             <button className="form-primary" type="submit" disabled={busy}>
               재설정 메일 받기
             </button>

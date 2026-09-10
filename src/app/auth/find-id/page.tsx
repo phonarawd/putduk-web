@@ -70,7 +70,7 @@ export default function FindIdPage() {
               onChange={(event) => setEmail(event.target.value)}
             />
           </label>
-            <TurnstileBox action="find-id" onToken={setTurnstileToken} resetNonce={turnstileReset} />
+            <TurnstileBox key={turnstileReset} action="find-id" onToken={setTurnstileToken} />
             <button className="form-primary" type="submit" disabled={busy}>
               아이디 확인하기
             </button>

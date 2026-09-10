@@ -285,7 +285,7 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
               </span>
             </label>
           </div>
-          <TurnstileBox action="signup" onToken={setTurnstileToken} resetNonce={turnstileReset} />
+          <TurnstileBox key={turnstileReset} action="signup" onToken={setTurnstileToken} />
           <button className="form-primary" type="submit" disabled={busy}>
             회원가입
           </button>

@@ -84,7 +84,7 @@ export default function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
               />
             </label>
-            <TurnstileBox action="login" onToken={setTurnstileToken} resetNonce={turnstileReset} />
+            <TurnstileBox key={turnstileReset} action="login" onToken={setTurnstileToken} />
             <button className="form-primary" type="submit" disabled={busy}>
               로그인
             </button>

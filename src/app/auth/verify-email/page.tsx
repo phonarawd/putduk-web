@@ -104,7 +104,7 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
         </button>
         {state.email ? (
           <>
-            <TurnstileBox action="email-resend" onToken={setTurnstileToken} resetNonce={turnstileReset} />
+            <TurnstileBox key={turnstileReset} action="email-resend" onToken={setTurnstileToken} />
             <button className="route-back-link" type="button" disabled={busy} onClick={() => void onResend()}>
               인증 메일 다시 받기
             </button>
