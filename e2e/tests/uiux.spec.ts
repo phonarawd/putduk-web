@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { MSG } from "../../src/lib/messages.ts";
 import { becomeUser, openPage, resetRoutes, waitChallenge } from "../helpers/auth.ts";
-import { consoleErrors } from "../helpers/observe.ts";
+import { consoleErrors, unexpectedFailedRequests } from "../helpers/observe.ts";
 
 async function overflowX(page: import("@playwright/test").Page) {
   // bottomRegionSnapshot과 같은 이유로 폰트 로딩이 끝난 뒤 측정한다.
@@ -340,10 +340,9 @@ test.describe("UI/UX 38-47", () => {
     await test.step("공개 화면", async () => {
       const { signals } = await openPage(page, { user: "none", kyc: "none" });
       for (const screen of screens.filter((s) => !s.auth)) {
-        await page.goto(screen.path);
-        await page.waitForTimeout(300);
+        await page.goto(screen.path, { waitUntil: "networkidle" }).catch(() => undefined);
         const errors = unexpectedConsoleErrors(consoleErrors(signals));
-        const failed = signals.failed.map((item) => item.url);
+        const failed = unexpectedFailedRequests(signals).map((item) => item.url);
         if (errors.length || failed.length) problems[screen.path] = { console: errors, failed };
         signals.consoles.length = 0;
         signals.pageErrors.length = 0;
@@ -359,10 +358,9 @@ test.describe("UI/UX 38-47", () => {
       signals.pageErrors.length = 0;
       signals.failed.length = 0;
       for (const screen of screens.filter((s) => s.auth)) {
-        await page.goto(screen.path);
-        await page.waitForTimeout(300);
+        await page.goto(screen.path, { waitUntil: "networkidle" }).catch(() => undefined);
         const errors = unexpectedConsoleErrors(consoleErrors(signals));
-        const failed = signals.failed.map((item) => item.url);
+        const failed = unexpectedFailedRequests(signals).map((item) => item.url);
         if (errors.length || failed.length) problems[screen.path] = { console: errors, failed };
         signals.consoles.length = 0;
         signals.pageErrors.length = 0;

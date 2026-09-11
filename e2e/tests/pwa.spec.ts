@@ -100,8 +100,10 @@ test.describe("PWA", () => {
     await openPage(page, { user: "a", kyc: "pending" });
     await becomeUser(page);
     for (const path of ["/me", "/wallet/withdraw", "/wallet/history", "/me/kyc", "/me/membership", "/work"]) {
-      await page.goto(path);
-      await page.waitForTimeout(200);
+      // WebKit은 이전 페이지가 완전히 자리잡기 전에 다음 goto를 부르면 "다른 내비게이션에 끊겼다"고
+      // 던진다. 화면이 실제로 자리잡을 때까지(.route-screen/.workspace) 기다린 뒤 다음 경로로 넘어간다.
+      await page.goto(path).catch(() => undefined);
+      await page.locator(".route-screen, .workspace").first().waitFor({ state: "visible", timeout: 15_000 }).catch(() => undefined);
     }
     const sensitivePatterns = [/\/api\/v1\//, /\/wallet\//, /\/me(\/|$)/, /\/auth\//];
     const leaked = await page.evaluate(async () => {
