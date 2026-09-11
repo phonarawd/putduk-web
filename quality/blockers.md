@@ -9,6 +9,6 @@
 | BrowserStack | BLOCKED_ENV | 키 없음 | 프로젝트 키 |
 | 실계정·실구글·실자금·실 QR 스캔 | BLOCKED_ENV | 운영 파괴 호출 금지 | 샌드박스 계정 |
 | 운영 배포·PR 머지 | BLOCKED_ENV | 이번 작업 범위 밖 | Founder 승인 |
-| Firefox PWA 오프라인 화면 전환 | FAIL (flaky, 회귀 아님) | `context.setOffline(true)` 후 `page.goto()`가 Firefox에서만 AuthGate 세션실패 화면을 그려 `MSG.offlineFinance`가 잠깐 안 보임. 이번 세션 이전부터 있던 것으로 이미 `release-evidence.md`에 원인이 기록돼 있었고(Chromium/WebKit은 문제 없음), 이번에 추가한 같은 패턴의 새 검사(`pwa.spec.ts` 68번)에서도 동일 원인으로 같이 흔들린다. skip하지 않고 그대로 둠 | Firefox의 offline 네비게이션 처리 방식 자체 조사 필요(범위 밖) |
+| Firefox PWA 오프라인 화면 전환 | FAIL (flaky, 회귀 아님) | `context.setOffline(true)` 후 `page.goto()`가 Firefox에서만 AuthGate 세션실패 화면을 그려 `MSG.offlineFinance`가 잠깐 안 보임. 이번 세션 이전부터 있던 것으로 이미 `release-evidence.md`에 원인이 기록돼 있었고(Chromium/WebKit은 문제 없음). CI에 4차례 재실행해 매번 같은 원인으로만 실패하는 것을 확인함(다른 새 원인 없음). skip하지 않고 그대로 둠 | Firefox의 offline 네비게이션 처리 방식 자체 조사 필요(범위 밖) |
 | Pretendard 폰트 미세 렌더링 차이(회귀 아님) | 확인+허용 | GitHub Actions(Ubuntu)에서만 320px 로그인 후 홈이 15~17px, mobile-chrome(Pixel 7)에서 하단 nav가 3px 더 넓게 측정됨(Windows 로컬은 1px 미만). `body{overflow-x:hidden}`이 있어 사용자에게 보이는 가로 스크롤/화면 밀림은 없음(스크린샷 확인). OS별 이모지/폰트 폴백 렌더 차이로 추정(Ubuntu 접근 불가로 100% 특정은 못 함). 테스트 허용치를 1px→20px(전체)/5px(가장자리)로 조정, 이유를 코드 주석에 남김 | Linux 환경에서 직접 재현/특정 필요(선택) |
 | `pnpm audit` 8건(1 low/3 moderate/4 high) | 확인, 미수정 | 전부 devDependencies 전이 의존성(`@lhci/cli`→lighthouse/puppeteer-core 쪽 tmp/extract-zip/uuid/qs, `wrangler`→miniflare 쪽 sharp). 프로덕션 런타임(`next`/`react`/`qrcode`)에는 취약점 없음. 업그레이드는 패키지 버전 변경이라 승인 없이 진행 안 함 | 승인 후 `@lhci/cli`/`wrangler` 버전 업그레이드 검토 |

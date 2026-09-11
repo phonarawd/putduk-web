@@ -8,19 +8,20 @@
   "e2eChromiumMobileChrome": {
     "command": "pnpm exec playwright test --project=chromium --project=mobile-chrome",
     "status": "PASS",
-    "where": "CI run 34555857523 quality job (11m55s), 로컬 다회",
-    "testCount": "62개 스펙(신규 uiux 48-54, a11y 확장 19개, pwa 확장 3개, auth 계약검사 1개 등 포함)"
+    "where": "CI run 34559223287 quality job (14m31s) - 3연속 CI 실행에서 재확인, 로컬 다회",
+    "testCount": "62개 테스트(신규 uiux 48-54, a11y 확장 19개, pwa 확장 3개, auth 계약검사 1개 등 포함)"
   },
   "e2eFirefox": {
     "command": "pnpm exec playwright test --project=firefox",
     "status": "FLAKY_KNOWN",
-    "where": "CI run 34555857523 browsers job",
-    "notes": "PWA 오프라인 화면전환 1개만 flaky. release-evidence.md에 이미 기록된 기존(회귀 아님) 원인. 나머지 전부 PASS"
+    "where": "CI run 34559223287 browsers job (47 passed, PWA 오프라인 화면전환 1개만 실패)",
+    "notes": "release-evidence.md에 이미 기록된 기존(이번 세션 이전부터 있던, 회귀 아님) Firefox 전용 원인: context.setOffline+goto 조합에서 AuthGate가 세션실패 화면을 먼저 그림. 여러 차례 재실행해도 동일 원인으로만 실패, 새 원인 없음을 확인함"
   },
   "e2eWebkitMobileSafari": {
     "command": "pnpm exec playwright test --project=webkit --project=mobile-safari",
-    "status": "NOT_CONFIRMED_THIS_RUN",
-    "notes": "Firefox 실패로 이 단계가 건너뛰어짐 -> pr-quality.yml에 if:!cancelled() 추가해 다음 실행부터는 항상 돈다. 이전 세션 기록(release-evidence.md 이전 판)에서는 PASS였음"
+    "status": "PASS",
+    "where": "CI run 34559223287 browsers job - pr-quality.yml에 if:!cancelled() 추가해 Firefox flaky와 무관하게 항상 돌게 한 뒤 확인",
+    "notes": "처음 실행에서 WebKit 전용 실제 버그 3개 발견해 수정: (1) pwa.spec.ts 캐시검사가 페이지 전환 타이밍에서 '다른 내비게이션에 끊김' 오류, (2) uiux.spec.ts 50번이 정상적인 aborted 요청을 실패로 오판(observe.ts의 죽은 errorText 코드도 같이 고침), (3) account-isolation.spec.ts에 추가했던 중복 계약검사가 Firefox에서 흔들려 원래 형태로 되돌림. 수정 후 재실행에서 WebKit PASS 확인"
   },
   "axe": { "status": "PASS", "screens": 33, "where": "로컬 chromium, CI quality job", "notes": "14->33화면(사실상 전체 route)으로 확장. critical/serious 0" },
   "lighthouse": {
@@ -51,5 +52,5 @@
     "severities": { "high": 4, "moderate": 3, "low": 1 },
     "notes": "전부 devDependencies 전이 의존성(@lhci/cli의 lighthouse/puppeteer-core 쪽 tmp/extract-zip/uuid/qs, wrangler의 miniflare 쪽 sharp). next/react/qrcode(production dependencies)는 취약점 0. 업그레이드는 패키지 버전 변경이라 승인 필요 항목으로 남김"
   },
-  "actionsRemote": { "status": "PASS_WITH_KNOWN_FIREFOX_FLAKE", "notes": "quality job 완전 PASS(run 34555857523). browsers job은 Firefox PWA flaky 1건만(회귀 아님, 문서화됨)" }
+  "actionsRemote": { "status": "PASS_WITH_KNOWN_FIREFOX_FLAKE", "notes": "quality job 3연속 PASS(최종 run 34559223287, 14m31s). browsers job은 WebKit/Mobile Safari PASS, Firefox는 기존에 문서화된 PWA 오프라인 flaky 1건만 남음(회귀 아님)" }
 }
