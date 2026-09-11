@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { becomeUser, openPage } from "../helpers/auth.ts";
+import { becomeUser, openPage, waitChallenge } from "../helpers/auth.ts";
 import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -40,6 +40,45 @@ const SCREENS: Array<{ name: string; path: string; auth?: boolean; extra?: Recor
   { name: "offline", path: "/offline" },
   { name: "not-found", path: "/putduk-qa-no-such-route" },
 ];
+
+test.describe("접근성 확장", () => {
+  test("prefers-reduced-motion: reduce면 진입 애니메이션과 전환이 사실상 즉시 끝난다", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openPage(page, { user: "none" });
+    await page.goto("/login");
+    const duration = await page.locator(".route-screen, .auth-layout").first().evaluate((el) => getComputedStyle(el).animationDuration);
+    expect(duration.split(",").every((value) => parseFloat(value) <= 0.01)).toBeTruthy();
+  });
+
+  test("로그인 폼은 Tab 순서가 화면에 보이는 순서(아이디→비밀번호→로그인→구글)와 같다", async ({ page }) => {
+    await openPage(page, { user: "none" });
+    await page.goto("/login");
+    await waitChallenge(page);
+    await page.locator('input[name="identifier"]').focus();
+    const order: string[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      const tag = await page.evaluate(() => {
+        const el = document.activeElement as HTMLElement | null;
+        return el ? `${el.tagName}#${el.id || el.getAttribute("name") || el.textContent?.trim().slice(0, 12)}` : "none";
+      });
+      order.push(tag);
+      await page.keyboard.press("Tab");
+    }
+    expect(order[0]).toContain("identifier");
+    expect(order[1]).toContain("password");
+    const submitIndex = order.findIndex((item) => item.includes("로그인"));
+    expect(submitIndex).toBeGreaterThan(1);
+  });
+
+  test("입금 탭바는 role=tablist·tab으로 스크린리더에 목록임을 알린다", async ({ page }) => {
+    await openPage(page, { user: "a" });
+    await becomeUser(page);
+    await page.goto("/wallet/deposit");
+    await expect(page.getByRole("tablist")).toBeVisible();
+    const tabs = page.getByRole("tab");
+    expect(await tabs.count()).toBeGreaterThanOrEqual(2);
+  });
+});
 
 test.describe("접근성 axe", () => {
   for (const screen of SCREENS) {
