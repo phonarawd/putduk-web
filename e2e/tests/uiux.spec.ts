@@ -6,6 +6,8 @@ import { becomeUser, openPage, resetRoutes, waitChallenge } from "../helpers/aut
 import { consoleErrors } from "../helpers/observe.ts";
 
 async function overflowX(page: import("@playwright/test").Page) {
+  // bottomRegionSnapshot과 같은 이유로 폰트 로딩이 끝난 뒤 측정한다.
+  await page.evaluate(() => document.fonts.ready);
   return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 }
 
@@ -32,6 +34,9 @@ type BottomRegionSnapshot = {
 };
 
 async function bottomRegionSnapshot(page: Page): Promise<BottomRegionSnapshot> {
+  // 폰트 스왑이 끝나기 전에 재면 대체 폰트 폭으로 측정돼 회귀가 아닌 걸 회귀로 오탐한다
+  // (로컬은 즉시 로드돼 안 보였지만 CI는 폰트 조각 로딩이 늦어 잠깐 더 넓은 대체 폰트로 잡힐 수 있다).
+  await page.evaluate(() => document.fonts.ready);
   return page.evaluate(() => {
     function rectOf(el: Element | null) {
       if (!el) return null;
