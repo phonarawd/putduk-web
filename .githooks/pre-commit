@@ -1,0 +1,3 @@
+#!/bin/sh
+# 켜는 법(1인 1회): git config core.hooksPath .githooks
+exec pnpm run precommit

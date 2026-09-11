@@ -1,0 +1,118 @@
+name: Nightly regression
+
+# 저사양 로컬 PC 대신 CI에서 밤마다 두껍게 돈다. 매 PR에는 못 넣을 무게라 스케줄로 뺐다.
+# 축소한 범위와 이유:
+#   - core-3x: 금융/인증/계정격리 3개 스펙만 5개 브라우저 전부에서 3연속 - 실자금·세션·계정격리처럼
+#     한 번 깨지면 치명적인 흐름만 브라우저 행렬로 3배 반복한다.
+#   - full-chromium-3x: 전체 스펙(8개 파일)을 Chromium 하나로 3연속 - "route 전체가 3번 다 안정적인지"는
+#     제일 흔한 사용자 브라우저 하나로만 확인한다.
+#   - full-other-browsers-1x: Firefox/WebKit/Mobile Safari로 전체 스펙을 1번 - PR 게이트(pr-quality.yml)가
+#     이미 매 push마다 이 조합을 도니 nightly는 스케줄 실행만으로도 최신 상태를 한 번 더 확인하는 목적.
+#   전체 5브라우저 × 전체 스펙 × 3회를 다 곱하면 저사양 계정 기준 CI 시간이 지나치게 길어져 위처럼 나눴다.
+on:
+  schedule:
+    - cron: "17 18 * * *" # 03:17 KST
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  core-3x:
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, mobile-chrome, mobile-safari]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Production build
+        run: pnpm build
+      - name: Playwright browsers
+        run: pnpm exec playwright install --with-deps ${{ matrix.project == 'mobile-chrome' && 'chromium' || matrix.project == 'mobile-safari' && 'webkit' || matrix.project }}
+      - name: 핵심 회귀 3연속 (금융·인증·계정격리)
+        run: pnpm exec playwright test --project=${{ matrix.project }} --repeat-each=3 e2e/tests/finance.spec.ts e2e/tests/auth.spec.ts e2e/tests/account-isolation.spec.ts
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-core-3x-${{ matrix.project }}
+          if-no-files-found: ignore
+          path: |
+            playwright-report
+            test-results
+
+  full-chromium-3x:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Production build
+        run: pnpm build
+      - name: Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: 전체 route 3연속 (Chromium)
+        run: pnpm exec playwright test --project=chromium --repeat-each=3
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-full-chromium-3x
+          if-no-files-found: ignore
+          path: |
+            playwright-report
+            test-results
+
+  full-other-browsers-1x:
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [firefox, webkit, mobile-safari]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Production build
+        run: pnpm build
+      - name: Playwright browsers
+        run: pnpm exec playwright install --with-deps ${{ matrix.project == 'mobile-safari' && 'webkit' || matrix.project }}
+      - name: 전체 스펙 1회
+        run: pnpm exec playwright test --project=${{ matrix.project }}
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-full-${{ matrix.project }}-1x
+          if-no-files-found: ignore
+          path: |
+            playwright-report
+            test-results

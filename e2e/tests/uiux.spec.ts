@@ -178,7 +178,8 @@ test.describe("UI/UX 38-47", () => {
   });
 
   test("48. 9개 viewport에서 로그인·홈·404·오프라인 하단 영역 회귀가 없다", async ({ page }) => {
-    test.slow();
+    // 9×7 조합을 순회해 느린 브라우저에서도 넉넉하도록 고정 5분을 준다(기본 배수 대신 명시값).
+    test.setTimeout(300_000);
     const evidence: Record<string, BottomRegionSnapshot> = {};
     const shotDir = path.join("quality", "artifacts", "footer-regression");
     await mkdir(shotDir, { recursive: true });
@@ -297,6 +298,7 @@ test.describe("UI/UX 38-47", () => {
   }
 
   test("50. 주요 화면에서 콘솔 오류·페이지 오류·실패한 요청이 없다", async ({ page }) => {
+    test.slow(); // 17개 화면을 순회한다 - 기본 60초 근처라 느린 브라우저(firefox/webkit)에서 여유를 둔다.
     const screens: Array<{ path: string; auth?: boolean }> = [
       { path: "/login" },
       { path: "/signup" },
