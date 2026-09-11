@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { MSG } from "../../src/lib/messages.ts";
-import { AUTHORIZE_URL } from "../fixtures/dto.ts";
+import { AUTHORIZE_URL, USER_A, sessionDto } from "../fixtures/dto.ts";
 import { loginThroughForm, openPage, resetRoutes, waitChallenge } from "../helpers/auth.ts";
 import { QA_TURNSTILE } from "../helpers/turnstile.ts";
 
@@ -140,5 +140,32 @@ test.describe("인증 1-12", () => {
     const { mock } = await openPage(page, { user: "a" });
     await loginThroughForm(page, "a");
     expect(mock.captured.loginBodies[0]).toMatchObject({ turnstileToken: QA_TURNSTILE });
+  });
+
+  // 백엔드 PR #222 (phonarawd/AI-Profit-OS, SHA 0fa38d77a4a461ae1b20eb81d7f5a2380a9fbaf3, 2026-09-11 재확인:
+  // OPEN, MERGED:false)의 schemas/auth-session.v1.json, schemas/user-profile.v1.json 정식 스키마와
+  // 우리 mock fixture(dto.ts)가 어긋나면 잡는다. 백엔드가 머지되기 전에도 계약 오타·enum 실수를 잡는 목적이라
+  // additionalProperties:false까지 흉내내지는 않는다(우리 세션 목은 편의상 email/username 등을 더 얹어 두는데
+  // 실제 응답이 user/profile로 감싸 보낼 수도 있어 sessionUser()가 두 형태 다 읽게 이미 방어돼 있다 - api.ts 참고).
+  test("13. 세션·프로필 목 데이터가 백엔드 공식 스키마(enum·패턴)와 어긋나지 않는다", () => {
+    const session = sessionDto(USER_A, "complete", "male");
+    expect(["sessionId", "userId", "issuer", "issuedAt", "expiresAt", "revoked"].every((key) => key in session)).toBeTruthy();
+    expect(session.issuer).toBe("ai-profit-os-nest");
+    expect(["A", "B_incomplete", "B_complete"]).toContain(session.onboardingStage);
+    expect([null, "male", "female"]).toContain(session.gender);
+    expect(typeof session.issuedAt).toBe("string");
+    expect(typeof session.expiresAt).toBe("string");
+    expect(typeof session.revoked).toBe("boolean");
+
+    // user-profile.v1.json: phoneE164 패턴, displayName 길이, gender는 male/female/null만.
+    const phoneE164 = "+821000000001";
+    expect(phoneE164).toMatch(/^\+[1-9][0-9]{7,14}$/);
+    expect(USER_A.declaredName.length).toBeGreaterThanOrEqual(2);
+    expect(USER_A.declaredName.length).toBeLessThanOrEqual(40);
+    expect(["male", "female", null]).toContain(USER_A.gender);
+    // 스키마가 명시적으로 금지하는 필드는 우리 fixture 어디에도 없어야 한다(주민번호 전체·자유 문자열 성별·주소 필수).
+    const serialized = JSON.stringify(session);
+    expect(serialized).not.toMatch(/rrnFull/);
+    expect(serialized).not.toMatch(/addressRequired/);
   });
 });

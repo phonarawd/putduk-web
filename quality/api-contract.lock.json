@@ -12,6 +12,29 @@
   "runtimeSha": null,
   "merged": false,
   "deployed": false,
+  "reverifiedAt": "2026-09-11T00:32:00+09:00",
+  "reverifiedVia": "gh api repos/phonarawd/AI-Profit-OS/pulls/222 (read-only)",
+  "reverifiedResult": "state=open mergeable=true merged=false head_sha=0fa38d77a4a461ae1b20eb81d7f5a2380a9fbaf3 — 기존 문서와 일치, 변동 없음",
+  "canonicalSchemas": {
+    "authSessionV1": {
+      "path": "schemas/auth-session.v1.json",
+      "additionalProperties": false,
+      "required": ["sessionId", "userId", "issuer", "issuedAt", "expiresAt", "revoked"],
+      "issuerConst": "ai-profit-os-nest",
+      "onboardingStageEnum": ["A", "B_incomplete", "B_complete"],
+      "genderEnum": ["male", "female", null],
+      "note": "email/username/declaredName은 이 스키마에 없다. api.ts의 sessionUser()가 user/session/profile 중첩 또는 루트 어디서든 읽도록 이미 방어돼 있어 화면 동작에는 영향 없음. e2e/tests/auth.spec.ts 13번이 우리 mock과 이 스키마의 어긋남을 감지한다."
+    },
+    "userProfileV1": {
+      "path": "schemas/user-profile.v1.json",
+      "additionalProperties": false,
+      "required": ["userId", "termsAcceptedAt", "privacyAcceptedAt"],
+      "phoneE164Pattern": "^\\+[1-9][0-9]{7,14}$",
+      "displayNameLength": [2, 40],
+      "genderEnum": ["male", "female", null],
+      "forbidden": ["rrnFull", "free-string gender", "addressRequired"]
+    }
+  },
   "confirmed": {
     "prefix": "/api/v1",
     "health": "GET /health outside prefix",
