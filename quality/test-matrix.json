@@ -1,41 +1,55 @@
 {
-  "typecheck": { "command": "pnpm exec tsc --noEmit", "exitCode": 0, "status": "PASS", "where": "CI run 34479208007 and local" },
-  "lint": { "command": "pnpm lint", "exitCode": 0, "status": "PASS", "where": "CI run 34479208007" },
-  "unit": { "command": "pnpm test", "exitCode": 0, "status": "PASS", "passed": 11, "where": "CI run 34479208007 and local" },
-  "build": { "command": "pnpm build", "exitCode": 0, "status": "PASS", "where": "CI run 34479208007" },
-  "e2eChromium": {
+  "recordedAt": "2026-09-11",
+  "headBefore": "aa6774289db19be47c7333a48fc2528ceef25e60",
+  "typecheck": { "command": "pnpm exec tsc --noEmit", "exitCode": 0, "status": "PASS", "where": "CI + local" },
+  "lint": { "command": "pnpm lint", "exitCode": 0, "status": "PASS", "where": "CI + local", "notes": "경고 15개, 전부 기존 <img>/exhaustive-deps, 이번 세션 무관. 전체 lint 로컬 실측 약 144초 -> pre-commit엔 staged 파일만 사용" },
+  "unit": { "command": "pnpm test", "exitCode": 0, "status": "PASS", "passed": 11, "where": "CI + local" },
+  "build": { "command": "pnpm build", "exitCode": 0, "status": "PASS", "where": "CI + local" },
+  "e2eChromiumMobileChrome": {
     "command": "pnpm exec playwright test --project=chromium --project=mobile-chrome",
     "status": "PASS",
-    "where": "CI run 34479208007"
+    "where": "CI run 34555857523 quality job (11m55s), 로컬 다회",
+    "testCount": "62개 스펙(신규 uiux 48-54, a11y 확장 19개, pwa 확장 3개, auth 계약검사 1개 등 포함)"
   },
   "e2eFirefox": {
     "command": "pnpm exec playwright test --project=firefox",
-    "status": "PASS",
-    "where": "CI run 34479208007"
+    "status": "FLAKY_KNOWN",
+    "where": "CI run 34555857523 browsers job",
+    "notes": "PWA 오프라인 화면전환 1개만 flaky. release-evidence.md에 이미 기록된 기존(회귀 아님) 원인. 나머지 전부 PASS"
   },
-  "e2eWebkit": {
-    "command": "pnpm exec playwright test --project=webkit",
-    "status": "PASS",
-    "where": "CI run 34479208007"
+  "e2eWebkitMobileSafari": {
+    "command": "pnpm exec playwright test --project=webkit --project=mobile-safari",
+    "status": "NOT_CONFIRMED_THIS_RUN",
+    "notes": "Firefox 실패로 이 단계가 건너뛰어짐 -> pr-quality.yml에 if:!cancelled() 추가해 다음 실행부터는 항상 돈다. 이전 세션 기록(release-evidence.md 이전 판)에서는 PASS였음"
   },
-  "e2eMobileSafari": {
-    "command": "pnpm exec playwright test --project=mobile-safari",
-    "status": "PASS",
-    "where": "CI run 34479208007 same browsers step as WebKit"
-  },
-  "axe": { "status": "PASS", "where": "CI Chromium + Mobile Chrome 34479208007" },
+  "axe": { "status": "PASS", "screens": 33, "where": "로컬 chromium, CI quality job", "notes": "14->33화면(사실상 전체 route)으로 확장. critical/serious 0" },
   "lighthouse": {
-    "command": "pnpm exec lhci autorun",
-    "exitCode": 1,
-    "status": "FAIL",
-    "where": "CI run 34479208007 SHA 0caf192",
-    "perf": { "login": 0.88, "home": 0.89, "work": 0.88, "deposit": ">=0.90", "me": 0.89 },
-    "thresholdLowered": false
+    "command": "CHROME_PATH=<playwright chromium> pnpm exec lhci autorun",
+    "exitCode": 0,
+    "status": "PASS",
+    "where": "CI run 34555857523 quality job + 로컬 재확인",
+    "numberOfRuns": 3,
+    "aggregationMethod": "median",
+    "perfMedian": { "login": 0.98, "home": 0.97, "work": 0.99, "deposit": 0.98, "me": 0.98 },
+    "clsMedian": "<=0.0001 전 화면",
+    "thresholdLowered": false,
+    "previousBaseline": { "login": 0.88, "home": 0.89, "work": 0.88, "deposit": ">=0.90", "me": 0.89, "numberOfRuns": 1 }
   },
-  "pwa": { "status": "PASS", "where": "Firefox/Chromium/WebKit offline finance on 34479208007" },
-  "qr": { "status": "PASS", "where": "CI Chromium + Mobile Chrome 34479208007" },
-  "regression3x": { "status": "NOT_RUN" },
+  "pwa": { "status": "PASS_WITH_KNOWN_FIREFOX_FLAKE", "checks": 6, "where": "manifest+maskable, SW등록+금융무캐시, 오프라인 정직화면(chromium/webkit), 임의화면 오프라인대체, SW갱신시 구버전캐시삭제, 민감API 전수 무캐시확인" },
+  "qr": { "status": "PASS", "where": "CI Chromium + Mobile Chrome" },
+  "contractDrift": { "status": "PASS", "where": "auth.spec.ts 13번, 백엔드 PR #222 공식 JSON Schema(auth-session/user-profile v1) 대비" },
+  "regression3x": {
+    "status": "PARTIAL",
+    "local": "저사양 PC라 5브라우저 동시 3회 불가, 개별 재실행으로 안정성 확인(uiux 48/50/51 등 반복 실행)",
+    "ci": "NOT_RUN_YET - .github/workflows/nightly.yml 신설했으나 GitHub 정책상 default 브랜치 병합 전에는 schedule/workflow_dispatch 트리거 자체가 불가(gh workflow run 시도 시 404 확인). main 병합 후 확인 필요"
+  },
   "browserstack": { "status": "BLOCKED_ENV" },
-  "liveApi": { "status": "BLOCKED_ENV", "notes": "backend PR 222 0fa38d77 MERGED NO DEPLOYED NO" },
-  "actionsRemote": { "status": "FAIL", "notes": "quality LH Perf. browsers PASS" }
+  "liveApi": { "status": "BLOCKED_ENV", "notes": "backend PR 222 0fa38d77 재확인: 여전히 MERGED NO, DEPLOYED NO" },
+  "dependencyAudit": {
+    "command": "pnpm audit",
+    "status": "FOUND_8_TRANSITIVE",
+    "severities": { "high": 4, "moderate": 3, "low": 1 },
+    "notes": "전부 devDependencies 전이 의존성(@lhci/cli의 lighthouse/puppeteer-core 쪽 tmp/extract-zip/uuid/qs, wrangler의 miniflare 쪽 sharp). next/react/qrcode(production dependencies)는 취약점 0. 업그레이드는 패키지 버전 변경이라 승인 필요 항목으로 남김"
+  },
+  "actionsRemote": { "status": "PASS_WITH_KNOWN_FIREFOX_FLAKE", "notes": "quality job 완전 PASS(run 34555857523). browsers job은 Firefox PWA flaky 1건만(회귀 아님, 문서화됨)" }
 }
