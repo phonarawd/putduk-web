@@ -149,6 +149,8 @@ export class ApiError extends Error {
   }
 }
 
+export { isNetworkFailure } from "./network-error";
+
 export function readTermsPending(error: unknown): string | null {
   return error instanceof ApiError && error.code === "TERMS_REQUIRED" ? error.pendingToken : null;
 }
@@ -245,7 +247,7 @@ async function apiFetchNetwork<T>(path: string, init?: ApiInit): Promise<T> {
       headers,
     });
   } catch {
-    throw new Error("연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.");
+    throw new ApiError("연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.", { code: "NETWORK", status: 0 });
   }
 
   if (res.status === 401 && !skipRefresh && !AUTH_NO_REFRESH.has(path)) {

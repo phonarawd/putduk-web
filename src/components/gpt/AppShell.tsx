@@ -36,14 +36,15 @@ function readOffline(): boolean {
 function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { ready, sessionReady, state, setPendingRoute, showToast } = useGpt();
+  const { ready, sessionReady, sessionUnreachable, state, setPendingRoute, showToast } = useGpt();
   const netOffline = useSyncExternalStore(subscribeOnline, readOffline, () => false);
   const gated = isGatedPath(pathname);
   const blocked = gated && !state.loggedIn;
   const needsProfile = state.loggedIn && !state.profileCompleted && pathname !== "/auth/complete-profile";
+  const offlineNow = netOffline || sessionUnreachable;
 
   useEffect(() => {
-    if (netOffline) return;
+    if (offlineNow) return;
     if (!ready || !sessionReady) return;
     if (blocked) {
       setPendingRoute(pathname);
@@ -55,9 +56,9 @@ function AuthGate({ children }: { children: ReactNode }) {
       router.replace("/auth/complete-profile");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [netOffline, ready, sessionReady, blocked, needsProfile, pathname]);
+  }, [offlineNow, ready, sessionReady, blocked, needsProfile, pathname]);
 
-  if (netOffline && gated) {
+  if (offlineNow && gated) {
     return <OfflineNotice />;
   }
 

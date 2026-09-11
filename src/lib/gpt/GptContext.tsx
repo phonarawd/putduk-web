@@ -56,6 +56,7 @@ import {
   tradeIsOpen,
 } from "@/lib/api";
 import { MSG, toastFromError, type ToastKind } from "@/lib/messages";
+import { isNetworkFailure } from "@/lib/network-error";
 import { conversationGreeting, evidenceFromDeepLink } from "./ai";
 import { EXECUTION_STEPS, VIEW_PATHS } from "./constants";
 import { allOpportunityViews, canStartOpportunity, selectedOpportunity } from "./opportunities";
@@ -124,6 +125,7 @@ interface GptContextValue {
 
   // 인증
   sessionReady: boolean;
+  sessionUnreachable: boolean;
   reloadDesk: () => Promise<void>;
   markPasswordAuth: () => void;
   markGoogleAuth: (needsProfile: boolean, email?: string) => void;
@@ -212,6 +214,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
 
   const [typing, setTyping] = useState<TypingState | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [sessionUnreachable, setSessionUnreachable] = useState(false);
   const aiAbortRef = useRef<AbortController | null>(null);
   const aiGenRef = useRef(0);
 
@@ -329,22 +332,34 @@ export function GptProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     let cancelled = false;
-    getSession()
-      .then((data) => {
-        if (cancelled) return;
-        applySession(data);
-        return reloadDesk();
-      })
-      .catch(() => {
-        if (cancelled) return;
-        if (getSnapshot().loggedIn) return;
-        clearAccountState();
-      })
-      .finally(() => {
-        if (!cancelled) setSessionReady(true);
-      });
+    const probe = () => {
+      getSession()
+        .then((data) => {
+          if (cancelled) return;
+          setSessionUnreachable(false);
+          applySession(data);
+          return reloadDesk();
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          if (isNetworkFailure(error)) {
+            setSessionUnreachable(true);
+            return;
+          }
+          setSessionUnreachable(false);
+          if (getSnapshot().loggedIn) return;
+          clearAccountState();
+        })
+        .finally(() => {
+          if (!cancelled) setSessionReady(true);
+        });
+    };
+    probe();
+    const onOnline = () => probe();
+    window.addEventListener("online", onOnline);
     return () => {
       cancelled = true;
+      window.removeEventListener("online", onOnline);
     };
   }, [ready, reloadDesk, applySession]);
 
@@ -918,6 +933,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
   const value: GptContextValue = {
     ready,
     sessionReady,
+    sessionUnreachable,
     reloadDesk,
     state,
     tickets,

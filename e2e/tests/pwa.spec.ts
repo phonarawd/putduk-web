@@ -1,8 +1,69 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { MSG } from "../../src/lib/messages.ts";
 import { becomeUser, openPage } from "../helpers/auth.ts";
 
 test.use({ serviceWorkers: "allow" });
+
+type OfflineProbe = {
+  onLine: boolean;
+  controlled: boolean;
+  swState: string | null;
+  cacheHasOffline: boolean;
+  url: string;
+  title: string;
+  bodyText: string;
+};
+
+async function probeOffline(page: Page): Promise<OfflineProbe> {
+  return page.evaluate(async () => {
+    const keys = await caches.keys();
+    let cacheHasOffline = false;
+    for (const key of keys) {
+      if (await (await caches.open(key)).match("/offline")) cacheHasOffline = true;
+    }
+    return {
+      onLine: navigator.onLine,
+      controlled: Boolean(navigator.serviceWorker.controller),
+      swState: navigator.serviceWorker.controller?.state ?? null,
+      cacheHasOffline,
+      url: location.href,
+      title: document.title,
+      bodyText: (document.body?.innerText || "").slice(0, 400),
+    };
+  });
+}
+
+async function waitUntilSwReadyWithOfflineCache(page: Page) {
+  await expect
+    .poll(async () => {
+      const snap = await probeOffline(page);
+      return snap.controlled && snap.swState === "activated" && snap.cacheHasOffline;
+    })
+    .toBeTruthy();
+}
+
+async function gotoGatedPathOffline(page: Page, context: BrowserContext, path: string) {
+  await waitUntilSwReadyWithOfflineCache(page);
+  await context.setOffline(true);
+  // 오프라인인데 mock API가 세션을 성공으로 채워 로그인 화면으로 가면 안 된다.
+  await page.unrouteAll({ behavior: "ignoreErrors" }).catch(() => undefined);
+  await context.unrouteAll({ behavior: "ignoreErrors" }).catch(() => undefined);
+  await expect
+    .poll(async () => {
+      const snap = await probeOffline(page);
+      return snap.controlled && snap.cacheHasOffline;
+    })
+    .toBeTruthy();
+  // load까지 기다리면 오프라인에서 하위 자원이 안 끝나 Firefox가 항해 자체를 붙잡는다.
+  // commit은 문서 항해가 실제로 시작됐는지만 본다.
+  await page.goto(path, { waitUntil: "commit" }).catch(() => undefined);
+  try {
+    await expect(page.getByText(MSG.offlineFinance)).toBeVisible();
+  } catch (error) {
+    const snap = await probeOffline(page).catch(() => null);
+    throw new Error(`offline UI missing path=${path} probe=${JSON.stringify(snap)} ${(error as Error).message}`);
+  }
+}
 
 test.describe("PWA", () => {
   test("manifest 필수 필드와 아이콘", async ({ page }) => {
@@ -46,21 +107,9 @@ test.describe("PWA", () => {
     await becomeUser(page);
     await page.goto("/offline");
     await expect(page.getByText(MSG.offlineFinance)).toBeVisible();
-    await expect.poll(async () =>
-      page.evaluate(async () => {
-        const controlled = Boolean(navigator.serviceWorker.controller);
-        const keys = await caches.keys();
-        for (const key of keys) {
-          if (await (await caches.open(key)).match("/offline")) return controlled;
-        }
-        return false;
-      }),
-    ).toBeTruthy();
     await expect(page.locator("#availableCapital, #availableUsdt, #settledProfit")).toHaveCount(0);
     await expect(page.getByText(/12\.50 USDT|18,000원/)).toHaveCount(0);
-    await context.setOffline(true);
-    await page.goto("/wallet/deposit").catch(() => undefined);
-    await expect(page.getByText(MSG.offlineFinance)).toBeVisible();
+    await gotoGatedPathOffline(page, context, "/wallet/deposit");
     await expect(page.locator("#availableCapital, #availableUsdt, #settledProfit")).toHaveCount(0);
     await expect(page.getByText(/12\.50 USDT|18,000원/)).toHaveCount(0);
   });
@@ -69,10 +118,7 @@ test.describe("PWA", () => {
     await openPage(page, { user: "a" });
     await becomeUser(page);
     await page.goto("/offline");
-    await expect.poll(async () => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBeTruthy();
-    await context.setOffline(true);
-    await page.goto("/me/membership").catch(() => undefined);
-    await expect(page.getByText(MSG.offlineFinance)).toBeVisible();
+    await gotoGatedPathOffline(page, context, "/me/membership");
     await expect(page.locator("h1", { hasText: "새싹" })).toHaveCount(0);
   });
 
