@@ -3,3 +3,10 @@
 # 터미널·MCP는 이 파일로 막히지 않는다. .cursor/rules/no-node-modules.mdc 가 보완한다.
 
 node_modules/
+.next/
+.open-next/
+.wrangler/
+dist/
+out/
+coverage/
+*.tsbuildinfo

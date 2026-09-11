@@ -42,3 +42,18 @@ pnpm build
 ```
 
 실제 배포 전에는 위 명령과 로그인 전·후의 데스크톱/모바일 브라우저 점검을 실행합니다.
+
+## 자동 검사
+
+```bash
+pnpm test                              # 단위 테스트
+pnpm exec playwright test              # E2E 전체 (chromium/firefox/webkit/mobile-chrome/mobile-safari)
+pnpm exec playwright test --project=chromium   # E2E Chromium만 (더 빠름)
+pnpm lhci                              # Lighthouse (5화면 × 3회, median 판정)
+```
+
+커밋/푸시 전 로컬 훅은 `pnpm install`의 `prepare`가 `.githooks/`를 `.git/hooks/`로 복사해 연결합니다. `git config`는 쓰지 않습니다.
+
+- pre-commit: staged된 ts/tsx만 lint + 전체 typecheck (목표 30초대, 저사양 PC 실측 약 35초)
+- pre-push: 단위 테스트 + Chromium 스모크(auth+qr, 목표 3분)
+- PR에는 항상 `.github/workflows/pr-quality.yml` 전체 게이트가 따로 돈다.

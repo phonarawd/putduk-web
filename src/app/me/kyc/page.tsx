@@ -1,13 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { useGpt } from "@/lib/gpt/GptContext";
-import { getKycStatus, readKycVerified, submitKyc, toE164 } from "@/lib/api";
+import {
+  ApiError,
+  getKycStatus,
+  KYC_FILE_ACCEPT,
+  kycFileIssue,
+  kycPairIssue,
+  readKycReason,
+  readKycUiStatus,
+  submitKyc,
+  toE164,
+  type KycUiStatus,
+} from "@/lib/api";
 import { validPhone } from "@/lib/gpt/validate";
-import { MSG, toastFromError } from "@/lib/messages";
+import { MSG, toastFromError, userFacingError } from "@/lib/messages";
 
 const ID_DOC_TYPES = [
   { idDocType: "kr_id", label: "주민등록증" },
@@ -15,11 +26,39 @@ const ID_DOC_TYPES = [
   { idDocType: "passport", label: "여권" },
 ] as const;
 
+type PageStatus = "loading" | "error" | KycUiStatus | "form";
+
+function fileHint(file: File | null) {
+  if (!file) return null;
+  const kb = Math.max(1, Math.round(file.size / 1024));
+  const type = file.type || "";
+  return `${file.name} · ${kb}KB${type ? ` · ${type}` : ""}`;
+}
+
+function FilePreview({ file }: { file: File | null }) {
+  const url = useMemo(() => {
+    if (!file || !file.type.startsWith("image/")) return "";
+    return URL.createObjectURL(file);
+  }, [file]);
+  useEffect(() => {
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [url]);
+  if (!file) return null;
+  return (
+    <>
+      <small>{fileHint(file)}</small>
+      {url ? <img src={url} alt="" /> : null}
+    </>
+  );
+}
+
 export default function MeKycPage() {
   const router = useRouter();
   const { showToast } = useGpt();
-  const [verified, setVerified] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [page, setPage] = useState<PageStatus>("loading");
+  const [reason, setReason] = useState("");
   const [legalName, setLegalName] = useState("");
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -28,10 +67,33 @@ export default function MeKycPage() {
   const [selfie, setSelfie] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
+  function applyStatus(data: unknown) {
+    const status = readKycUiStatus(data);
+    if (!status) {
+      setPage("error");
+      setReason("");
+      return;
+    }
+    setReason(readKycReason(data));
+    setPage(status);
+  }
+
+  function fetchStatus() {
+    return getKycStatus()
+      .then(applyStatus)
+      .catch(() => {
+        setReason("");
+        setPage("error");
+      });
+  }
+
+  function loadStatus() {
+    setPage("loading");
+    void fetchStatus();
+  }
+
   useEffect(() => {
-    getKycStatus()
-      .then((data) => setVerified(readKycVerified(data)))
-      .catch(() => setVerified(false));
+    void fetchStatus();
   }, []);
 
   async function onSubmit(event: React.FormEvent) {
@@ -41,8 +103,9 @@ export default function MeKycPage() {
       showToast(MSG.kycNeed, "warning");
       return;
     }
-    if (!idDoc || !selfie) {
-      showToast(MSG.kycNeedFiles, "warning");
+    const pairIssue = kycPairIssue(idDoc, selfie);
+    if (pairIssue) {
+      showToast(userFacingError(pairIssue, MSG.kycNeedFiles), "warning");
       return;
     }
     setBusy(true);
@@ -52,12 +115,17 @@ export default function MeKycPage() {
         phoneE164: toE164(phone),
         birthDate,
         idDocType,
-        idDoc,
-        selfie,
+        idDoc: idDoc as File,
+        selfie: selfie as File,
       });
-      setSubmitted(true);
+      const next = await getKycStatus();
+      applyStatus(next);
       showToast(MSG.kycOk, "success");
     } catch (error: unknown) {
+      if (error instanceof ApiError && error.status === 409) {
+        await fetchStatus();
+        return;
+      }
       const payload = toastFromError(error, MSG.kycFail);
       showToast(payload.message, payload.kind);
     } finally {
@@ -65,7 +133,32 @@ export default function MeKycPage() {
     }
   }
 
-  if (verified) {
+  if (page === "loading") {
+    return (
+      <RouteScreen>
+        <section className="status-page-card">
+          <span className="view-kicker">본인확인</span>
+          <h1>상태를 확인하고 있어요</h1>
+        </section>
+      </RouteScreen>
+    );
+  }
+
+  if (page === "error") {
+    return (
+      <RouteScreen>
+        <section className="status-page-card">
+          <span className="view-kicker">본인확인</span>
+          <h1>{MSG.kycLoadFail}</h1>
+          <button className="form-primary" type="button" onClick={loadStatus}>
+            {MSG.withdrawPolicyRetry}
+          </button>
+        </section>
+      </RouteScreen>
+    );
+  }
+
+  if (page === "verified") {
     return (
       <RouteScreen>
         <section className="status-page-card">
@@ -90,7 +183,7 @@ export default function MeKycPage() {
     );
   }
 
-  if (submitted) {
+  if (page === "pending") {
     return (
       <RouteScreen>
         <section className="status-page-card">
@@ -98,14 +191,25 @@ export default function MeKycPage() {
             📌
           </span>
           <span className="view-kicker">본인확인</span>
-          <h1>요청을 보냈어요</h1>
-          <p>
-            확인이 끝나면 출금할 수 있어요.
-            <br />
-            지금은 결과를 기다리면 됩니다.
-          </p>
+          <h1>{MSG.kycPending}</h1>
+          <p>새로고침해도 서버에 있는 상태만 보여 드려요.</p>
           <button className="form-primary" type="button" onClick={() => router.push("/me")}>
             나로 돌아가기
+          </button>
+        </section>
+      </RouteScreen>
+    );
+  }
+
+  if (page === "rejected") {
+    return (
+      <RouteScreen>
+        <section className="status-page-card">
+          <span className="view-kicker">본인확인</span>
+          <h1>{MSG.kycRejected}</h1>
+          {reason ? <p>{reason}</p> : null}
+          <button className="form-primary" type="button" onClick={() => setPage("form")}>
+            다시 제출하기
           </button>
         </section>
       </RouteScreen>
@@ -188,11 +292,22 @@ export default function MeKycPage() {
             <input
               name="idDoc"
               type="file"
-              accept="image/*"
+              accept={KYC_FILE_ACCEPT}
               required
-              onChange={(event) => setIdDoc(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                const issue = kycFileIssue(file);
+                if (file && issue) {
+                  showToast(userFacingError(issue, MSG.kycNeedFiles), "warning");
+                  event.target.value = "";
+                  setIdDoc(null);
+                  return;
+                }
+                setIdDoc(file);
+              }}
             />
             <small>주민번호 뒤쪽이 보이지 않게 가려 주세요.</small>
+            <FilePreview file={idDoc} />
           </label>
           <label className="form-field">
             <span>
@@ -201,10 +316,21 @@ export default function MeKycPage() {
             <input
               name="selfie"
               type="file"
-              accept="image/*"
+              accept={KYC_FILE_ACCEPT}
               required
-              onChange={(event) => setSelfie(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                const issue = kycFileIssue(file);
+                if (file && issue) {
+                  showToast(userFacingError(issue, MSG.kycNeedFiles), "warning");
+                  event.target.value = "";
+                  setSelfie(null);
+                  return;
+                }
+                setSelfie(file);
+              }}
             />
+            <FilePreview file={selfie} />
           </label>
           <button className="form-primary" type="submit" disabled={busy}>
             본인확인 요청

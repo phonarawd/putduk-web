@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
+import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { completePasswordReset, requestPasswordReset } from "@/lib/api";
 import { validEmail } from "@/lib/gpt/validate";
@@ -21,6 +22,8 @@ export default function ResetPasswordPage({ searchParams }: PageProps<"/auth/res
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReset, setTurnstileReset] = useState(0);
   const [busy, setBusy] = useState(false);
 
   async function onRequest(event: React.FormEvent) {
@@ -30,12 +33,18 @@ export default function ResetPasswordPage({ searchParams }: PageProps<"/auth/res
       showToast(MSG.emailNeed, "warning");
       return;
     }
+    if (hasTurnstileSiteKey() && !turnstileToken) {
+      showToast(MSG.challengeNeed, "warning");
+      return;
+    }
     if (busy) return;
     setBusy(true);
     try {
-      await requestPasswordReset(nextEmail);
+      await requestPasswordReset(nextEmail, turnstileToken || undefined);
       showToast(MSG.resetRequestOk, "success");
     } catch (error: unknown) {
+      setTurnstileToken("");
+      setTurnstileReset((value) => value + 1);
       const payload = toastFromError(error, MSG.genericError);
       showToast(payload.message, payload.kind);
     } finally {
@@ -122,6 +131,7 @@ export default function ResetPasswordPage({ searchParams }: PageProps<"/auth/res
                 onChange={(event) => setEmail(event.target.value)}
               />
             </label>
+            <TurnstileBox key={turnstileReset} action="password-reset" onToken={setTurnstileToken} />
             <button className="form-primary" type="submit" disabled={busy}>
               재설정 메일 받기
             </button>

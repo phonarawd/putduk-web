@@ -1,0 +1,61 @@
+{
+  "status": "PARTIAL",
+  "reason": "백엔드 PR #222 @ 0fa38d77 계약 문서를 화면 호출과 대조했다. api.hiptk.app 런타임 SHA는 확인하지 못했다. 운영 마이그레이션 미적용. OpenAPI lock은 만들지 않았다.",
+  "consumedBase": "https://api.hiptk.app",
+  "existingClient": "src/lib/api.ts",
+  "readOnlyBackendRepo": "phonarawd/AI-Profit-OS",
+  "readOnlyBackendPr": "https://github.com/phonarawd/AI-Profit-OS/pull/222",
+  "readOnlyContractPath": "C:\\Users\\PC\\Desktop\\AI_PROFIT_OS_CONTRACT_P0\\quality\\customer-web-contract-p0.md",
+  "readSha": "0fa38d77",
+  "githubMainSha": "c4ebcd870557c74f214735bfc9e6c4dac37aaeac",
+  "githubProductionDeploySha": "3366bbe6cac8b1b188550ba651927ecc58f011bf",
+  "runtimeSha": null,
+  "merged": false,
+  "deployed": false,
+  "reverifiedAt": "2026-09-11T00:32:00+09:00",
+  "reverifiedVia": "gh api repos/phonarawd/AI-Profit-OS/pulls/222 (read-only)",
+  "reverifiedResult": "state=open mergeable=true merged=false head_sha=0fa38d77a4a461ae1b20eb81d7f5a2380a9fbaf3 — 기존 문서와 일치, 변동 없음",
+  "canonicalSchemas": {
+    "authSessionV1": {
+      "path": "schemas/auth-session.v1.json",
+      "additionalProperties": false,
+      "required": ["sessionId", "userId", "issuer", "issuedAt", "expiresAt", "revoked"],
+      "issuerConst": "ai-profit-os-nest",
+      "onboardingStageEnum": ["A", "B_incomplete", "B_complete"],
+      "genderEnum": ["male", "female", null],
+      "note": "email/username/declaredName은 이 스키마에 없다. api.ts의 sessionUser()가 user/session/profile 중첩 또는 루트 어디서든 읽도록 이미 방어돼 있어 화면 동작에는 영향 없음. e2e/tests/auth.spec.ts 13번이 우리 mock과 이 스키마의 어긋남을 감지한다."
+    },
+    "userProfileV1": {
+      "path": "schemas/user-profile.v1.json",
+      "additionalProperties": false,
+      "required": ["userId", "termsAcceptedAt", "privacyAcceptedAt"],
+      "phoneE164Pattern": "^\\+[1-9][0-9]{7,14}$",
+      "displayNameLength": [2, 40],
+      "genderEnum": ["male", "female", null],
+      "forbidden": ["rrnFull", "free-string gender", "addressRequired"]
+    }
+  },
+  "confirmed": {
+    "prefix": "/api/v1",
+    "health": "GET /health outside prefix",
+    "googleStart": { "method": "POST", "path": "/api/v1/auth/oauth/google/start", "body": {}, "response": ["ok", "provider", "status", "authorizeUrl"], "cookie": "aipo_oauth_bind" },
+    "googleCallback": { "method": "POST", "path": "/api/v1/auth/oauth/google/callback", "body": ["code", "state"], "existing": 200, "newWithoutTerms": { "status": 400, "code": "TERMS_REQUIRED", "pendingToken": true, "expiresInSec": 600, "resendCodeState": false } },
+    "googleComplete": { "method": "POST", "path": "/api/v1/auth/oauth/google/complete", "body": ["pendingToken", "termsAcceptedAt", "privacyAcceptedAt"], "optional": ["marketingConsent", "referralCode"], "errors": ["OAUTH_BIND_MISMATCH", "OAUTH_PENDING_INVALID", "TERMS_REQUIRED"] },
+    "stageB": { "method": "PATCH", "path": "/api/v1/auth/profile", "body": ["displayName", "phoneE164", "birthDate", "email?"], "forbiddenOnStageB": ["gender"] },
+    "genderWrite": { "method": "PATCH", "path": "/api/v1/auth/profile", "body": { "gender": ["male", "female"] }, "response": ["ok", "onboardingStage", "gender"] },
+    "session": { "method": "GET", "path": "/api/v1/auth/session", "gender": ["male", "female", null] },
+    "emailResendTurnstileAction": "email-resend",
+    "ledgerJournals": { "method": "GET", "path": "/api/v1/me/ledger/journals", "list": ["items", "total", "limit", "offset"], "display": ["displayKey", "labelKo", "direction", "customerVisible", "amountUsdt", "amountSource", "multiEntryPolicy", "status"], "unknown": { "displayKey": "ledger.unknown", "direction": "neutral", "labelKo": "확인 필요" } },
+    "kycStatus": { "method": "GET", "path": "/api/v1/compliance/kyc/status", "response": ["userId", "kycStatus", "submissionId?", "decidedAt?", "rejectReason?"], "kycStatus": ["none", "pending", "approved", "rejected"] },
+    "kycSubmit": { "method": "POST", "path": "/api/v1/compliance/kyc/submit", "files": ["idDoc", "selfie"], "types": ["jpeg", "png", "webp", "heic"], "maxFileBytes": 5242880, "maxTotalBytes": 8388608, "errors": ["KYC_FILE_REQUIRED", "KYC_FILE_TOO_LARGE", "KYC_TOTAL_TOO_LARGE", "KYC_FILE_TYPE", "KYC_ID_SELFIE_REQUIRED"], "conflict": 409, "success": 200 },
+    "withdraw": { "idempotency": "body.idempotencyKey minLength 8", "stepUpToken": "body.stepUpToken" },
+    "membership": { "method": "GET", "path": "/api/v1/me/membership", "response": ["membership", "labelKo", "dailyUserMatchCap", "dailyMatchesUsed", "maxCapitalBand", "matchStrictness", "aiPerkFlags", "current", "ladder"] },
+    "benefits": { "list": "GET /api/v1/me/benefits", "summary": "GET /api/v1/me/benefits/summary" },
+    "krwInstructions": { "method": "GET", "path": "/api/v1/wallet/krw-deposit-instructions", "success": ["bankName", "accountNumber", "accountHolder", "noticeKo"], "notReady": "503 CONFIG_NOT_READY" },
+    "depositAddress": { "method": "GET", "path": "/api/v1/wallet/my-deposit-address", "response": ["userId", "trc20Address", "derivationIndex", "qrPayload", "createdAt", "lastSeenTxAt?"], "qrImageUrl": false }
+  },
+  "blocked": {
+    "runtimeSha": "api.hiptk.app process SHA unknown",
+    "liveApi": "backend PR 222 not merged, migration not applied — mock E2E only"
+  }
+}

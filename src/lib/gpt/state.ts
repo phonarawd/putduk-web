@@ -1,6 +1,24 @@
 import { emptyTrial } from "@/lib/api";
-import { STORAGE_KEY } from "./constants";
-import type { GptState } from "./types";
+import { ACCOUNT_STORAGE_PREFIX, DEVICE_STORAGE_KEY, STORAGE_KEY } from "./constants";
+import type { Conversation, Gender, GptState } from "./types";
+
+export type DevicePrefs = {
+  notificationsEnabled: boolean;
+  benefitNews: boolean;
+  settlementAlerts: boolean;
+  walletAlerts: boolean;
+  preferKrwFirst: boolean;
+  celebrateOn: boolean;
+};
+
+const DEVICE_DEFAULTS: DevicePrefs = {
+  notificationsEnabled: true,
+  benefitNews: false,
+  settlementAlerts: true,
+  walletAlerts: true,
+  preferKrwFirst: true,
+  celebrateOn: true,
+};
 
 export function makeResellerId(): string {
   return "";
@@ -15,6 +33,7 @@ export function defaultState(): GptState {
   return {
     schemaVersion: 2,
     loggedIn: false,
+    userId: "",
     authMethod: "",
     profileCompleted: true,
     resellerId: "",
@@ -63,7 +82,7 @@ export function defaultState(): GptState {
 
 export function freshIdentity() {
   return {
-    issuedAt: new Date().toISOString(),
+    issuedAt: "",
     dailyKey: kstDateKey(),
     lastRefreshAt: 0,
   };
@@ -73,59 +92,104 @@ export function createFreshState(): GptState {
   return { ...defaultState(), ...freshIdentity() };
 }
 
-export function readStoredState(): GptState {
-  if (typeof window === "undefined") return defaultState();
-  const fresh: GptState = createFreshState();
+function readJson(key: string): unknown {
   try {
-    const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null");
-    if (!saved || typeof saved !== "object") return fresh;
-    return {
-      ...fresh,
-      schemaVersion: 2,
-      loggedIn: Boolean(saved.loggedIn),
-      authMethod: saved.authMethod === "google" || saved.authMethod === "password" ? saved.authMethod : "",
-      profileCompleted: saved.profileCompleted !== false,
-      displayName: typeof saved.displayName === "string" ? saved.displayName : "",
-      email: typeof saved.email === "string" ? saved.email : "",
-      birthday: typeof saved.birthday === "string" ? saved.birthday : "",
-      gender: saved.gender === "male" || saved.gender === "female" ? saved.gender : "",
-      phone: typeof saved.phone === "string" ? saved.phone : "",
-      notificationsEnabled: saved.notificationsEnabled !== false,
-      benefitNews: Boolean(saved.benefitNews),
-      settlementAlerts: saved.settlementAlerts !== false,
-      walletAlerts: saved.walletAlerts !== false,
-      preferKrwFirst: saved.preferKrwFirst !== false,
-      celebrateOn: saved.celebrateOn !== false,
-      conversations: Array.isArray(saved.conversations) ? saved.conversations.slice(0, 12) : [],
-      activeConversationId: typeof saved.activeConversationId === "string" ? saved.activeConversationId : "",
-      pendingAiQuestion: typeof saved.pendingAiQuestion === "string" ? saved.pendingAiQuestion : "",
-      pendingRoute: typeof saved.pendingRoute === "string" ? saved.pendingRoute : "",
-    };
+    return JSON.parse(window.localStorage.getItem(key) || "null");
   } catch {
-    return fresh;
+    return null;
   }
 }
 
-export function writeStoredState(state: GptState): void {
+function asObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function readConversations(value: unknown): Conversation[] {
+  return Array.isArray(value) ? (value as Conversation[]).slice(0, 12) : [];
+}
+
+export function readDevicePrefs(): DevicePrefs {
+  if (typeof window === "undefined") return { ...DEVICE_DEFAULTS };
+  const saved = asObject(readJson(DEVICE_STORAGE_KEY));
+  const legacy = asObject(readJson(STORAGE_KEY));
+  const src = saved || legacy;
+  if (!src) return { ...DEVICE_DEFAULTS };
+  return {
+    notificationsEnabled: src.notificationsEnabled !== false,
+    benefitNews: Boolean(src.benefitNews),
+    settlementAlerts: src.settlementAlerts !== false,
+    walletAlerts: src.walletAlerts !== false,
+    preferKrwFirst: src.preferKrwFirst !== false,
+    celebrateOn: src.celebrateOn !== false,
+  };
+}
+
+export function writeDevicePrefs(prefs: DevicePrefs): void {
   if (typeof window === "undefined") return;
   try {
+    window.localStorage.setItem(DEVICE_STORAGE_KEY, JSON.stringify(prefs));
+  } catch {
+    // 이번 방문 동안은 화면을 계속 쓸 수 있으면 충분하다.
+  }
+}
+
+function accountKey(userId: string): string {
+  return ACCOUNT_STORAGE_PREFIX + userId;
+}
+
+export type AccountSlice = {
+  displayName: string;
+  email: string;
+  birthday: string;
+  gender: Gender;
+  phone: string;
+  conversations: Conversation[];
+  activeConversationId: string;
+  pendingAiQuestion: string;
+  pendingRoute: string;
+};
+
+function emptyAccountSlice(): AccountSlice {
+  return {
+    displayName: "",
+    email: "",
+    birthday: "",
+    gender: "",
+    phone: "",
+    conversations: [],
+    activeConversationId: "",
+    pendingAiQuestion: "",
+    pendingRoute: "",
+  };
+}
+
+export function readAccountSlice(userId: string): AccountSlice {
+  if (typeof window === "undefined" || !userId) return emptyAccountSlice();
+  const saved = asObject(readJson(accountKey(userId)));
+  if (!saved) return emptyAccountSlice();
+  return {
+    displayName: typeof saved.displayName === "string" ? saved.displayName : "",
+    email: typeof saved.email === "string" ? saved.email : "",
+    birthday: typeof saved.birthday === "string" ? saved.birthday : "",
+    gender: "",
+    phone: typeof saved.phone === "string" ? saved.phone : "",
+    conversations: readConversations(saved.conversations),
+    activeConversationId: typeof saved.activeConversationId === "string" ? saved.activeConversationId : "",
+    pendingAiQuestion: typeof saved.pendingAiQuestion === "string" ? saved.pendingAiQuestion : "",
+    pendingRoute: typeof saved.pendingRoute === "string" ? saved.pendingRoute : "",
+  };
+}
+
+export function writeAccountSlice(userId: string, state: GptState): void {
+  if (typeof window === "undefined" || !userId) return;
+  try {
     window.localStorage.setItem(
-      STORAGE_KEY,
+      accountKey(userId),
       JSON.stringify({
-        loggedIn: state.loggedIn,
-        authMethod: state.authMethod,
-        profileCompleted: state.profileCompleted,
         displayName: state.displayName,
         email: state.email,
         birthday: state.birthday,
-        gender: state.gender,
         phone: state.phone,
-        notificationsEnabled: state.notificationsEnabled,
-        benefitNews: state.benefitNews,
-        settlementAlerts: state.settlementAlerts,
-        walletAlerts: state.walletAlerts,
-        preferKrwFirst: state.preferKrwFirst,
-        celebrateOn: state.celebrateOn,
         conversations: state.conversations,
         activeConversationId: state.activeConversationId,
         pendingAiQuestion: state.pendingAiQuestion,
@@ -135,6 +199,37 @@ export function writeStoredState(state: GptState): void {
   } catch {
     // 이번 방문 동안은 화면을 계속 쓸 수 있으면 충분하다.
   }
+}
+
+export function clearAccountStorage(userId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (userId) window.localStorage.removeItem(accountKey(userId));
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // 지워지지 않아도 메모리 상태는 비운다.
+  }
+}
+
+export function applyDevicePrefs(state: GptState, prefs: DevicePrefs): GptState {
+  return { ...state, ...prefs };
+}
+
+export function readStoredState(): GptState {
+  if (typeof window === "undefined") return defaultState();
+  return applyDevicePrefs(createFreshState(), readDevicePrefs());
+}
+
+export function writeStoredState(state: GptState): void {
+  writeDevicePrefs({
+    notificationsEnabled: state.notificationsEnabled,
+    benefitNews: state.benefitNews,
+    settlementAlerts: state.settlementAlerts,
+    walletAlerts: state.walletAlerts,
+    preferKrwFirst: state.preferKrwFirst,
+    celebrateOn: state.celebrateOn,
+  });
+  if (state.userId) writeAccountSlice(state.userId, state);
 }
 
 export function ticketState(state: GptState) {

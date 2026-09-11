@@ -1,0 +1,22 @@
+{
+  "recordedAt": "2026-09-09T20:20:00+09:00",
+  "executionMode": "PATCH_AND_PR",
+  "repoRole": "CUSTOMER_WEB",
+  "repository": "phonarawd/putduk-web",
+  "remote": "https://github.com/phonarawd/putduk-web.git",
+  "baseBranch": "main",
+  "baseSha": "5c946e074c305907aee1091b1ab5770842a9dc0d",
+  "workBranch": "ui/p0-account-truth",
+  "dirtyAtStart": false,
+  "packageManager": "pnpm@11.4.0",
+  "node": "v24.19.0",
+  "next": "16.3.4",
+  "react": "19.2.8",
+  "apiBase": "https://api.hiptk.app",
+  "apiContractSha": null,
+  "schemaHash": null,
+  "allowNewDependencies": false,
+  "allowAssetRecompression": false,
+  "allowProductionDeploy": false,
+  "directDbOrSupabaseOrOpenAi": false
+}

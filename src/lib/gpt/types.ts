@@ -118,6 +118,7 @@ export type Gender = "" | "male" | "female";
 export interface GptState {
   schemaVersion: number;
   loggedIn: boolean;
+  userId: string;
   authMethod: "" | "password" | "google";
   profileCompleted: boolean;
   resellerId: string;

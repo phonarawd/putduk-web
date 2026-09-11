@@ -1,0 +1,117 @@
+{
+  "recordedAt": "2026-09-11",
+  "headBefore": "5535bfd506f2c5122b343f720c932fb1d13b7592",
+  "headAfterProduct": "dd20d2b8d8c5f20accb9eba33420a3ba1367b00a",
+  "verdict": "CHANGES_STILL_REQUIRED",
+  "verdictReason": "제품 변경(dd20d2b) 이후 로컬 WebKit/Mobile Safari/Firefox/Lighthouse 미실행. 수정 후 CI quality+browsers는 푸시 직후 in-progress. UI_UX_CORE_READY_FIREFOX_ADVISORY는 그 결과가 실제로 나온 뒤에만 가능.",
+  "typecheck": { "command": "pnpm exec tsc --noEmit", "exitCode": 0, "status": "PASS", "where": "local after product change (twice)" },
+  "lint": { "command": "pnpm lint", "exitCode": 0, "status": "PASS", "where": "local after product change", "notes": "경고 15개, 기존 <img>/exhaustive-deps, 오류 0" },
+  "unit": { "command": "pnpm test", "exitCode": 0, "status": "PASS", "passed": 12, "where": "local after product change + pre-push" },
+  "build": { "command": "pnpm build", "exitCode": 0, "status": "PASS", "where": "local after last source change" },
+  "e2eChromium": {
+    "command": "pnpm exec playwright test --project=chromium --workers=1",
+    "status": "PASS",
+    "where": "local Windows after clean rebuild",
+    "runs": [
+      { "n": 1, "passed": 85, "durationMin": 18.8, "exitCode": 0 },
+      { "n": 2, "passed": 85, "durationMin": 17.9, "exitCode": 0 },
+      { "n": 3, "passed": 85, "durationMin": 15.5, "exitCode": 0 }
+    ]
+  },
+  "e2eMobileChrome": {
+    "command": "pnpm exec playwright test --project=mobile-chrome --workers=1",
+    "status": "PASS_1X_THEN_INTERRUPTED",
+    "where": "local Windows",
+    "runs": [
+      { "n": 1, "passed": 85, "durationMin": 17.0, "exitCode": 0, "status": "PASS" },
+      { "n": 2, "status": "INTERRUPTED", "notes": "사용자 중단. PASS로 기록하지 않음" }
+    ]
+  },
+  "e2eFirefox": {
+    "command": "pnpm exec playwright test --project=firefox",
+    "status": "NOT_RUN",
+    "advisory": "FIREFOX_ADVISORY",
+    "where": "local after dd20d2b: NOT_RUN. prior CI on 5535bfd: run 34561027344 browsers FAILURE then 34561028962 browsers SUCCESS (same SHA flake)",
+    "notes": "제품 수정이 flake 원인을 겨냥했으나 새 SHA에서 Firefox를 다시 돌리지 않음"
+  },
+  "e2eWebkitMobileSafari": {
+    "command": "pnpm exec playwright test --project=webkit --project=mobile-safari",
+    "status": "NOT_RUN",
+    "where": "local after dd20d2b: NOT_RUN. prior CI on 5535bfd run 34561028962 browsers SUCCESS included WebKit/Mobile Safari",
+    "notes": "수정 전 CI 통과를 수정 후 증거로 쓰지 않음"
+  },
+  "axe": {
+    "status": "PASS",
+    "screens": 33,
+    "where": "local Chromium 3x + Mobile Chrome 1x (included in the 85-pass runs). reduced-motion/Tab/tablist included",
+    "notes": "WebKit/Firefox axe after fix: NOT_RUN"
+  },
+  "lighthouse": {
+    "command": "CHROME_PATH=<playwright chromium> pnpm exec lhci autorun",
+    "status": "NOT_RUN",
+    "where": "not re-run after dd20d2b locally; post-fix CI quality in-progress",
+    "priorSha5535bfdCiArtifact": {
+      "numberOfRuns": 3,
+      "aggregationMethod": "median",
+      "source": "quality job artifact on 5535bfd (before this session product commits)",
+      "perfRuns": {
+        "login": [0.99, 0.98, 0.98],
+        "home": [0.99, 0.99, 0.99],
+        "work": [0.98, 1.00, 1.00],
+        "deposit": [0.98, 0.98, 0.98],
+        "me": [1.00, 1.00, 1.00]
+      },
+      "perfMedian": { "login": 0.98, "home": 0.99, "work": 1.00, "deposit": 0.98, "me": 1.00 }
+    },
+    "thresholdLowered": false
+  },
+  "pwa": {
+    "status": "PASS_CHROMIUM_MOBILE_CHROME_ONLY",
+    "firefox": "NOT_RUN_AFTER_FIX",
+    "advisory": "FIREFOX_ADVISORY",
+    "checks": "SW v3 cached /offline for document requests; AuthGate sessionUnreachable -> OfflineNotice; tests wait SW+cache, unroute, goto commit"
+  },
+  "qr": { "status": "PASS", "where": "local Chromium 3x + Mobile Chrome 1x + pre-push chromium qr.spec" },
+  "footerViewport": {
+    "status": "PASS",
+    "where": "uiux 48 in local Chromium 3x + Mobile Chrome 1x",
+    "notes": "public footer vs logged-in mobile nav is intended. 320 home-logged-in overflow/nav 3px already tolerated. no redesign"
+  },
+  "contractDrift": { "status": "PASS", "where": "prior session + local mock; backend PR 222 still OPEN" },
+  "regression3x": {
+    "status": "PARTIAL",
+    "local": "Chromium full spec 3 consecutive PASS. Mobile Chrome 1 PASS then interrupted. WebKit/Firefox 3x NOT_RUN",
+    "ci": "nightly still cannot run until default-branch merge. post-fix pr-quality in-progress"
+  },
+  "browserstack": { "status": "BLOCKED_ENV" },
+  "liveApi": {
+    "status": "BLOCKED_BACKEND",
+    "notes": "phonarawd/AI-Profit-OS#222 0fa38d77 still OPEN, merged=false, MERGED NO, DEPLOYED NO"
+  },
+  "dependencyAudit": {
+    "command": "pnpm audit",
+    "status": "FOUND_8",
+    "severities": { "high": 4, "moderate": 3, "low": 1 },
+    "ciPathDev": "tmp, extract-zip, uuid, qs via @lhci/cli -> lighthouse/puppeteer/express",
+    "productionDeclaredDeploy": "sharp via dependencies @opennextjs/cloudflare -> wrangler -> miniflare (also wrangler devDep)",
+    "browserRuntimeNextReactQrcode": "no findings in audit output",
+    "notes": "devDep라고 무해하다고 쓰지 않음. 업그레이드 승인 없음"
+  },
+  "actionsRemote": {
+    "status": "IN_PROGRESS",
+    "postFix": [
+      { "sha": "dd20d2b", "event": "push", "url": "https://github.com/phonarawd/putduk-web/actions/runs/34577315623", "status": "in-progress" },
+      { "sha": "dd20d2b", "event": "pull_request", "url": "https://github.com/phonarawd/putduk-web/actions/runs/34577320757", "status": "in-progress" }
+    ],
+    "prior5535bfd": [
+      { "url": "https://github.com/phonarawd/putduk-web/actions/runs/34561027344", "quality": "SUCCESS", "browsers": "FAILURE" },
+      { "url": "https://github.com/phonarawd/putduk-web/actions/runs/34561028962", "quality": "SUCCESS", "browsers": "SUCCESS" }
+    ]
+  },
+  "prepush": {
+    "status": "PASS",
+    "unit": 12,
+    "chromiumAuthQr": { "passed": 14, "durationMin": 2.1 },
+    "push": "5535bfd..dd20d2b origin/ui/p0-account-truth EXIT 0 no-force"
+  }
+}

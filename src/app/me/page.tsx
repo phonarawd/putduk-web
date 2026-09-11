@@ -7,6 +7,7 @@ import { WorkspaceView } from "@/components/gpt/WorkspaceView";
 import { formatIssued, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { hasMoneyValues, loadMoneyRead, type MoneyRead } from "@/lib/api";
+import { MSG } from "@/lib/messages";
 
 const MENU_ITEMS = [
   { icon: "₩", title: "입금", small: "운용 자본 넣기", path: "/wallet/deposit" },
@@ -17,6 +18,7 @@ const MENU_ITEMS = [
   { icon: "♢", title: "알림", small: "기회와 정산 소식", path: "/me/inbox" },
   { icon: "📢", title: "공지사항", small: "퍼뜩의 새 소식", path: "/me/notices" },
   { icon: "⚙", title: "설정", small: "내 데스크 환경", path: "/me/settings" },
+  { icon: "◎", title: "내 등급", small: "하루 기회와 기준", path: "/me/membership" },
   { icon: "★", title: "혜택", small: "현재 받을 혜택", path: "/me/benefits" },
   { icon: "🎉", title: "이벤트", small: "지금 진행 중인 이벤트", path: "/me/events" },
   { icon: "?", title: "고객지원", small: "도움이 필요할 때", path: "/me/support" },
@@ -68,7 +70,7 @@ export default function MePage() {
             </div>
             <div className="profile-pass-main">
               <small>리셀러 ID</small>
-              <strong id="profileResellerId">{state.resellerId || state.displayName || "아직 표시할 아이디가 없어요"}</strong>
+              <strong id="profileResellerId">{state.resellerId || MSG.resellerIdEmpty}</strong>
               <span id="profileIssued">{state.issuedAt ? formatIssued(state.issuedAt) : ""}</span>
             </div>
             <div className="pass-bottom">
@@ -159,7 +161,7 @@ export default function MePage() {
         <section className="profile-edit-card">
           <div>
             <span className="view-kicker">내 표시 정보</span>
-            <h2 id="profileDisplayName">{state.displayName} 리셀러님</h2>
+            <h2 id="profileDisplayName">{state.displayName || MSG.resellerIdEmpty}</h2>
             <p>이름은 데스크에 보이는 표시 이름이며 본인확인 실명이 아니에요.</p>
           </div>
           <GenderSelect

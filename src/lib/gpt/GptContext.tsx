@@ -30,6 +30,7 @@ import {
   listTrades,
   logout as logoutSession,
   mergeApiRows,
+  needsCompleteProfile,
   newIdempotencyKey,
   participateOpportunity,
   preflightOpportunity,
@@ -42,19 +43,34 @@ import {
   readPreflightToken,
   readTrades,
   readTradeSnapshot,
+  readProfileGender,
   readTrialState,
+  saveProfileGender,
   sessionDisplayName,
   sessionEmail,
+  sessionGender,
+  sessionIssuedAt,
+  sessionUserId,
   sessionUsername,
   streamPeotteokChat,
   tradeIsOpen,
 } from "@/lib/api";
 import { MSG, toastFromError, type ToastKind } from "@/lib/messages";
+import { isNetworkFailure } from "@/lib/network-error";
 import { conversationGreeting, evidenceFromDeepLink } from "./ai";
 import { EXECUTION_STEPS, VIEW_PATHS } from "./constants";
 import { allOpportunityViews, canStartOpportunity, selectedOpportunity } from "./opportunities";
-import { ticketState } from "./state";
-import { getHydratedServerSnapshot, getServerSnapshot, getSnapshot, isHydrated, setStoreState, subscribe } from "./store";
+import { readAccountSlice, ticketState } from "./state";
+import {
+  clearAccountState,
+  ensureConversation,
+  getHydratedServerSnapshot,
+  getServerSnapshot,
+  getSnapshot,
+  isHydrated,
+  setStoreState,
+  subscribe,
+} from "./store";
 import type {
   ActiveExecution,
   Conversation,
@@ -109,6 +125,7 @@ interface GptContextValue {
 
   // 인증
   sessionReady: boolean;
+  sessionUnreachable: boolean;
   reloadDesk: () => Promise<void>;
   markPasswordAuth: () => void;
   markGoogleAuth: (needsProfile: boolean, email?: string) => void;
@@ -120,7 +137,7 @@ interface GptContextValue {
     phone: string;
     benefitNews: boolean;
   }) => void;
-  completeGoogleProfile: (fields: { displayName: string; birthday: string; gender: Gender; phone?: string }) => void;
+  completeGoogleProfile: (fields: { displayName: string; birthday: string; phone: string; email: string }) => void;
   cancelGoogleOnboarding: () => void;
   logout: () => void;
   setPendingRoute: (path: string) => void;
@@ -197,6 +214,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
 
   const [typing, setTyping] = useState<TypingState | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [sessionUnreachable, setSessionUnreachable] = useState(false);
   const aiAbortRef = useRef<AbortController | null>(null);
   const aiGenRef = useRef(0);
 
@@ -293,43 +311,68 @@ export function GptProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const applySession = useCallback((data: unknown) => {
+    const userId = sessionUserId(data);
+    const account = userId ? readAccountSlice(userId) : null;
+    const needProfile = needsCompleteProfile(data);
+    setStoreState((prev) => ({
+      ...prev,
+      ...(account ?? {}),
+      loggedIn: true,
+      userId,
+      email: sessionEmail(data) || account?.email || "",
+      displayName: sessionDisplayName(data) || account?.displayName || "",
+      resellerId: sessionUsername(data),
+      issuedAt: sessionIssuedAt(data),
+      gender: sessionGender(data),
+      profileCompleted: needProfile == null ? prev.profileCompleted : !needProfile,
+    }));
+  }, []);
+
   useEffect(() => {
     if (!ready) return;
     let cancelled = false;
-    getSession()
-      .then((data) => {
-        if (cancelled) return;
-        const username = sessionUsername(data);
-        setStoreState((prev) => ({
-          ...prev,
-          loggedIn: true,
-          email: sessionEmail(data) || prev.email,
-          displayName: sessionDisplayName(data) || prev.displayName,
-          resellerId: username || prev.resellerId,
-        }));
-        return reloadDesk();
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setStoreState((prev) =>
-          prev.loggedIn
-            ? { ...prev, loggedIn: false, deskReady: false, feed: [], trades: [], recordsError: false, trial: emptyTrial() }
-            : prev,
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setSessionReady(true);
-      });
+    const probe = () => {
+      getSession()
+        .then((data) => {
+          if (cancelled) return;
+          setSessionUnreachable(false);
+          applySession(data);
+          return reloadDesk();
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          if (isNetworkFailure(error)) {
+            setSessionUnreachable(true);
+            return;
+          }
+          setSessionUnreachable(false);
+          if (getSnapshot().loggedIn) return;
+          clearAccountState();
+        })
+        .finally(() => {
+          if (!cancelled) setSessionReady(true);
+        });
+    };
+    probe();
+    const onOnline = () => probe();
+    window.addEventListener("online", onOnline);
     return () => {
       cancelled = true;
+      window.removeEventListener("online", onOnline);
     };
-  }, [ready, reloadDesk]);
+  }, [ready, reloadDesk, applySession]);
 
   // ---------- 인증 ----------
   const markPasswordAuth = useCallback(() => {
     setStoreState((prev) => ({ ...prev, loggedIn: true, authMethod: "password", profileCompleted: true }));
-    void reloadDesk();
-  }, [reloadDesk]);
+    void getSession()
+      .then((data) => {
+        applySession(data);
+        return reloadDesk();
+      })
+      .catch(() => reloadDesk());
+  }, [applySession, reloadDesk]);
 
   const markGoogleAuth = useCallback((needsProfile: boolean, email?: string) => {
     setStoreState((prev) => ({
@@ -339,7 +382,15 @@ export function GptProvider({ children }: { children: ReactNode }) {
       profileCompleted: !needsProfile,
       email: email || prev.email,
     }));
-  }, []);
+    void getSession()
+      .then((data) => {
+        applySession(data);
+        return needsProfile ? undefined : reloadDesk();
+      })
+      .catch(() => {
+        if (!needsProfile) return reloadDesk();
+      });
+  }, [applySession, reloadDesk]);
 
   // 고전(아이디) 가입 폼의 나머지 항목(표시 이름 등)은 연습 상태에만 반영한다. 로그인 처리는 이메일 인증 이후에 한다.
   const submitClassicSignupProfile = useCallback(
@@ -360,13 +411,13 @@ export function GptProvider({ children }: { children: ReactNode }) {
   );
 
   const completeGoogleProfile = useCallback(
-    (fields: { displayName: string; birthday: string; gender: Gender; phone?: string }) => {
+    (fields: { displayName: string; birthday: string; phone: string; email: string }) => {
       setStoreState((prev) => ({
         ...prev,
         displayName: fields.displayName,
         birthday: fields.birthday,
-        gender: fields.gender,
-        phone: fields.phone || prev.phone,
+        phone: fields.phone,
+        email: fields.email,
         profileCompleted: true,
         loggedIn: true,
       }));
@@ -375,7 +426,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
   );
 
   const cancelGoogleOnboarding = useCallback(() => {
-    setStoreState((prev) => ({ ...prev, loggedIn: false, authMethod: "", profileCompleted: true, pendingRoute: "" }));
+    clearAccountState();
   }, []);
 
   const logout = useCallback(() => {
@@ -385,7 +436,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
         const payload = toastFromError(error, MSG.logoutFail);
         showToast(payload.message, payload.kind);
       });
-    setStoreState((prev) => ({ ...prev, loggedIn: false, pendingRoute: "", profileCompleted: true, authMethod: "" }));
+    clearAccountState();
     router.push("/login");
   }, [router, showToast]);
 
@@ -420,18 +471,23 @@ export function GptProvider({ children }: { children: ReactNode }) {
         showToast(MSG.aiBusy, "warning");
         return;
       }
-      const conversationId = state.activeConversationId;
-      const serverConversationId = state.conversations.find((item) => item.id === conversationId)?.serverConversationId;
-      setStoreState((prev) => {
-        const conversation = prev.conversations.find((item) => item.id === prev.activeConversationId);
-        if (!conversation) return prev;
-        const updated: Conversation = {
-          ...conversation,
-          title: conversation.title === "새 대화" ? text.slice(0, 24) : conversation.title,
-          updatedAt: new Date().toISOString(),
-          messages: [...conversation.messages, { role: "user", text, createdAt: new Date().toISOString() }],
-        };
-        return { ...prev, conversations: prev.conversations.map((item) => (item.id === updated.id ? updated : item)) };
+      const ready = ensureConversation(state);
+      const conversation = ready.conversations.find((item) => item.id === ready.activeConversationId);
+      if (!conversation) return;
+      const conversationId = conversation.id;
+      const serverConversationId = conversation.serverConversationId;
+      setStoreState({
+        ...ready,
+        conversations: ready.conversations.map((item) =>
+          item.id === conversationId
+            ? {
+                ...item,
+                title: item.title === "새 대화" ? text.slice(0, 24) : item.title,
+                updatedAt: new Date().toISOString(),
+                messages: [...item.messages, { role: "user", text, createdAt: new Date().toISOString() }],
+              }
+            : item,
+        ),
       });
       aiAbortRef.current?.abort();
       const ac = new AbortController();
@@ -804,8 +860,21 @@ export function GptProvider({ children }: { children: ReactNode }) {
   // ---------- 프로필 / 지갑 ----------
   const chooseProfileGender = useCallback(
     (value: Gender) => {
-      setStoreState((prev) => ({ ...prev, gender: value }));
-      showToast(value === "male" ? MSG.genderMale : MSG.genderFemale, "success");
+      if (value !== "male" && value !== "female") return;
+      void saveProfileGender(value)
+        .then((data) => {
+          const gender = readProfileGender(data);
+          if (gender !== value) {
+            showToast(MSG.profileSaveFail, "error");
+            return;
+          }
+          setStoreState((prev) => ({ ...prev, gender }));
+          showToast(gender === "male" ? MSG.genderMale : MSG.genderFemale, "info");
+        })
+        .catch((error: unknown) => {
+          const payload = toastFromError(error, MSG.profileSaveFail);
+          showToast(payload.message, payload.kind);
+        });
     },
     [showToast],
   );
@@ -864,6 +933,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
   const value: GptContextValue = {
     ready,
     sessionReady,
+    sessionUnreachable,
     reloadDesk,
     state,
     tickets,

@@ -1,0 +1,54 @@
+{
+  "public": [
+    "/",
+    "/login",
+    "/signup",
+    "/auth/find-id",
+    "/auth/reset-password",
+    "/auth/verify-email",
+    "/auth/oauth/google/callback",
+    "/legal",
+    "/legal/privacy",
+    "/legal/terms",
+    "/legal/license",
+    "/legal/oss",
+    "/legal/recognition"
+  ],
+  "gated": [
+    "/work",
+    "/ai",
+    "/invite",
+    "/me",
+    "/me/records",
+    "/me/kyc",
+    "/me/membership",
+    "/me/benefits",
+    "/me/inbox",
+    "/me/settings",
+    "/me/support",
+    "/me/notices",
+    "/me/events",
+    "/me/peotteok",
+    "/wallet/deposit",
+    "/wallet/withdraw",
+    "/wallet/history",
+    "/wallet/usdt-guide"
+  ],
+  "notGatedButProfileRedirect": ["/auth/complete-profile"],
+  "specialFallbackRoutes": {
+    "/offline": "PWA 오프라인 fallback. src/app/offline/page.tsx. GATED_PATHS에 없고 WORKSPACE_PATHS도 아니라 surfaceIsWorkspace=false → 항상 footer 노출, 로그인 여부 무관하게 접근 가능. isGatedPath는 이 경로를 게이트하지 않는다.",
+    "/_not-found": "Next.js not-found.tsx. 임의 미존재 경로 접근 시 렌더. 마찬가지로 게이트되지 않아 항상 footer 노출."
+  },
+  "header": "SiteHeader",
+  "footer": "SiteFooter",
+  "mobileNav": "MobileNav",
+  "gatedHelper": "isGatedPath",
+  "notes": [
+    "/ and /auth/complete-profile are not in GATED_PATHS and isGatedPath returns false",
+    "/auth/complete-profile is reached when loggedIn && !profileCompleted",
+    "isGatedPath also treats any /me/* and /wallet/* as gated",
+    "footer geometry is app-shell 100dvh grid, single SiteFooter",
+    "src/app/**/page.tsx total 33 files = public(13) + gated(18) + notGatedButProfileRedirect(1) + /offline(1); not-found.tsx is a special Next.js file, not a page.tsx route",
+    "9-viewport 하단 영역(footer vs mobile-nav) 회귀 실측: e2e/tests/uiux.spec.ts 48번, 증거는 quality/artifacts/footer-regression/"
+  ]
+}

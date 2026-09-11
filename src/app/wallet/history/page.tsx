@@ -4,14 +4,25 @@ import { useEffect, useState } from "react";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { WalletSummaryStrip } from "@/components/gpt/WalletSummaryStrip";
-import { formatKrw, formatTime, formatUsdt } from "@/lib/gpt/format";
-import { getLedgerJournals, readJournals, type JournalRow } from "@/lib/api";
+import { formatTime } from "@/lib/gpt/format";
+import { getLedgerJournals, journalSingleAmount, readJournals, type JournalRow } from "@/lib/api";
+import { MSG } from "@/lib/messages";
+
+function amountLabel(row: JournalRow) {
+  const amount = journalSingleAmount(row);
+  if (amount == null) return MSG.ledgerDetailNeed;
+  return amount;
+}
+
+function rowLabel(row: JournalRow) {
+  return row.display?.labelKo || MSG.ledgerDetailNeed;
+}
 
 export default function WalletHistoryPage() {
   const [rows, setRows] = useState<JournalRow[] | null>(null);
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  function loadRows() {
     getLedgerJournals()
       .then((data) => {
         setFailed(false);
@@ -21,6 +32,10 @@ export default function WalletHistoryPage() {
         setFailed(true);
         setRows([]);
       });
+  }
+
+  useEffect(() => {
+    loadRows();
   }, []);
 
   return (
@@ -36,6 +51,9 @@ export default function WalletHistoryPage() {
           <div className="plain-notice">
             <strong>내역을 가져오지 못했어요.</strong>
             <p>잠시 후 다시 확인해 주세요.</p>
+            <button type="button" className="text-action" onClick={loadRows}>
+              {MSG.withdrawPolicyRetry}
+            </button>
           </div>
         ) : rows.length === 0 ? (
           <div className="plain-notice">
@@ -43,24 +61,18 @@ export default function WalletHistoryPage() {
             <p>신청이 반영되면 여기에 모여요.</p>
           </div>
         ) : (
-          rows.map((row) => {
-            const positive = (row.amountKrw ?? 0) > 0 || (row.amountUsdt ?? 0) > 0;
-            return (
-              <article className="ledger-row" key={row.key}>
-                <span className={"ledger-icon " + (positive ? "positive" : "")}>{positive ? "↓" : "↑"}</span>
-                <div>
-                  <strong>{row.type}</strong>
-                  <small>
-                    {[row.status, row.date ? formatTime(row.date) : ""].filter(Boolean).join(" · ")}
-                  </small>
-                </div>
-                <b className={positive ? "positive" : ""}>
-                  {row.amountKrw != null ? (positive ? "+" : "−") + formatKrw(Math.abs(row.amountKrw)) : "원화 확인 중"}
-                </b>
-                {row.amountUsdt != null ? <small>{positive ? "+" : "−"}{formatUsdt(Math.abs(row.amountUsdt))}</small> : null}
-              </article>
-            );
-          })
+          rows.map((row) => (
+            <article className="ledger-row" key={row.key}>
+              <span className="ledger-icon" aria-hidden="true">
+                ·
+              </span>
+              <div>
+                <strong>{rowLabel(row)}</strong>
+                <small>{row.createdAt ? formatTime(row.createdAt) : ""}</small>
+              </div>
+              <b>{amountLabel(row)}</b>
+            </article>
+          ))
         )}
       </section>
     </RouteScreen>

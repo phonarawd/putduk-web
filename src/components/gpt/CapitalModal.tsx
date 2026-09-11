@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { KRW_QUICK_AMOUNTS } from "@/lib/gpt/constants";
 import { formatUsdt, parseMoney } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { useModalFocus } from "@/lib/gpt/useModalFocus";
-
-const PRESETS = [100000, 500000, 1000000, 5000000];
+import { MSG } from "@/lib/messages";
 
 export function CapitalModal() {
   const { state, capitalModal, closeCapitalModal, setCapitalSelection, confirmCapital } = useGpt();
@@ -39,8 +39,8 @@ export function CapitalModal() {
         </button>
         <div className="issued-id">
           <span>나의 퍼뜩 리셀러 ID</span>
-          <strong id="capitalResellerId">{state.resellerId}</strong>
-          <i aria-hidden="true">발급 완료</i>
+          <strong id="capitalResellerId">{state.resellerId || MSG.resellerIdEmpty}</strong>
+          {state.resellerId ? <i aria-hidden="true">발급 완료</i> : null}
         </div>
         <span id="capitalModalEyebrow" className="modal-kicker">
           {isReplace ? "가상 자본 설정" : "가상 자본 늘리기"}
@@ -52,7 +52,7 @@ export function CapitalModal() {
             : "자본이 커지면 필요한 금액이 높은 기회도 비교할 수 있어요. 입금은 이용료가 아니라 운용 자본입니다."}
         </p>
         <div className="capital-presets" role="group" aria-label="가상 자본 금액 선택">
-          {PRESETS.map((preset) => (
+          {KRW_QUICK_AMOUNTS.map((preset) => (
             <button
               key={preset}
               type="button"

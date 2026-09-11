@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAAEqx5cACAFpdDpz2";
 const SCRIPT_ID = "cf-turnstile-script";
@@ -30,7 +30,6 @@ declare global {
 type Props = {
   action: "signup" | "login" | "find-id" | "password-reset" | "email-resend";
   onToken: (token: string) => void;
-  resetNonce?: number;
 };
 
 function ensureTurnstileScript() {
@@ -44,56 +43,73 @@ function ensureTurnstileScript() {
   document.head.appendChild(script);
 }
 
-if (typeof document !== "undefined") {
-  ensureTurnstileScript();
-}
-
 export function preloadTurnstile() {
   ensureTurnstileScript();
 }
 
-export function TurnstileBox({ action, onToken, resetNonce = 0 }: Props) {
+export function TurnstileBox({ action, onToken }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const onTokenRef = useRef(onToken);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     onTokenRef.current = onToken;
   }, [onToken]);
 
   useEffect(() => {
-    ensureTurnstileScript();
-    if (!SITE_KEY) return;
+    let cancelled = false;
+    let idleId = 0;
     const host = hostRef.current;
-    if (!host) return;
+    if (!SITE_KEY || !host) return;
 
     function resetWidget() {
       onTokenRef.current("");
+      setReady(false);
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.reset(widgetIdRef.current);
       }
     }
 
     function mount() {
-      if (!host || !window.turnstile || widgetIdRef.current) return;
+      if (cancelled || !host || !window.turnstile || widgetIdRef.current) return;
       widgetIdRef.current = window.turnstile.render(host, {
         sitekey: SITE_KEY,
         action,
-        callback: (token) => onTokenRef.current(token),
+        callback: (token) => {
+          onTokenRef.current(token);
+          setReady(Boolean(token));
+        },
         "expired-callback": resetWidget,
         "error-callback": resetWidget,
       });
     }
 
-    if (window.turnstile) {
-      mount();
-    } else {
+    function start() {
+      if (cancelled) return;
+      ensureTurnstileScript();
+      if (window.turnstile) {
+        mount();
+        return;
+      }
       const script = document.getElementById(SCRIPT_ID);
       script?.addEventListener("load", mount);
       if (window.turnstile) mount();
     }
 
+    if (typeof requestIdleCallback === "function") {
+      idleId = requestIdleCallback(start, { timeout: 1500 });
+    } else {
+      idleId = window.setTimeout(start, 1);
+    }
+
     return () => {
+      cancelled = true;
+      if (typeof cancelIdleCallback === "function") {
+        cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
       const script = document.getElementById(SCRIPT_ID);
       script?.removeEventListener("load", mount);
       if (widgetIdRef.current && window.turnstile) {
@@ -103,16 +119,8 @@ export function TurnstileBox({ action, onToken, resetNonce = 0 }: Props) {
     };
   }, [action]);
 
-  useEffect(() => {
-    if (!resetNonce) return;
-    onTokenRef.current("");
-    if (widgetIdRef.current && window.turnstile) {
-      window.turnstile.reset(widgetIdRef.current);
-    }
-  }, [resetNonce]);
-
   if (!SITE_KEY) return null;
-  return <div ref={hostRef} className="challenge-box" />;
+  return <div ref={hostRef} className="challenge-box" data-challenge-ready={ready ? "true" : "false"} />;
 }
 
 export function hasTurnstileSiteKey() {

@@ -1,3 +1,31 @@
+export {
+  googleAuthorizeUrl,
+  readDepositAddress,
+  type DepositAddressView,
+  isKrwConfigNotReady,
+  journalSingleAmount,
+  kycFileIssue,
+  kycPairIssue,
+  KYC_FILE_ACCEPT,
+  KYC_MAX_FILE_BYTES,
+  KYC_MAX_TOTAL_BYTES,
+  needsCompleteProfile,
+  readBenefitItems,
+  readJournals,
+  readKycReason,
+  readKycUiStatus,
+  readKycVerified,
+  readKrwInstructions,
+  readMembershipView,
+  shouldRotateWithdrawIntent,
+  withdrawLockedMismatch,
+  type BenefitItemView,
+  type JournalDisplay,
+  type JournalRow,
+  type KycUiStatus,
+  type MembershipView,
+} from "./contract-readers";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://api.hiptk.app";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -102,7 +130,30 @@ const AUTH_NO_REFRESH = new Set([
   "/api/v1/auth/password-reset/request",
   "/api/v1/auth/password-reset/complete",
   "/api/v1/auth/email/resend",
+  "/api/v1/auth/oauth/google/start",
+  "/api/v1/auth/oauth/google/callback",
+  "/api/v1/auth/oauth/google/complete",
 ]);
+
+export class ApiError extends Error {
+  readonly code: string;
+  readonly pendingToken: string | null;
+  readonly status: number;
+
+  constructor(message: string, extras?: { code?: string; pendingToken?: string | null; status?: number }) {
+    super(message);
+    this.name = "ApiError";
+    this.code = extras?.code || message;
+    this.pendingToken = extras?.pendingToken ?? null;
+    this.status = extras?.status ?? 0;
+  }
+}
+
+export { isNetworkFailure } from "./network-error";
+
+export function readTermsPending(error: unknown): string | null {
+  return error instanceof ApiError && error.code === "TERMS_REQUIRED" ? error.pendingToken : null;
+}
 
 type ApiInit = RequestInit & { skipRefresh?: boolean };
 
@@ -155,27 +206,31 @@ function toUserMessage(message: string, status?: number): string {
   return message;
 }
 
-async function readErrorMessage(res: Response): Promise<string> {
+async function readApiError(res: Response): Promise<ApiError> {
   try {
     const text = await res.text();
-    if (!text) return toUserMessage("", res.status);
+    if (!text) return new ApiError(toUserMessage("", res.status), { status: res.status });
     try {
       const json = JSON.parse(text) as unknown;
       const row = asRecord(json);
       const raw = extractErrorToken(row, text);
-      if (/^[A-Z][A-Z0-9_]+$/.test(raw)) return raw;
-      return toUserMessage(raw, res.status);
+      const pendingToken = row ? readString(row.pendingToken) : null;
+      const code = /^[A-Z][A-Z0-9_]+$/.test(raw) ? raw : "";
+      const message = code || toUserMessage(raw, res.status);
+      return new ApiError(message, { code: code || message, pendingToken, status: res.status });
     } catch {
       const trimmed = text.trim();
-      if (/^[A-Z][A-Z0-9_]+$/.test(trimmed)) return trimmed;
-      return toUserMessage(text, res.status);
+      if (/^[A-Z][A-Z0-9_]+$/.test(trimmed)) return new ApiError(trimmed, { code: trimmed, status: res.status });
+      return new ApiError(toUserMessage(text, res.status), { status: res.status });
     }
   } catch {
-    return toUserMessage("", res.status);
+    return new ApiError(toUserMessage("", res.status), { status: res.status });
   }
 }
 
-export async function apiFetch<T>(path: string, init?: ApiInit): Promise<T> {
+const getInflight = new Map<string, Promise<unknown>>();
+
+async function apiFetchNetwork<T>(path: string, init?: ApiInit): Promise<T> {
   const { skipRefresh, ...requestInit } = init ?? {};
   const headers = new Headers(requestInit.headers);
   const isForm = typeof FormData !== "undefined" && requestInit.body instanceof FormData;
@@ -192,7 +247,7 @@ export async function apiFetch<T>(path: string, init?: ApiInit): Promise<T> {
       headers,
     });
   } catch {
-    throw new Error("연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.");
+    throw new ApiError("연결이 원활하지 않아요. 잠시 후 다시 시도해 주세요.", { code: "NETWORK", status: 0 });
   }
 
   if (res.status === 401 && !skipRefresh && !AUTH_NO_REFRESH.has(path)) {
@@ -205,7 +260,7 @@ export async function apiFetch<T>(path: string, init?: ApiInit): Promise<T> {
   }
 
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
+    throw await readApiError(res);
   }
 
   if (res.status === 204) {
@@ -218,6 +273,21 @@ export async function apiFetch<T>(path: string, init?: ApiInit): Promise<T> {
   }
 
   return JSON.parse(text) as T;
+}
+
+export function apiFetch<T>(path: string, init?: ApiInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const joinKey = method === "GET" && init?.body == null ? `${path}::${init?.skipRefresh ? "1" : "0"}` : "";
+  if (joinKey) {
+    const existing = getInflight.get(joinKey);
+    if (existing) return existing as Promise<T>;
+  }
+
+  const pending = apiFetchNetwork<T>(path, init).finally(() => {
+    if (joinKey) getInflight.delete(joinKey);
+  });
+  if (joinKey) getInflight.set(joinKey, pending);
+  return pending;
 }
 
 export function newIdempotencyKey(): string {
@@ -349,18 +419,72 @@ export function startGoogle() {
   });
 }
 
-export function googleCallback(code: string) {
+export function googleCallback(code: string, state: string) {
   return apiFetch<unknown>("/api/v1/auth/oauth/google/callback", {
     method: "POST",
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, state }),
   });
 }
 
-export function saveProfile(name: string, gender: string, birthPrefix: string) {
+const googleCallbackMemory = new Map<string, Promise<unknown>>();
+
+export function googleCallbackOnce(code: string, state: string) {
+  const key = `${code}:${state}`;
+  const existing = googleCallbackMemory.get(key);
+  if (existing) return existing;
+  const request = googleCallback(code, state);
+  googleCallbackMemory.set(key, request);
+  return request;
+}
+
+export function googleComplete(fields: {
+  pendingToken: string;
+  termsAcceptedAt: string;
+  privacyAcceptedAt: string;
+  marketingConsent?: boolean;
+  referralCode?: string;
+}) {
+  return apiFetch<unknown>("/api/v1/auth/oauth/google/complete", {
+    method: "POST",
+    body: JSON.stringify({
+      pendingToken: fields.pendingToken,
+      termsAcceptedAt: fields.termsAcceptedAt,
+      privacyAcceptedAt: fields.privacyAcceptedAt,
+      ...(fields.marketingConsent === true ? { marketingConsent: true } : {}),
+      ...(fields.referralCode ? { referralCode: fields.referralCode } : {}),
+    }),
+  });
+}
+
+export function saveProfile(fields: {
+  displayName: string;
+  birthDate: string;
+  phoneE164: string;
+  email?: string;
+}) {
   return apiFetch("/api/v1/auth/profile", {
     method: "PATCH",
-    body: JSON.stringify({ name, gender, birthPrefix }),
+    body: JSON.stringify({
+      displayName: fields.displayName,
+      birthDate: fields.birthDate,
+      phoneE164: fields.phoneE164,
+      ...(fields.email ? { email: fields.email } : {}),
+    }),
   });
+}
+
+export function saveProfileGender(gender: "male" | "female") {
+  return apiFetch<unknown>("/api/v1/auth/profile", {
+    method: "PATCH",
+    body: JSON.stringify({ gender }),
+  });
+}
+
+export function readProfileGender(data: unknown): "" | "male" | "female" {
+  const row = asRecord(data);
+  const value = row?.gender;
+  if (value === "male" || value === "female") return value;
+  return "";
 }
 
 export function getSession() {
@@ -371,29 +495,6 @@ export function logout() {
   return apiFetch("/api/v1/auth/logout", { method: "POST" });
 }
 
-export function googleRedirectUrl(data: unknown): string | null {
-  if (typeof data === "string" && data.startsWith("http")) {
-    return data;
-  }
-  const row = asRecord(data);
-  if (!row) return null;
-  for (const key of ["url", "redirectUrl", "authorizationUrl"]) {
-    const value = readString(row[key]);
-    if (value && value.startsWith("http")) return value;
-  }
-  return null;
-}
-
-export function needsCompleteProfile(data: unknown): boolean {
-  const row = asRecord(data);
-  if (!row) return false;
-  if (row.needsProfile === true || row.isNewUser === true || row.profileComplete === false) return true;
-  const user = nest(row, "user") || nest(row, "session");
-  if (user && (user.needsProfile === true || user.profileComplete === false || user.profileCompleted === false)) {
-    return true;
-  }
-  return false;
-}
 
 function sessionUser(data: unknown): Record<string, unknown> | null {
   const row = asRecord(data);
@@ -410,8 +511,24 @@ export function sessionUsername(data: unknown): string {
   return pickString(sessionUser(data), ["username", "loginId", "handle", "resellerId"]) || "";
 }
 
+export function sessionUserId(data: unknown): string {
+  return pickString(sessionUser(data), ["id", "userId", "uuid"]) || "";
+}
+
+export function sessionIssuedAt(data: unknown): string {
+  return pickString(sessionUser(data), ["issuedAt", "cardIssuedAt"]) || "";
+}
+
 export function sessionDisplayName(data: unknown): string {
   return pickString(sessionUser(data), ["declaredName", "displayName", "name"]) || "";
+}
+
+export function sessionGender(data: unknown): "" | "male" | "female" {
+  const row = asRecord(data);
+  const nested = sessionUser(data);
+  const value = row?.gender ?? nested?.gender;
+  if (value === "male" || value === "female") return value;
+  return "";
 }
 
 export function listOpportunities() {
@@ -588,6 +705,10 @@ export function getMembership() {
   return apiFetch<unknown>("/api/v1/me/membership");
 }
 
+export function getBenefits() {
+  return apiFetch<unknown>("/api/v1/me/benefits");
+}
+
 export function getReferralMe() {
   return apiFetch<unknown>("/api/v1/referral/me");
 }
@@ -683,7 +804,7 @@ export async function streamPeotteokChat(input: {
   }
 
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
+    throw await readApiError(res);
   }
   if (!res.body) {
     throw new Error("답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.");
@@ -1158,70 +1279,6 @@ export function tradeIsOpen(status: string): boolean {
   return value === "running" || value === "pending" || value === "in_progress" || value === "open" || value === "active";
 }
 
-export function readDepositAddress(data: unknown): { address: string; network: string | null } | null {
-  const row = asRecord(data);
-  if (!row) {
-    if (typeof data === "string" && data.trim()) return { address: data.trim(), network: null };
-    return null;
-  }
-  const address =
-    pickString(row, ["address", "depositAddress", "usdtAddress", "tronAddress"]) ||
-    pickString(nest(row, "deposit"), ["address"]) ||
-    pickString(nest(row, "usdt"), ["address"]);
-  if (!address) return null;
-  return {
-    address,
-    network: pickString(row, ["network", "chain", "asset"]) || pickString(nest(row, "usdt"), ["network"]),
-  };
-}
-
-export function readKrwInstructions(data: unknown): { bank: string | null; account: string | null; holder: string | null; memo: string | null } | null {
-  const row = asRecord(data);
-  if (!row) return null;
-  const inner = nest(row, "instructions") || nest(row, "account") || row;
-  const bank = pickString(inner, ["bank", "bankName", "bankNameKo"]);
-  const account = pickString(inner, ["account", "accountNumber", "accountNo"]);
-  const holder = pickString(inner, ["holder", "accountHolder", "depositorName", "name"]);
-  const memo = pickString(inner, ["memo", "message", "guide", "copy"]);
-  if (!bank && !account && !holder && !memo) return null;
-  return { bank, account, holder, memo };
-}
-
-export type JournalRow = {
-  key: string;
-  type: string;
-  amountKrw: number | null;
-  amountUsdt: number | null;
-  status: string;
-  date: string;
-};
-
-export function readJournals(data: unknown): JournalRow[] {
-  return asList(data).flatMap((item, index) => {
-    const row = asRecord(item);
-    if (!row) return [];
-    const amountKrw = pickNumber(row, ["amountKrw", "krw", "amount"]);
-    const amountUsdt = pickNumber(row, ["amountUsdt", "usdt"]);
-    return [
-      {
-        key: pickString(row, ["id", "journalId", "key"]) || `journal-${index}`,
-        type: pickString(row, ["type", "kind", "title", "label"]) || "기록",
-        amountKrw,
-        amountUsdt,
-        status: pickString(row, ["status", "state"]) || "",
-        date: pickString(row, ["createdAt", "occurredAt", "date", "at"]) || "",
-      },
-    ];
-  });
-}
-
-export function readKycVerified(data: unknown): boolean {
-  const row = asRecord(data);
-  if (!row) return false;
-  const status = (pickString(row, ["status", "kycStatus", "state"]) || "").toLowerCase();
-  return status === "verified" || status === "approved" || row.verified === true;
-}
-
 export function readStepUpMethod(data: unknown): "pin" | "email_otp" | null {
   const row = asRecord(data);
   const priority = row && Array.isArray(row.priority) ? row.priority.map(String) : [];
@@ -1232,18 +1289,12 @@ export function readStepUpMethod(data: unknown): "pin" | "email_otp" | null {
 
 export function readChallengeId(data: unknown): string | null {
   const row = asRecord(data);
-  return pickString(row, ["challengeId", "id"]) || pickString(nest(row, "challenge"), ["id", "challengeId"]);
+  return pickString(row, ["challengeId"]);
 }
 
 export function readStepUpToken(data: unknown): string | null {
   const row = asRecord(data);
-  return pickString(row, ["stepUpToken", "token"]) || pickString(nest(row, "stepUp"), ["token", "stepUpToken"]);
-}
-
-export function readMembershipCap(data: unknown): number | null {
-  const row = asRecord(data);
-  const inner = nest(row, "membership") || row;
-  return pickNumber(inner, ["dailyUserMatchCap", "remainingDailyMatches", "dailyMatchCap", "remaining"]);
+  return pickString(row, ["stepUpToken"]);
 }
 
 export function readReferral(data: unknown): { code: string | null; link: string | null } | null {

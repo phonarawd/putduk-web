@@ -1,0 +1,3 @@
+#!/bin/sh
+# pnpm install(prepare)이 이 파일을 .git/hooks/pre-commit 으로 복사한다. git config는 쓰지 않는다.
+exec pnpm run precommit

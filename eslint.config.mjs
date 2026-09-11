@@ -15,6 +15,12 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // GPT UI 원본 참고용 폴더 (이식 대상, 이 레포의 코드가 아님)
     "_gpt_src/**",
+    "e2e/**",
+    "playwright.config.ts",
+    "lighthouserc.cjs",
+    "quality/artifacts/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 
