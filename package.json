@@ -13,6 +13,7 @@
     "lhci": "lhci autorun",
     "precommit": "node scripts/precommit.mjs",
     "prepush": "node scripts/prepush.mjs",
+    "prepare": "node scripts/install-githooks.mjs",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },

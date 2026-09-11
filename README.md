@@ -52,11 +52,7 @@ pnpm exec playwright test --project=chromium   # E2E Chromium만 (더 빠름)
 pnpm lhci                              # Lighthouse (5화면 × 3회, median 판정)
 ```
 
-커밋/푸시 전 로컬 훅을 쓰려면 처음 한 번만 켭니다(새 패키지 없이 순수 git hook, `.githooks/`):
-
-```bash
-git config core.hooksPath .githooks
-```
+커밋/푸시 전 로컬 훅은 `pnpm install`의 `prepare`가 `.githooks/`를 `.git/hooks/`로 복사해 연결합니다. `git config`는 쓰지 않습니다.
 
 - pre-commit: staged된 ts/tsx만 lint + 전체 typecheck (목표 30초대, 저사양 PC 실측 약 35초)
 - pre-push: 단위 테스트 + Chromium 스모크(auth+qr, 목표 3분)
