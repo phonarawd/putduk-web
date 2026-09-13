@@ -234,7 +234,7 @@ export default function HomePage() {
   if (!sessionReady) {
     return (
       <section className="route-screen shell" aria-live="polite">
-        <ReadyNotice title={MSG.screenWait} copy={MSG.screenWaitCopy} />
+        <ReadyNotice waiting title={MSG.screenWait} copy={MSG.screenWaitCopy} />
       </section>
     );
   }

@@ -32,7 +32,7 @@ export default function MeMembershipPage() {
     <RouteScreen>
       <RouteTop kicker="내 활동 기준" title="내 등급" copy="계정에 정해진 등급과 횟수만 보여 드려요." backPath="/me" />
       {!ready ? (
-        <ReadyNotice title="등급을 확인하고 있어요." copy="잠시만 기다려 주세요." />
+        <ReadyNotice waiting title={MSG.membershipChecking} copy={MSG.screenWait} />
       ) : failed ? (
         <ReadyNotice title={MSG.membershipLoadFail} copy={MSG.genericError} />
       ) : empty ? (

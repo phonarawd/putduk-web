@@ -268,22 +268,26 @@ export default function MeKycPage() {
               </span>
               <input name="birthDate" type="date" required value={birthDate} onChange={(event) => setBirthDate(event.target.value)} />
             </label>
-            <label className="form-field">
-              <span>
-                신분증 종류 <b>필수</b>
-              </span>
-              <select
-                name="idDocType"
-                value={idDocType}
-                onChange={(event) => setIdDocType(event.target.value as (typeof ID_DOC_TYPES)[number]["idDocType"])}
-              >
-                {ID_DOC_TYPES.map((item) => (
-                  <option key={item.idDocType} value={item.idDocType}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+          </div>
+          <div className="form-field">
+            <span>
+              신분증 종류 <b>필수</b>
+            </span>
+            <div className="segmented-tabs three" role="radiogroup" aria-label="신분증 종류">
+              {ID_DOC_TYPES.map((item) => (
+                <button
+                  key={item.idDocType}
+                  type="button"
+                  role="radio"
+                  aria-checked={idDocType === item.idDocType}
+                  className={idDocType === item.idDocType ? "is-selected" : ""}
+                  onClick={() => setIdDocType(item.idDocType)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <input type="hidden" name="idDocType" value={idDocType} />
           </div>
           <label className="form-field">
             <span>

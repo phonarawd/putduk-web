@@ -39,7 +39,7 @@ export default function MeBenefitsPage() {
     <RouteScreen>
       <RouteTop kicker="받을 수 있는 혜택" title="혜택" copy="지금 내 계정에서 확인되는 혜택만 보여 드려요." backPath="/me" />
       {items == null ? (
-        <ReadyNotice title="혜택을 확인하고 있어요." copy="잠시만 기다려 주세요." />
+        <ReadyNotice waiting title={MSG.benefitsChecking} copy={MSG.screenWait} />
       ) : failed ? (
         <ReadyNotice title={MSG.benefitsLoadFail} copy={MSG.genericError}>
           <button className="text-action" type="button" onClick={loadItems}>
