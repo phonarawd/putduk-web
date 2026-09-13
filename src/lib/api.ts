@@ -1030,6 +1030,10 @@ export function trialGrantKrw(trial: TrialState): number | null {
   return trial.grantAmountKrw ?? trial.welcomeTargetKrw ?? trial.trialPrincipalKrwApprox;
 }
 
+export function hasOwnPrincipal(usdt: number | null, krw: number | null): boolean {
+  return (usdt != null && usdt > 0) || (krw != null && krw > 0);
+}
+
 function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | null {
   const raw = asRecord(item);
   if (!raw) return null;
@@ -1153,8 +1157,8 @@ export function readMoney(home: unknown, buckets: unknown, trial?: TrialState | 
 }
 
 export async function fillMissingKrw(money: MoneyRead): Promise<MoneyRead> {
-  const needPrincipal = money.principalKrw == null && money.principalUsdt != null;
-  const needProfit = money.profitKrw == null && money.profitUsdt != null;
+  const needPrincipal = money.principalKrw == null && money.principalUsdt != null && money.principalUsdt > 0;
+  const needProfit = money.profitKrw == null && money.profitUsdt != null && money.profitUsdt > 0;
   if (!needPrincipal && !needProfit) return money;
   try {
     const approx = await approxCurrentFx({

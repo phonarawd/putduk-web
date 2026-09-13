@@ -5,7 +5,7 @@ import { AmbassadorHero, AmbassadorMoment } from "@/components/gpt/AmbassadorVis
 import { OpportunitySection } from "@/components/gpt/OpportunitySection";
 import { ReadyNotice } from "@/components/gpt/ReadyNotice";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
-import { trialGrantKrw } from "@/lib/api";
+import { hasOwnPrincipal, trialGrantKrw } from "@/lib/api";
 import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { MSG } from "@/lib/messages";
@@ -180,7 +180,8 @@ function ProfileCapitalCard() {
   const trialPrimary = formatMoneyPrimary(trialUsdt, grantKrw);
   const trialSecondary = formatMoneySecondary(trialUsdt, grantKrw);
   const ready = state.deskReady;
-  const heroIsTrial = trialActive && principalPrimary == null;
+  const ownPrincipal = hasOwnPrincipal(state.principalUsdt, state.principalKrw);
+  const heroIsTrial = trialActive && !ownPrincipal;
   return (
     <article className="capital-card">
       <div className="summary-label">
@@ -211,7 +212,7 @@ function ProfileCapitalCard() {
           </b>
         </div>
       ) : null}
-      {ready && heroIsTrial && principalPrimary ? (
+      {ready && heroIsTrial && ownPrincipal ? (
         <div className="capital-card-bottom">
           <span>내 예치</span>
           <b>
