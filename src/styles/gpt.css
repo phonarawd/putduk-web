@@ -2995,7 +2995,6 @@ a:focus-visible {
   .workspace {
     min-height: calc(100dvh - 68px);
     padding-top: 38px;
-    padding-bottom: calc(105px + env(safe-area-inset-bottom));
   }
 
   .mobile-nav {
@@ -6391,11 +6390,12 @@ textarea:focus-visible {
     padding-bottom: 20px;
   }
 
-  .app-shell:has(#mobileNav:not([hidden])) .route-screen {
+  .app-frame:has(#mobileNav:not([hidden])) .route-screen,
+  .app-frame:has(#mobileNav:not([hidden])) .workspace {
     padding-bottom: calc(105px + env(safe-area-inset-bottom));
   }
 
-  .app-shell:has(#mobileNav:not([hidden])) .form-primary {
+  .app-frame:has(#mobileNav:not([hidden])) .form-primary {
     scroll-margin-bottom: calc(120px + env(safe-area-inset-bottom));
   }
 
