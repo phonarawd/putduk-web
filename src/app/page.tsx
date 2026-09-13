@@ -181,7 +181,7 @@ function ProfileCapitalCard() {
   const trialSecondary = formatMoneySecondary(trialUsdt, grantKrw);
   const ready = state.deskReady;
   const ownPrincipal = hasOwnPrincipal(state.principalUsdt, state.principalKrw);
-  const heroIsTrial = trialActive && !ownPrincipal;
+  const heroIsTrial = !ownPrincipal && grantKrw != null;
   return (
     <article className="capital-card">
       <div className="summary-label">

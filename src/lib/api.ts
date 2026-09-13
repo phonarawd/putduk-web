@@ -936,7 +936,8 @@ export function emptyTrial(): TrialState {
 }
 
 function asGrantStatus(value: unknown): TrialGrantStatus {
-  return value === "active" || value === "failed_fx" || value === "none" ? value : "none";
+  const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return raw === "active" || raw === "failed_fx" || raw === "none" ? raw : "none";
 }
 
 function asBucket(value: unknown): FeedBucket | null {
@@ -1004,7 +1005,17 @@ function moneyRoot(home: unknown): Record<string, unknown> | null {
 
 export function readTrialState(data: unknown): TrialState {
   const row = asRecord(data);
-  const inner = nest(row, "trial") || nest(row, "trialState") || row;
+  const wrapped = nest(row, "data");
+  const inner = mergeApiRows(
+    row,
+    wrapped,
+    nest(row, "trial"),
+    nest(row, "trialState"),
+    nest(wrapped, "trial"),
+    nest(wrapped, "trialState"),
+    nest(row, "money"),
+    nest(wrapped, "money"),
+  );
   return {
     grantStatus: asGrantStatus(inner ? inner.grantStatus ?? inner.grant_status : null),
     trialPrincipalUsdt: pickNumber(inner, withSnake(["trialPrincipalUsdt"])),
