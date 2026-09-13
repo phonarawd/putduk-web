@@ -46,7 +46,6 @@ type Captured = {
   resendBodies: unknown[];
   callbackBodies: unknown[];
   callbackCount: number;
-  completeBodies: unknown[];
   withdrawBodies: unknown[];
   profileBodies: unknown[];
   kycSubmits: number;
@@ -89,7 +88,6 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
     resendBodies: [],
     callbackBodies: [],
     callbackCount: 0,
-    completeBodies: [],
     withdrawBodies: [],
     profileBodies: [],
     kycSubmits: 0,
@@ -156,22 +154,11 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
     if (path === "/api/v1/auth/oauth/google/callback" && method === "POST") {
       captured.callbackCount += 1;
       captured.callbackBodies.push(body);
-      if (options.googleCallback === "new-terms") {
-        return json(
-          route,
-          { code: "TERMS_REQUIRED", message: "TERMS_REQUIRED", pendingToken: "qa-pending-token", expiresInSec: 600 },
-          400,
-        );
+      const termsOk = typeof body.termsAcceptedAt === "string" && typeof body.privacyAcceptedAt === "string";
+      if (!termsOk) {
+        return json(route, { code: "TERMS_REQUIRED", message: "TERMS_REQUIRED" }, 400);
       }
       if (options.googleCallback === "incomplete") return json(route, googleCallbackDto("incomplete"));
-      return json(route, googleCallbackDto("complete"));
-    }
-
-    if (path === "/api/v1/auth/oauth/google/complete" && method === "POST") {
-      captured.completeBodies.push(body);
-      if (body.pendingToken !== "qa-pending-token") {
-        return json(route, { code: "OAUTH_PENDING_INVALID", message: "OAUTH_PENDING_INVALID" }, 400);
-      }
       return json(route, googleCallbackDto("complete"));
     }
 

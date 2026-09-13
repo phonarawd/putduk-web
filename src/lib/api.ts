@@ -132,7 +132,6 @@ const AUTH_NO_REFRESH = new Set([
   "/api/v1/auth/email/resend",
   "/api/v1/auth/oauth/google/start",
   "/api/v1/auth/oauth/google/callback",
-  "/api/v1/auth/oauth/google/complete",
 ]);
 
 export class ApiError extends Error {
@@ -151,9 +150,12 @@ export class ApiError extends Error {
 
 export { isNetworkFailure } from "./network-error";
 
-export function readTermsPending(error: unknown): string | null {
-  return error instanceof ApiError && error.code === "TERMS_REQUIRED" ? error.pendingToken : null;
-}
+export type GoogleCallbackFields = {
+  termsAcceptedAt?: string;
+  privacyAcceptedAt?: string;
+  marketingConsent?: boolean;
+  referralCode?: string;
+};
 
 type ApiInit = RequestInit & { skipRefresh?: boolean };
 
@@ -419,41 +421,32 @@ export function startGoogle() {
   });
 }
 
-export function googleCallback(code: string, state: string) {
+export function googleCallback(code: string, state: string, extra?: GoogleCallbackFields) {
   return apiFetch<unknown>("/api/v1/auth/oauth/google/callback", {
     method: "POST",
-    body: JSON.stringify({ code, state }),
+    body: JSON.stringify({
+      code,
+      state,
+      ...(extra?.termsAcceptedAt ? { termsAcceptedAt: extra.termsAcceptedAt } : {}),
+      ...(extra?.privacyAcceptedAt ? { privacyAcceptedAt: extra.privacyAcceptedAt } : {}),
+      ...(extra?.marketingConsent === true ? { marketingConsent: true } : {}),
+      ...(extra?.referralCode ? { referralCode: extra.referralCode } : {}),
+    }),
   });
 }
 
 const googleCallbackMemory = new Map<string, Promise<unknown>>();
 
-export function googleCallbackOnce(code: string, state: string) {
+export function googleCallbackOnce(code: string, state: string, extra?: GoogleCallbackFields) {
   const key = `${code}:${state}`;
   const existing = googleCallbackMemory.get(key);
   if (existing) return existing;
-  const request = googleCallback(code, state);
+  const request = googleCallback(code, state, extra).catch((error: unknown) => {
+    googleCallbackMemory.delete(key);
+    throw error;
+  });
   googleCallbackMemory.set(key, request);
   return request;
-}
-
-export function googleComplete(fields: {
-  pendingToken: string;
-  termsAcceptedAt: string;
-  privacyAcceptedAt: string;
-  marketingConsent?: boolean;
-  referralCode?: string;
-}) {
-  return apiFetch<unknown>("/api/v1/auth/oauth/google/complete", {
-    method: "POST",
-    body: JSON.stringify({
-      pendingToken: fields.pendingToken,
-      termsAcceptedAt: fields.termsAcceptedAt,
-      privacyAcceptedAt: fields.privacyAcceptedAt,
-      ...(fields.marketingConsent === true ? { marketingConsent: true } : {}),
-      ...(fields.referralCode ? { referralCode: fields.referralCode } : {}),
-    }),
-  });
 }
 
 export function saveProfile(fields: {

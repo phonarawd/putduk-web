@@ -48,14 +48,20 @@ test.describe("인증 1-12", () => {
   test("5. callback 중복 호출을 막는다", async ({ page }) => {
     const { mock } = await openPage(page, { user: "none", googleCallback: "existing" });
     await page.goto("/auth/oauth/google/callback?code=qa-code&state=qa-state");
+    await expect(page.locator('form[data-form="google-complete"]')).toBeVisible();
+    expect(mock.captured.callbackCount).toBe(0);
+    await page.locator('input[name="requiredTerms"]').check();
+    await page.getByRole("button", { name: "약관에 동의하고 계속" }).click();
     await expect(page).not.toHaveURL(/\/auth\/oauth\/google\/callback/);
     expect(mock.captured.callbackCount).toBe(1);
-    expect(mock.captured.callbackBodies[0]).toEqual({ code: "qa-code", state: "qa-state" });
+    expect(mock.captured.callbackBodies[0]).toMatchObject({ code: "qa-code", state: "qa-state" });
   });
 
   test("6. 기존 사용자 callback 후 홈", async ({ page }) => {
     await openPage(page, { user: "a", googleCallback: "existing" });
     await page.goto("/auth/oauth/google/callback?code=qa-code&state=qa-state");
+    await page.locator('input[name="requiredTerms"]').check();
+    await page.getByRole("button", { name: "약관에 동의하고 계속" }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("button", { name: /로그인하고 데스크 열기/ })).toHaveCount(0);
   });
@@ -65,17 +71,16 @@ test.describe("인증 1-12", () => {
     await page.goto("/auth/oauth/google/callback?code=qa-code&state=qa-state");
     await expect(page.locator('form[data-form="google-complete"]')).toBeVisible();
     await expect(page).toHaveURL(/\/auth\/oauth\/google\/callback/);
+    expect(mock.captured.callbackCount).toBe(0);
     await page.locator('input[name="requiredTerms"]').check();
     await page.getByRole("button", { name: "약관에 동의하고 계속" }).click();
     await expect(page).toHaveURL(/\/$/);
     expect(mock.captured.callbackCount).toBe(1);
-    expect(mock.captured.completeBodies).toHaveLength(1);
-    const complete = mock.captured.completeBodies[0] as Record<string, unknown>;
-    expect(complete).toMatchObject({ pendingToken: "qa-pending-token" });
-    expect(typeof complete.termsAcceptedAt).toBe("string");
-    expect(typeof complete.privacyAcceptedAt).toBe("string");
-    expect(complete).not.toHaveProperty("code");
-    expect(complete).not.toHaveProperty("state");
+    const callback = mock.captured.callbackBodies[0] as Record<string, unknown>;
+    expect(callback).toMatchObject({ code: "qa-code", state: "qa-state" });
+    expect(typeof callback.termsAcceptedAt).toBe("string");
+    expect(typeof callback.privacyAcceptedAt).toBe("string");
+    expect(callback).not.toHaveProperty("pendingToken");
   });
 
   test("8. 필수정보 입력 후 홈", async ({ page }) => {
