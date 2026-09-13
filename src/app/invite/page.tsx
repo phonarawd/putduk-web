@@ -11,7 +11,9 @@ export default function InvitePage() {
   const { showToast } = useGpt();
   const [code, setCode] = useState<string | null>(null);
   const [referralLink, setReferralLink] = useState("");
+  const [inviteCountUnlimited, setInviteCountUnlimited] = useState<boolean | null>(null);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     getReferralMe()
@@ -19,11 +21,15 @@ export default function InvitePage() {
         const found = readReferral(data);
         setCode(found?.code ?? null);
         setReferralLink(found?.link ?? "");
+        setInviteCountUnlimited(found?.inviteCountUnlimited ?? null);
+        setFailed(false);
         setReady(true);
       })
       .catch(() => {
         setCode(null);
         setReferralLink("");
+        setInviteCountUnlimited(null);
+        setFailed(true);
         setReady(true);
       });
   }, []);
@@ -53,18 +59,27 @@ export default function InvitePage() {
       <section className="app-view is-active" data-view="invite" aria-labelledby="invite-title">
         <div className="view-intro">
           <div>
-            <span className="view-kicker">추천 코드와 친구 보너스</span>
+            <span className="view-kicker">추천 코드</span>
             <h1 id="invite-title">초대</h1>
-            <p>친구의 실제 시작 단계가 이어질 때 혜택이 차례로 열려요.</p>
+            <p>계정에 있는 추천 코드만 보여 드려요. 횟수와 금액은 화면에서 더하지 않아요.</p>
           </div>
         </div>
         <section className="referral-hero">
           <div className="referral-copy">
             <span className="referral-kicker">나의 추천 코드</span>
-            {ready && (code || referralLink) ? (
+            {failed ? (
+              <>
+                <strong id="referralResellerId">{MSG.inviteLoadFail}</strong>
+                <p>{MSG.genericError}</p>
+              </>
+            ) : ready && (code || referralLink) ? (
               <>
                 <strong id="referralResellerId">{code || "초대 코드"}</strong>
-                <p>부를 수 있는 친구 수에는 제한이 없어요. 혜택은 각 단계가 확인된 뒤 반영돼요.</p>
+                <p>
+                  {inviteCountUnlimited === true
+                    ? "부를 수 있는 친구 수에는 제한이 없어요. 혜택 숫자는 화면에서 더하지 않아요."
+                    : "계정에 있는 추천 코드만 보여 드려요. 혜택 숫자는 화면에서 더하지 않아요."}
+                </p>
                 {referralLink ? (
                   <label className="referral-link-box">
                     <span className="sr-only">추천 링크</span>
@@ -87,22 +102,22 @@ export default function InvitePage() {
           <article>
             <span>1</span>
             <div>
-              <strong>친구가 링크로 가입</strong>
+              <strong>친구가 코드로 가입</strong>
               <small>추천 코드가 연결돼요</small>
             </div>
           </article>
           <article>
             <span>2</span>
             <div>
-              <strong>친구가 첫 충전</strong>
-              <small>운용 자본 시작을 확인해요</small>
+              <strong>친구가 시작을 이어가요</strong>
+              <small>화면에서 단계를 완료 처리하지 않아요</small>
             </div>
           </article>
           <article>
             <span>3</span>
             <div>
-              <strong>친구가 첫 수익</strong>
-              <small>친구 보너스가 확정돼요</small>
+              <strong>혜택 숫자는 여기에서 확정하지 않아요</strong>
+              <small>첫 수익이 났다고 보너스를 더하지 않아요</small>
             </div>
           </article>
         </section>

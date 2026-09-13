@@ -30,19 +30,19 @@ export default function MeMembershipPage() {
 
   return (
     <RouteScreen>
-      <RouteTop kicker="내 활동 기준" title="내 등급" copy="계정에 정해진 하루 기회와 다음 조건을 확인하세요." backPath="/me" />
+      <RouteTop kicker="내 활동 기준" title="내 등급" copy="계정에 정해진 등급과 횟수만 보여 드려요." backPath="/me" />
       {!ready ? (
         <ReadyNotice title="등급을 확인하고 있어요." copy="잠시만 기다려 주세요." />
       ) : failed ? (
-        <ReadyNotice title={MSG.genericError} copy={MSG.featureSoon} />
+        <ReadyNotice title={MSG.membershipLoadFail} copy={MSG.genericError} />
       ) : empty ? (
         <ReadyNotice title={MSG.membershipEmpty} copy="계정에 정해진 값이 있으면 여기에 보여 드려요." />
       ) : (
         <section className="level-card">
           <span>현재 등급</span>
           <h2>{view.labelKo || MSG.membershipEmpty}</h2>
-          {view.dailyUserMatchCap != null ? <strong>하루 기회 {view.dailyUserMatchCap}번</strong> : <strong>{MSG.membershipCapEmpty}</strong>}
-          {view.dailyMatchesUsed != null ? <small>오늘 {view.dailyMatchesUsed}번 사용</small> : null}
+          {view.dailyUserMatchCap != null ? <strong>정해진 횟수 {view.dailyUserMatchCap}번</strong> : <strong>{MSG.membershipCapEmpty}</strong>}
+          {view.dailyMatchesUsed != null ? <small>사용한 횟수 {view.dailyMatchesUsed}번</small> : null}
         </section>
       )}
     </RouteScreen>

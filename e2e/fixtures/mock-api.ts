@@ -262,7 +262,9 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
 
     if (path === "/api/v1/me/membership" && method === "GET") return json(route, MEMBERSHIP);
     if (path === "/api/v1/me/benefits" && method === "GET") return json(route, BENEFITS);
-    if (path === "/api/v1/referral/me" && method === "GET") return json(route, { code: "QA-REF", link: "https://putduk.test/r/QA-REF" });
+    if (path === "/api/v1/referral/me" && method === "GET") {
+      return json(route, { referralCode: "QA-REF", inviteCountUnlimited: true, rewardsEnabled: false });
+    }
 
     return json(route, { message: "NOT_FOUND" }, 404);
   });

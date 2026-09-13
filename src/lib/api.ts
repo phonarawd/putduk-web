@@ -1297,14 +1297,20 @@ export function readStepUpToken(data: unknown): string | null {
   return pickString(row, ["stepUpToken"]);
 }
 
-export function readReferral(data: unknown): { code: string | null; link: string | null } | null {
+export function readReferral(data: unknown): {
+  code: string | null;
+  link: string | null;
+  inviteCountUnlimited: boolean | null;
+} | null {
   const row = asRecord(data);
   if (!row) return null;
   const inner = nest(row, "referral") || row;
-  const code = pickString(inner, ["code", "referralCode", "inviteCode"]);
-  const link = pickString(inner, ["link", "referralLink", "url", "inviteUrl"]);
+  const code = pickString(inner, ["referralCode"]);
+  const link = pickString(inner, ["link"]);
+  const unlimited = inner.inviteCountUnlimited;
+  const inviteCountUnlimited = typeof unlimited === "boolean" ? unlimited : null;
   if (!code && !link) return null;
-  return { code, link };
+  return { code, link, inviteCountUnlimited };
 }
 
 export function toE164(phone: string): string {

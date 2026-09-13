@@ -18,7 +18,7 @@ const MENU_ITEMS = [
   { icon: "♢", title: "알림", small: "기회와 정산 소식", path: "/me/inbox" },
   { icon: "📢", title: "공지사항", small: "퍼뜩의 새 소식", path: "/me/notices" },
   { icon: "⚙", title: "설정", small: "내 데스크 환경", path: "/me/settings" },
-  { icon: "◎", title: "내 등급", small: "하루 기회와 기준", path: "/me/membership" },
+  { icon: "◎", title: "내 등급", small: "계정에 정해진 기준", path: "/me/membership" },
   { icon: "★", title: "혜택", small: "현재 받을 혜택", path: "/me/benefits" },
   { icon: "🎉", title: "이벤트", small: "지금 진행 중인 이벤트", path: "/me/events" },
   { icon: "?", title: "고객지원", small: "도움이 필요할 때", path: "/me/support" },

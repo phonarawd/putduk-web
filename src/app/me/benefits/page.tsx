@@ -41,7 +41,7 @@ export default function MeBenefitsPage() {
       {items == null ? (
         <ReadyNotice title="혜택을 확인하고 있어요." copy="잠시만 기다려 주세요." />
       ) : failed ? (
-        <ReadyNotice title={MSG.genericError} copy={MSG.featureSoon}>
+        <ReadyNotice title={MSG.benefitsLoadFail} copy={MSG.genericError}>
           <button className="text-action" type="button" onClick={loadItems}>
             {MSG.withdrawPolicyRetry}
           </button>

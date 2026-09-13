@@ -113,25 +113,35 @@ function HomeWorkspace() {
         <section className="today-summary" aria-label="오늘의 기회와 자본 현황">
           <article className="ticket-card">
             <div className="summary-label">
-              <span>남은 참여</span>
+              <span>체험 남은 참여</span>
               <b id="ticketSummary">
                 {state.trial.maxParticipations != null
                   ? `전체 ${state.trial.maxParticipations}회 중`
-                  : "계정에 정해진 횟수"}
+                  : "체험 참여 횟수"}
               </b>
             </div>
             <div className="ticket-number">
               <strong id="remainingTickets">
-                {remainingTickets != null ? remainingTickets : "확인 중"}
+                {!state.deskReady
+                  ? "확인 중"
+                  : remainingTickets != null
+                    ? remainingTickets
+                    : MSG.trialRemainingEmpty}
               </strong>
-              <span>{remainingTickets != null ? "회 남음" : "계정 값 확인"}</span>
+              <span>
+                {!state.deskReady
+                  ? "계정 값 확인"
+                  : remainingTickets != null
+                    ? "회 남음"
+                    : "등급 횟수와는 달라요"}
+              </span>
             </div>
             {state.trial.profitRemainingKrw != null ? (
               <p id="bonusMini">
-                <b>남은 수익 한도 {formatKrw(state.trial.profitRemainingKrw)}</b>
+                <b>체험 남은 수익 {formatKrw(state.trial.profitRemainingKrw)}</b>
               </p>
             ) : (
-              <p id="bonusMini">횟수는 화면에 정하지 않고, 계정 값을 그대로 보여 드려요</p>
+              <p id="bonusMini">등급 횟수는 내 등급에서 확인해요</p>
             )}
           </article>
 

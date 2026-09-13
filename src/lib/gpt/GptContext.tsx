@@ -670,9 +670,6 @@ export function GptProvider({ children }: { children: ReactNode }) {
       showToast(MSG.notEnoughMoney, "warning");
       router.push("/wallet/deposit");
       return;
-    } else if (state.trial.participationsRemaining === 0) {
-      showToast(MSG.noTickets, "warning");
-      return;
     }
     preflightOpenedAtRef.current = Date.now();
     setPreflightOpen(true);
