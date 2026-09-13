@@ -3,7 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { TrialCardArt } from "@/components/gpt/TrialCardArt";
-import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
+import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary, formatUsdt } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { canStartOpportunity } from "@/lib/gpt/opportunities";
 
@@ -120,7 +120,8 @@ export function OpportunitySection() {
             <div>
               <span>필요한 금액</span>
               <strong id="featuredRequired">
-                {requiredPrimary ?? "아직 표시할 금액이 없어요"}
+                {requiredPrimary ??
+                  (selected.requiredUsdt != null ? formatUsdt(selected.requiredUsdt) : "아직 표시할 금액이 없어요")}
               </strong>
               {requiredSecondary ? <small id="featuredRequiredUsdt">{requiredSecondary}</small> : null}
             </div>

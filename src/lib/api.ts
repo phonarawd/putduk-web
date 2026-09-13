@@ -951,6 +951,9 @@ function durationFromSec(value: number | null): string {
 }
 
 function asStringList(value: unknown): string[] {
+  if (typeof value === "string" && value.trim()) {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
   if (!Array.isArray(value)) return [];
   return value.map((item) => readString(item)).filter((item): item is string => Boolean(item));
 }
@@ -1048,28 +1051,33 @@ export function hasOwnPrincipal(usdt: number | null, krw: number | null): boolea
 function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | null {
   const raw = asRecord(item);
   if (!raw) return null;
-  const row = nest(raw, "opportunity") || raw;
+  const row = mergeApiRows(raw, nest(raw, "opportunity"), nest(raw, "data"), nest(raw, "item"));
+  if (!row) return null;
   const id = pickString(row, ["id", "opportunityId"]);
   if (!id) return null;
   const title = pickString(row, ["asset_label", "assetLabel", "title", "label", "name"]) || "기회";
   const amountRows = [row, nest(row, "quote"), nest(row, "pricing"), nest(row, "amounts")];
   const requiredCapitalUsdt = pickStringFrom(amountRows, ["requiredCapitalUsdt"]);
   const requiredUsdt = pickNumberFrom(amountRows, ["requiredCapitalUsdt", "requiredUsdt"]);
-  const requiredKrw = pickNumberFrom(amountRows, ["requiredCapitalKrwApprox"]);
+  const requiredKrw = pickNumberFrom(amountRows, ["requiredCapitalKrwApprox", "requiredCapitalKrw", "requiredKrw"]);
   const pricingVersionRaw = pickNumber(row, withSnake(["pricingVersion"]));
   const pricingVersion =
     pricingVersionRaw != null && Number.isInteger(pricingVersionRaw) && pricingVersionRaw >= 1
       ? pricingVersionRaw
       : null;
   const expectedProfitUsdt = pickStringFrom(amountRows, ["expectedProfitUsdt"]);
+  const category = pickString(row, ["category", "kind", "type"]);
   const trialEligible =
     row.trial_eligible === true ||
     row.trialEligible === true ||
-    trialIds.includes(id);
+    row.trial_eligible === "true" ||
+    row.trialEligible === "true" ||
+    trialIds.includes(id) ||
+    (category != null && isTrialName(category));
   return {
     id,
     title,
-    category: pickString(row, ["category", "kind", "type"]) || (trialEligible ? "체험" : "기회"),
+    category: category || (trialEligible ? "체험" : "기회"),
     symbol: pickString(row, ["symbol", "ticker"]) || title.slice(0, 2),
     bucket: asBucket(row.bucket),
     trialEligible,
