@@ -85,12 +85,12 @@ export function selectedOpportunity(state: GptState): OpportunityView {
 }
 
 export function canStartOpportunity(
-  item: Pick<OpportunityView, "trialEligible" | "affordable">,
+  item: Pick<OpportunityView, "trialEligible" | "affordable" | "bucket">,
   trial: Pick<TrialState, "grantStatus" | "participationsRemaining">,
 ): boolean {
-  if (item.trialEligible) {
-    return trial.grantStatus === "active" && trial.participationsRemaining !== 0;
-  }
+  const trialOpen = trial.grantStatus === "active" && trial.participationsRemaining !== 0;
+  if (item.trialEligible) return trialOpen;
+  if (trialOpen && item.bucket !== "lockedHigh") return true;
   return item.affordable;
 }
 

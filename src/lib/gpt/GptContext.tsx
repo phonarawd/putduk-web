@@ -657,18 +657,15 @@ export function GptProvider({ children }: { children: ReactNode }) {
       showToast(MSG.noOpportunity, "warning");
       return;
     }
-    if (opportunity.trialEligible) {
-      if (state.trial.participationsRemaining === 0) {
+    if (!canStartOpportunity(opportunity, state.trial)) {
+      if (opportunity.trialEligible && state.trial.participationsRemaining === 0) {
         showToast(MSG.noTickets, "warning");
         return;
       }
-      if (state.trial.grantStatus !== "active") {
-        showToast(MSG.notEnoughMoney, "warning");
-        return;
-      }
-    } else if (!opportunity.affordable) {
       showToast(MSG.notEnoughMoney, "warning");
-      router.push("/wallet/deposit");
+      if (!opportunity.trialEligible && state.trial.grantStatus !== "active") {
+        router.push("/wallet/deposit");
+      }
       return;
     }
     preflightOpenedAtRef.current = Date.now();
