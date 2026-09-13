@@ -968,6 +968,11 @@ function isTrialName(value: string): boolean {
   return lower.includes("trial") || value.includes("체험");
 }
 
+function guestFacingCategory(value: string | null): string | null {
+  if (!value || !/[가-힣]/.test(value)) return null;
+  return value;
+}
+
 function isProfitName(value: string): boolean {
   const lower = value.toLowerCase();
   return lower.includes("profit") || lower.includes("earn") || value.includes("수익");
@@ -1077,7 +1082,7 @@ function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | nul
   return {
     id,
     title,
-    category: category || (trialEligible ? "체험" : "기회"),
+    category: guestFacingCategory(category) || (trialEligible ? "체험" : "기회"),
     symbol: pickString(row, ["symbol", "ticker"]) || title.slice(0, 2),
     bucket: asBucket(row.bucket),
     trialEligible,

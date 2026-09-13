@@ -13,8 +13,11 @@ export function OpportunitySection() {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   const selectedIndex = Math.max(0, opportunities.findIndex((item) => item.id === state.selectedId));
-  const requiredPrimary = formatMoneyPrimary(selected.requiredUsdt, selected.requiredKrw);
-  const requiredSecondary = formatMoneySecondary(selected.requiredUsdt, selected.requiredKrw);
+  const requiredPrimary =
+    formatMoneyPrimary(selected.requiredUsdt, selected.requiredKrw) ??
+    (selected.requiredUsdt != null ? formatUsdt(selected.requiredUsdt) : null);
+  const requiredSecondary =
+    selected.requiredKrw != null ? formatMoneySecondary(selected.requiredUsdt, selected.requiredKrw) : null;
 
   let statusClass = "availability-chip";
   let statusText = "참여 가능";
@@ -105,7 +108,7 @@ export function OpportunitySection() {
         </div>
         <div className="opportunity-main">
           <div className="opportunity-meta">
-            <span id="featuredCategory">{selected.category}</span>
+            {selected.category ? <span id="featuredCategory">{selected.category}</span> : null}
             <span id="featuredStatus" className={statusClass}>
               {statusText}
             </span>
@@ -120,8 +123,7 @@ export function OpportunitySection() {
             <div>
               <span>필요한 금액</span>
               <strong id="featuredRequired">
-                {requiredPrimary ??
-                  (selected.requiredUsdt != null ? formatUsdt(selected.requiredUsdt) : "아직 표시할 금액이 없어요")}
+                {requiredPrimary ?? "아직 표시할 금액이 없어요"}
               </strong>
               {requiredSecondary ? <small id="featuredRequiredUsdt">{requiredSecondary}</small> : null}
             </div>

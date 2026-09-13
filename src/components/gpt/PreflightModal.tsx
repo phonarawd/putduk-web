@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { TrialCardArt } from "@/components/gpt/TrialCardArt";
-import { formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
+import { formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary, formatUsdt } from "@/lib/gpt/format";
 import { useGpt } from "@/lib/gpt/GptContext";
 import { useModalFocus } from "@/lib/gpt/useModalFocus";
 
@@ -49,9 +49,10 @@ export function PreflightModal() {
           <div>
             <span>이번 업무에 사용할 금액</span>
             <strong id="preflightAmount">
-              {formatMoneyPrimary(selected.requiredUsdt, selected.requiredKrw) ?? "아직 표시할 금액이 없어요"}
+              {formatMoneyPrimary(selected.requiredUsdt, selected.requiredKrw) ??
+                (selected.requiredUsdt != null ? formatUsdt(selected.requiredUsdt) : "아직 표시할 금액이 없어요")}
             </strong>
-            {formatMoneySecondary(selected.requiredUsdt, selected.requiredKrw) ? (
+            {selected.requiredKrw != null && formatMoneySecondary(selected.requiredUsdt, selected.requiredKrw) ? (
               <small id="preflightUsdt">{formatMoneySecondary(selected.requiredUsdt, selected.requiredKrw)}</small>
             ) : null}
           </div>
