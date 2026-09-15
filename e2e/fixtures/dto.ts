@@ -92,6 +92,7 @@ export const OPPORTUNITY_LIST = {
       assetLabel: "점검용 기회",
       category: "기회",
       bucket: "affordable",
+      supplySource: "operator",
       requiredCapitalUsdt: "10.000000",
       requiredCapitalKrwApprox: 14500,
       pricingVersion: 1,
@@ -100,6 +101,19 @@ export const OPPORTUNITY_LIST = {
     },
   ],
 };
+
+export const EBAY_LEGACY_70 = Array.from({ length: 70 }, (_, index) => ({
+  id: `ebay-legacy-${String(index + 1).padStart(2, "0")}`,
+  assetLabel: `eBay legacy ${index + 1}`,
+  title: `eBay legacy ${index + 1}`,
+  category: "watch",
+  bucket: "affordable",
+  supplySource: "legacy_external",
+  compareReady: true,
+  requiredCapitalUsdt: "10.000000",
+  pricingVersion: 1,
+  expectedProfitUsdt: "0.400000",
+}));
 
 export const MEMBERSHIP = {
   membership: "sprout",

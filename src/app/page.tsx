@@ -148,19 +148,6 @@ function HomeWorkspace() {
           <ProfileCapitalCard />
         </section>
 
-        <section className="compact-network" aria-label="공식 협력 네트워크">
-          <span>
-            <i></i> 공식 협력 네트워크
-          </span>
-          <div>
-            <b>eBay</b>
-            <b>amazon</b>
-            <b>쿠팡</b>
-            <b>KREAM</b>
-            <b>Chrono24</b>
-          </div>
-        </section>
-
         <OpportunitySection />
       </section>
     </WorkspaceView>
