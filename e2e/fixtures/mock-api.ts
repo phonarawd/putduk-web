@@ -40,10 +40,10 @@ export type MockOptions = {
   depositAddress?: boolean;
   withdrawFailOnce?: boolean;
   withdrawFailCount?: number;
-  opportunities?: "default" | "empty";
+  opportunities?: "default" | "empty" | "mixed-legacy" | "selected-a";
   homeReadLegacy?: boolean;
   opportunityDetail?: "ok" | "404";
-  participate?: "ok" | "daily-cap" | "blocked";
+  participate?: "ok" | "daily-cap" | "daily-cap-code" | "blocked";
 };
 
 type Captured = {
@@ -190,6 +190,12 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
     }
     if (path === "/api/v1/opportunities" && method === "GET") {
       if (options.opportunities === "empty") return json(route, { items: [] });
+      if (options.opportunities === "selected-a" && options.user !== "a") {
+        return json(route, { items: [] });
+      }
+      if (options.opportunities === "mixed-legacy") {
+        return json(route, { items: [...OPPORTUNITY_LIST.items, ...EBAY_LEGACY_70] });
+      }
       return json(route, OPPORTUNITY_LIST);
     }
     if (path.startsWith("/api/v1/opportunities/") && path.endsWith("/preflight") && method === "POST") {
@@ -203,6 +209,18 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
             code: "DAILY_MATCH_CAP",
             toastCode: "DAILY_MATCH_CAP",
             message: "오늘 참여 횟수를 모두 썼어요.",
+            statusCode: 403,
+          },
+          403,
+        );
+      }
+      if (options.participate === "daily-cap-code") {
+        return json(
+          route,
+          {
+            code: "DAILY_MATCH_CAP",
+            toastCode: "DAILY_MATCH_CAP",
+            message: "dailyUserMatchCap reached",
             statusCode: 403,
           },
           403,
