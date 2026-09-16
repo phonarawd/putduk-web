@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { AmbassadorHero, AmbassadorMoment } from "@/components/gpt/AmbassadorVisual";
+import { HomeBanners } from "@/components/gpt/PublishedCmsList";
 import { OpportunitySection } from "@/components/gpt/OpportunitySection";
 import { ReadyNotice } from "@/components/gpt/ReadyNotice";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
@@ -109,6 +110,7 @@ function HomeWorkspace() {
         </button>
 
         <AmbassadorMoment />
+        <HomeBanners />
 
         <section className="today-summary" aria-label="오늘의 기회와 자본 현황">
           <article className="ticket-card">

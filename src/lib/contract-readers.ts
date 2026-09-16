@@ -251,6 +251,39 @@ export function isKrwConfigNotReady(error: unknown): boolean {
   return /CONFIG_NOT_READY/i.test(text);
 }
 
+export type PublishedCmsItem = {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  imageUrl: string | null;
+  publishedAt: string | null;
+};
+
+/** 손님 CMS는 published 만. 초안·종료·가짜 카드를 만들지 않는다. */
+export function readPublishedCms(data: unknown): PublishedCmsItem[] {
+  const row = asRecord(data);
+  const items = row && Array.isArray(row.items) ? row.items : [];
+  const out: PublishedCmsItem[] = [];
+  for (const item of items) {
+    const card = asRecord(item);
+    if (!card) continue;
+    if (card.status != null && card.status !== "published") continue;
+    const id = readString(card.id);
+    const title = readString(card.title);
+    if (!id || !title) continue;
+    out.push({
+      id,
+      kind: readString(card.kind) || "",
+      title,
+      body: typeof card.body === "string" ? card.body : "",
+      imageUrl: readString(card.imageUrl),
+      publishedAt: readString(card.publishedAt),
+    });
+  }
+  return out;
+}
+
 export type WithdrawIntentEvent =
   | "amount-change"
   | "destination-change"

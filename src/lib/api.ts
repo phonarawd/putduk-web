@@ -17,6 +17,7 @@ export {
   readKycVerified,
   readKrwInstructions,
   readMembershipView,
+  readPublishedCms,
   shouldRotateWithdrawIntent,
   withdrawLockedMismatch,
   type BenefitItemView,
@@ -24,6 +25,7 @@ export {
   type JournalRow,
   type KycUiStatus,
   type MembershipView,
+  type PublishedCmsItem,
 } from "./contract-readers";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://api.hiptk.app";
@@ -725,6 +727,10 @@ export function getMembership() {
 
 export function getBenefits() {
   return apiFetch<unknown>("/api/v1/me/benefits");
+}
+
+export function getPublishedCms(kind: "notice" | "event" | "benefit" | "banner" | "notification") {
+  return apiFetch<unknown>(`/api/v1/cms/${kind}`, { skipRefresh: true });
 }
 
 export function getReferralMe() {

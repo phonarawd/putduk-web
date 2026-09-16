@@ -14,6 +14,7 @@ import {
   readDepositAddress,
   readKrwInstructions,
   readMembershipView,
+  readPublishedCms,
   shouldRotateWithdrawIntent,
   withdrawLockedMismatch,
 } from "./contract-readers.ts";
@@ -208,4 +209,19 @@ test("출금 의도는 금액·주소 변경과 성공에서만 key를 바꾼다
   assert.equal(shouldRotateWithdrawIntent("other-error"), false);
   assert.equal(withdrawLockedMismatch("1", "Txxx", "1", "Txxx"), false);
   assert.equal(withdrawLockedMismatch("2", "Txxx", "1", "Txxx"), true);
+});
+
+test("손님 CMS는 게시된 글만 읽고 초안을 채우지 않는다", () => {
+  const items = readPublishedCms({
+    items: [
+      { id: "n1", kind: "notice", status: "published", title: "운영 공지", body: "본문", imageUrl: null, publishedAt: "2026-09-16T00:00:00.000Z" },
+      { id: "n2", kind: "notice", status: "draft", title: "초안", body: "숨김", imageUrl: null, publishedAt: null },
+      { kind: "notice", status: "published", title: "번호 없음", body: "" },
+    ],
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0]?.id, "n1");
+  assert.equal(items[0]?.title, "운영 공지");
+  assert.equal(readPublishedCms({ items: [] }).length, 0);
+  assert.equal(readPublishedCms({ cards: [{ title: "가짜" }] }).length, 0);
 });

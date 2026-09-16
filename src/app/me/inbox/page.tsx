@@ -1,5 +1,6 @@
 "use client";
 
+import { PublishedCmsList } from "@/components/gpt/PublishedCmsList";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { SettingRow } from "@/components/gpt/SettingRow";
@@ -10,7 +11,12 @@ export default function MeInboxPage() {
 
   return (
     <RouteScreen>
-      <RouteTop kicker="내 데스크 소식" title="알림" copy="이 기기에서 어떤 소식을 강조할지 골라요." backPath="/me" />
+      <RouteTop kicker="내 데스크 소식" title="알림" copy="운영자가 게시한 알림과 이 기기 강조 설정을 확인하세요." backPath="/me" />
+      <PublishedCmsList
+        kind="notification"
+        emptyTitle="아직 확인할 알림이 없어요"
+        emptyCopy="운영자가 게시한 알림이 있으면 여기에서 보여 드려요."
+      />
       <section className="settings-card">
         <SettingRow
           title="기회 알림"
@@ -30,7 +36,7 @@ export default function MeInboxPage() {
           checked={state.walletAlerts}
           onToggle={toggleWalletAlerts}
         />
-        <p className="settings-note">이 설정은 이 기기에만 저장돼요. 실제 알림 보내기는 아직 준비 중이에요.</p>
+        <p className="settings-note">이 설정은 이 기기에만 저장돼요. 위에 보이는 알림은 운영자가 게시한 글입니다.</p>
       </section>
     </RouteScreen>
   );
