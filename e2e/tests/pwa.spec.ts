@@ -35,19 +35,33 @@ async function probeOffline(page: Page): Promise<OfflineProbe> {
 
 async function waitUntilSwReadyWithOfflineCache(page: Page) {
   await expect
+    .poll(async () => page.evaluate(async () => Boolean(await navigator.serviceWorker.getRegistration())))
+    .toBeTruthy();
+  const before = await probeOffline(page);
+  if (!before.controlled) {
+    await page.reload({ waitUntil: "domcontentloaded" });
+  }
+  await expect
     .poll(async () => {
       const snap = await probeOffline(page);
-      return snap.controlled && snap.swState === "activated" && snap.cacheHasOffline;
+      const controlling = snap.controlled && (snap.swState === "activated" || snap.swState === "activating");
+      return controlling && snap.cacheHasOffline;
     })
     .toBeTruthy();
+}
+
+function isTestOrigin(url: URL) {
+  return url.hostname === "127.0.0.1" || url.hostname === "localhost";
 }
 
 async function gotoGatedPathOffline(page: Page, context: BrowserContext, path: string) {
   await waitUntilSwReadyWithOfflineCache(page);
   await context.setOffline(true);
   // 오프라인인데 mock API가 세션을 성공으로 채워 로그인 화면으로 가면 안 된다.
+  // Firefox는 setOffline 뒤에도 navigator.onLine이 true인 채 라이브 API로 세션을 보낸다.
+  // context.unrouteAll은 그 구멍을 키우므로 페이지 mock만 걷고, 검사 원점이 아닌 요청만 막는다.
   await page.unrouteAll({ behavior: "ignoreErrors" }).catch(() => undefined);
-  await context.unrouteAll({ behavior: "ignoreErrors" }).catch(() => undefined);
+  await page.route((url) => !isTestOrigin(url), (route) => route.abort());
   await expect
     .poll(async () => {
       const snap = await probeOffline(page);
