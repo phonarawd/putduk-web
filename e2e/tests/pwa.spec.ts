@@ -35,17 +35,9 @@ async function probeOffline(page: Page): Promise<OfflineProbe> {
 
 async function waitUntilSwReadyWithOfflineCache(page: Page) {
   await expect
-    .poll(async () => page.evaluate(async () => Boolean(await navigator.serviceWorker.getRegistration())))
-    .toBeTruthy();
-  const before = await probeOffline(page);
-  if (!before.controlled) {
-    await page.reload({ waitUntil: "domcontentloaded" });
-  }
-  await expect
     .poll(async () => {
       const snap = await probeOffline(page);
-      const controlling = snap.controlled && (snap.swState === "activated" || snap.swState === "activating");
-      return controlling && snap.cacheHasOffline;
+      return snap.controlled && snap.swState === "activated" && snap.cacheHasOffline;
     })
     .toBeTruthy();
 }
@@ -56,21 +48,18 @@ function isTestOrigin(url: URL) {
 
 async function gotoGatedPathOffline(page: Page, context: BrowserContext, path: string) {
   await waitUntilSwReadyWithOfflineCache(page);
-  await context.setOffline(true);
   // 오프라인인데 mock API가 세션을 성공으로 채워 로그인 화면으로 가면 안 된다.
-  // Firefox는 setOffline 뒤에도 navigator.onLine이 true인 채 라이브 API로 세션을 보낸다.
-  // context.unrouteAll은 그 구멍을 키우므로 페이지 mock만 걷고, 검사 원점이 아닌 요청만 막는다.
+  // Firefox setOffline은 항해를 about:neterror로 보내 SW fetch를 건너뛰고, 문구 검사를 비운다.
+  // 페이지 mock만 걷고 검사 원점이 아닌 요청을 막아, 세션 실패를 연결 없음과 같게 만든다.
   await page.unrouteAll({ behavior: "ignoreErrors" }).catch(() => undefined);
-  await page.route((url) => !isTestOrigin(url), (route) => route.abort());
+  await context.route((url) => !isTestOrigin(url), (route) => route.abort());
   await expect
     .poll(async () => {
       const snap = await probeOffline(page);
       return snap.controlled && snap.cacheHasOffline;
     })
     .toBeTruthy();
-  // load까지 기다리면 오프라인에서 하위 자원이 안 끝나 Firefox가 항해 자체를 붙잡는다.
-  // commit은 문서 항해가 실제로 시작됐는지만 본다.
-  await page.goto(path, { waitUntil: "commit" }).catch(() => undefined);
+  await page.goto(path, { waitUntil: "domcontentloaded" }).catch(() => undefined);
   try {
     await expect(page.getByText(MSG.offlineFinance)).toBeVisible();
   } catch (error) {
