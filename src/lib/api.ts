@@ -167,7 +167,16 @@ function asImageUrl(value: string | null): string | null {
 }
 
 function pickImageUrl(row: Record<string, unknown> | null): string | null {
-  const keys = withSnake(["imageUrl", "artworkUrl", "svgUrl", "thumbnailUrl", "mediaUrl", "cardImageUrl", "image"]);
+  const keys = withSnake([
+    "assetImageUrl",
+    "imageUrl",
+    "artworkUrl",
+    "svgUrl",
+    "thumbnailUrl",
+    "mediaUrl",
+    "cardImageUrl",
+    "image",
+  ]);
   const direct = asImageUrl(pickString(row, keys));
   if (direct) return direct;
   for (const key of ["card", "media", "artwork", "image"]) {
@@ -177,16 +186,28 @@ function pickImageUrl(row: Record<string, unknown> | null): string | null {
   return null;
 }
 
-function extractErrorToken(row: Record<string, unknown> | null, text: string): string {
-  const code = pickString(row, ["code", "errorCode"]);
-  if (code) return code;
-  if (row && Array.isArray(row.message)) {
-    const parts = row.message.map(String);
-    const token = parts.find((part) => /^[A-Z][A-Z0-9_]+$/.test(part));
-    if (token) return token;
-    return parts.join(" ");
+function unwrapErrorRow(value: unknown): Record<string, unknown> | null {
+  const row = asRecord(value);
+  if (!row) return null;
+  return mergeApiRows(row, asRecord(row.message));
+}
+
+function extractErrorFields(row: Record<string, unknown> | null, text: string): { code: string; message: string } {
+  const merged = unwrapErrorRow(row);
+  const rawCode = pickString(merged, ["toastCode", "code", "errorCode"]) || "";
+  let message = "";
+  if (merged && Array.isArray(merged.message)) {
+    message = merged.message.map(String).join(" ");
+  } else {
+    message = pickString(merged, ["message", "error", "detail"]) || "";
   }
-  return pickString(row, ["message", "error", "detail"]) || text;
+  if (!message) message = text;
+  const officialCode = /^[A-Z][A-Z0-9_]+$/.test(rawCode)
+    ? rawCode
+    : /^[A-Z][A-Z0-9_]+$/.test(message)
+      ? message
+      : "";
+  return { code: officialCode, message };
 }
 
 function toUserMessage(message: string, status?: number): string {
@@ -214,11 +235,11 @@ async function readApiError(res: Response): Promise<ApiError> {
     if (!text) return new ApiError(toUserMessage("", res.status), { status: res.status });
     try {
       const json = JSON.parse(text) as unknown;
-      const row = asRecord(json);
-      const raw = extractErrorToken(row, text);
+      const row = unwrapErrorRow(json);
+      const { code, message: raw } = extractErrorFields(row, text);
       const pendingToken = row ? readString(row.pendingToken) : null;
-      const code = /^[A-Z][A-Z0-9_]+$/.test(raw) ? raw : "";
-      const message = code || toUserMessage(raw, res.status);
+      const korean = /[가-힣]/.test(raw) ? raw.trim() : "";
+      const message = korean || code || toUserMessage(raw, res.status);
       return new ApiError(message, { code: code || message, pendingToken, status: res.status });
     } catch {
       const trimmed = text.trim();
@@ -228,6 +249,10 @@ async function readApiError(res: Response): Promise<ApiError> {
   } catch {
     return new ApiError(toUserMessage("", res.status), { status: res.status });
   }
+}
+
+export function isOpportunityNotFound(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
 }
 
 const getInflight = new Map<string, Promise<unknown>>();
@@ -1053,11 +1078,19 @@ export function hasOwnPrincipal(usdt: number | null, krw: number | null): boolea
   return (usdt != null && usdt > 0) || (krw != null && krw > 0);
 }
 
+function isLegacyCatalogRow(row: Record<string, unknown>): boolean {
+  const supply = (pickString(row, withSnake(["supplySource"])) || "").toLowerCase();
+  if (supply && supply !== "operator") return true;
+  const origin = (pickString(row, withSnake(["originSource", "sourceKind"])) || "").toLowerCase();
+  return origin === "legacy_external";
+}
+
 function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | null {
   const raw = asRecord(item);
   if (!raw) return null;
   const row = mergeApiRows(raw, nest(raw, "opportunity"), nest(raw, "data"), nest(raw, "item"));
   if (!row) return null;
+  if (isLegacyCatalogRow(row)) return null;
   const id = pickString(row, ["id", "opportunityId"]);
   if (!id) return null;
   const title = pickString(row, ["asset_label", "assetLabel", "title", "label", "name"]) || "기회";
@@ -1094,18 +1127,23 @@ function parseFeedItem(item: unknown, trialIds: string[]): LiveOpportunity | nul
     expectedProfitUsdt,
     expectedUsdt: pickNumberFrom(amountRows, ["expectedProfitUsdt", "expectedUsdt"]),
     expectedKrw: pickNumberFrom(amountRows, ["expectedProfitKrwApprox", "expectedKrw"]),
-    lowMarket: pickString(row, ["lowMarket", "buyVenue", "fromMarket", "partnerLabel", "partner"]) || "",
-    highMarket: pickString(row, ["highMarket", "sellVenue", "toMarket"]) || "",
+    lowMarket: pickString(row, ["lowMarket", "buyMarketLabelKo"]) || "",
+    highMarket: pickString(row, ["highMarket", "sellMarketLabelKo"]) || "",
     seats: pickNumberFrom(amountRows, ["seats", "remainingSeats", "openSeats"]),
     duration: pickString(row, ["duration", "eta"]) || durationFromSec(pickNumberFrom(amountRows, ["estimatedDurationSec"])),
   };
 }
 
-export function readListFeed(data: unknown, trialIds: string[] = []): LiveOpportunity[] {
+function opportunityItems(data: unknown): unknown[] {
+  if (Array.isArray(data)) return data;
   const row = asRecord(data);
-  const named = row ? row.listFeed ?? row.feed : undefined;
-  const source = named !== undefined ? named : data;
-  return asList(source).flatMap((item) => {
+  if (!row) return [];
+  if (Array.isArray(row.items)) return row.items;
+  return [];
+}
+
+export function readListFeed(data: unknown, trialIds: string[] = []): LiveOpportunity[] {
+  return opportunityItems(data).flatMap((item) => {
     const parsed = parseFeedItem(item, trialIds);
     return parsed ? [parsed] : [];
   });
@@ -1114,9 +1152,8 @@ export function readListFeed(data: unknown, trialIds: string[] = []): LiveOpport
 export function readOpportunity(data: unknown, trialIds: string[] = []): LiveOpportunity | null {
   const row = asRecord(data);
   return (
+    parseFeedItem(row ? row.item ?? row.opportunity : null, trialIds) ||
     parseFeedItem(data, trialIds) ||
-    parseFeedItem(row ? row.opportunity ?? row.data ?? row.item : null, trialIds) ||
-    readListFeed(data, trialIds)[0] ||
     null
   );
 }

@@ -17,6 +17,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ApiError,
   emptyTrial,
   executeTradeTick,
   fillMissingKrw,
@@ -26,6 +27,7 @@ import {
   getSession,
   getTrialState,
   getWalletBuckets,
+  isOpportunityNotFound,
   listOpportunities,
   listTrades,
   logout as logoutSession,
@@ -250,20 +252,14 @@ export function GptProvider({ children }: { children: ReactNode }) {
     const trialVal = trial.status === "fulfilled" ? readTrialState(trial.value) : emptyTrial();
     const bucketVal = buckets.status === "fulfilled" ? buckets.value : null;
     const tradeRows = trades.status === "fulfilled" ? readTrades(trades.value) : [];
-    const feed = readListFeed(homeVal, trialVal.trialEligibleOpportunityIds);
-    let fallback = feed.length ? feed : readListFeed(oppVal, trialVal.trialEligibleOpportunityIds);
+    let fallback = readListFeed(oppVal, trialVal.trialEligibleOpportunityIds);
+    const prevSelected = getSnapshot().selectedId;
     const focus =
+      fallback.find((item) => item.id === prevSelected) ||
       fallback.find((item) => trialVal.trialEligibleOpportunityIds.includes(item.id)) ||
       fallback.find((item) => item.trialEligible) ||
       fallback[0];
-    if (
-      focus &&
-      (focus.requiredCapitalUsdt == null ||
-        focus.pricingVersion == null ||
-        !focus.expectedProfitUsdt ||
-        focus.requiredKrw == null ||
-        !focus.imageUrl)
-    ) {
+    if (focus) {
       try {
         const parsed = readOpportunity(await getOpportunity(focus.id), trialVal.trialEligibleOpportunityIds);
         if (parsed) {
@@ -283,9 +279,13 @@ export function GptProvider({ children }: { children: ReactNode }) {
                 }
               : item,
           );
+        } else {
+          fallback = fallback.filter((item) => item.id !== focus.id);
         }
-      } catch {
-        /* 목록 값은 유지 */
+      } catch (error) {
+        if (isOpportunityNotFound(error) || (error instanceof ApiError && error.status === 404)) {
+          fallback = fallback.filter((item) => item.id !== focus.id);
+        }
       }
     }
     const money = await fillMissingKrw(readMoney(mergeApiRows(homeMoneyVal, homeVal, oppVal), bucketVal, trialVal));
@@ -306,7 +306,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
       deskReady: true,
       selectedId: fallback.some((item) => item.id === prev.selectedId)
         ? prev.selectedId
-        : focus?.id || fallback[0]?.id || "",
+        : fallback[0]?.id || "",
       lastRefreshAt: Date.now(),
     }));
   }, []);
@@ -610,9 +610,57 @@ export function GptProvider({ children }: { children: ReactNode }) {
   );
 
   // ---------- 기회 ----------
-  const selectOpportunity = useCallback((id: string) => {
-    setStoreState((prev) => ({ ...prev, selectedId: id }));
+  const dropOpportunity = useCallback((id: string) => {
+    setStoreState((prev) => {
+      const feed = prev.feed.filter((item) => item.id !== id);
+      return {
+        ...prev,
+        feed,
+        selectedId: prev.selectedId === id ? feed[0]?.id || "" : prev.selectedId,
+      };
+    });
   }, []);
+
+  const selectOpportunity = useCallback((id: string) => {
+    if (!id) {
+      setStoreState((prev) => ({ ...prev, selectedId: "" }));
+      return;
+    }
+    setStoreState((prev) => ({ ...prev, selectedId: id }));
+    void getOpportunity(id)
+      .then((data) => {
+        const parsed = readOpportunity(data, getSnapshot().trial.trialEligibleOpportunityIds);
+        if (!parsed || parsed.id !== id) {
+          dropOpportunity(id);
+          return;
+        }
+        setStoreState((prev) => ({
+          ...prev,
+          feed: prev.feed.map((item) =>
+            item.id === parsed.id
+              ? {
+                  ...item,
+                  ...parsed,
+                  requiredCapitalUsdt: parsed.requiredCapitalUsdt ?? item.requiredCapitalUsdt,
+                  requiredUsdt: parsed.requiredUsdt ?? item.requiredUsdt,
+                  requiredKrw: parsed.requiredKrw ?? item.requiredKrw,
+                  pricingVersion: parsed.pricingVersion ?? item.pricingVersion,
+                  imageUrl: parsed.imageUrl ?? item.imageUrl,
+                  expectedProfitUsdt: parsed.expectedProfitUsdt ?? item.expectedProfitUsdt,
+                  expectedUsdt: parsed.expectedUsdt ?? item.expectedUsdt,
+                  expectedKrw: parsed.expectedKrw ?? item.expectedKrw,
+                }
+              : item,
+          ),
+          selectedId: parsed.id,
+        }));
+      })
+      .catch((error: unknown) => {
+        if (isOpportunityNotFound(error) || (error instanceof ApiError && error.status === 404)) {
+          dropOpportunity(id);
+        }
+      });
+  }, [dropOpportunity]);
 
   const refreshQuotes = useCallback(() => {
     reloadDesk()
@@ -818,10 +866,15 @@ export function GptProvider({ children }: { children: ReactNode }) {
         return reloadDesk();
       })
       .catch((error: unknown) => {
+        if (isOpportunityNotFound(error) || (error instanceof ApiError && error.status === 404)) {
+          dropOpportunity(opportunity.id);
+          showToast(MSG.productNone, "warning");
+          return;
+        }
         const payload = toastFromError(error, MSG.participateFail);
         showToast(payload.message, payload.kind);
       });
-  }, [state, reloadDesk, showToast]);
+  }, [state, dropOpportunity, reloadDesk, showToast]);
 
   const closeExecution = useCallback(
     (destination: ViewName) => {

@@ -51,7 +51,7 @@ export function toOpportunityView(item: LiveOpportunity): OpportunityView {
 export function emptyOpportunity(): OpportunityView {
   return toOpportunityView({
     id: "",
-    title: "아직 확인할 기회가 없어요",
+    title: "상품 없음",
     category: "기회",
     symbol: "",
     bucket: null,
@@ -96,7 +96,7 @@ export function canStartOpportunity(
 
 export function principalSuggestion(state: GptState, opportunity: OpportunityView): string {
   if (!opportunity.id) {
-    return "조건이 맞는 기회가 생기면 여기에서 보여 드려요.";
+    return "운영자가 공개한 상품이 있으면 여기에서 보여 드려요.";
   }
   if (canStartOpportunity(opportunity, state.trial)) {
     return opportunity.title + "부터 바로 확인할 수 있어요.";

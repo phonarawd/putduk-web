@@ -89,7 +89,15 @@ export const MSG = {
   participateFail: "😥 참여 신청을 보내지 못했어요. 다시 시도해 주세요.",
   participateBusy: "⏳ 지금 진행 중인 일이 끝난 뒤 다음 기회를 시작할 수 있어요.",
   participateNeedAmount: "⚠️ 아직 참여 금액을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.",
-  noOpportunity: "🔎 아직 확인할 기회가 없어요.",
+  productNone: "상품 없음",
+  noOpportunity: "상품 없음",
+  dailyMatchCap: "오늘 참여 횟수를 모두 썼어요.",
+  matchBlocked: "지금은 매칭을 진행할 수 없어요. 고객센터에 문의해 주세요",
+  safetyDeny: "지금은 이 기회에 참여할 수 없어요.",
+  opportunityExpired: "이 기회는 방금 마감됐어요",
+  preflightRequired: "참여 전 안내를 확인한 뒤 다시 눌러 주세요",
+  priceStale: "조건이 바뀌었어요. 다시 확인해 주세요.",
+  gradeCap: "현재 등급에서는 이 기회에 참여할 수 없어요.",
   notEnoughMoney: "💳 지금은 이 기회에 참여할 금액이 부족해요.",
   noTickets: "⚠️ 남은 참여 횟수가 없어요.",
   recordReturned: "잠근 금액이 돌아왔어요.",
@@ -156,6 +164,13 @@ function mapKnownCode(text: string): string | null {
   if (/REFERRAL_POOL_WAIT/i.test(text)) return MSG.referralWait;
   if (/AUTH_REQUIRED/i.test(text)) return MSG.loginNeed;
   if (/INSUFFICIENT_PRINCIPAL|INSUFFICIENT_BALANCE/i.test(text)) return MSG.notEnoughMoney;
+  if (/DAILY_MATCH_CAP/i.test(text)) return MSG.dailyMatchCap;
+  if (/MATCH_BLOCKED/i.test(text)) return MSG.matchBlocked;
+  if (/SAFETY_DENY/i.test(text)) return MSG.safetyDeny;
+  if (/OPPORTUNITY_EXPIRED/i.test(text)) return MSG.opportunityExpired;
+  if (/PREFLIGHT_REQUIRED/i.test(text)) return MSG.preflightRequired;
+  if (/PRICE_STALE|PRICE_STALE_DATA/i.test(text)) return MSG.priceStale;
+  if (/CAPITAL_BAND|GRADE_CAP|MEMBERSHIP_BAND/i.test(text)) return MSG.gradeCap;
   if (/VALIDATION_ERROR/i.test(text)) return MSG.participateFail;
   if (/SIGNUP_LINK_INVALID/i.test(text)) return MSG.verifyLinkBad;
   return null;
@@ -165,10 +180,11 @@ export function userFacingError(error: unknown, fallback: string = MSG.genericEr
   const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
   const text = raw.trim();
   if (!text) return fallback;
+  if (/[가-힣]/.test(text)) return text;
   const known = mapKnownCode(text);
   if (known) return known;
-  if (/^[A-Z][A-Z0-9_]+$/.test(text)) return MSG.genericError;
-  if (TECHNICAL_RE.test(text) && !/[가-힣]/.test(text)) return fallback;
+  if (/^[A-Z][A-Z0-9_]+$/.test(text)) return fallback;
+  if (TECHNICAL_RE.test(text)) return fallback;
   if (text === fallback) return fallback;
   return text;
 }

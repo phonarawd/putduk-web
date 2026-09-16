@@ -69,8 +69,8 @@ export function OpportunitySection() {
         </div>
         <article className="featured-opportunity">
           <div className="opportunity-main">
-            <h3>아직 확인할 기회가 없어요</h3>
-            <p className="market-route">조건이 맞는 기회가 생기면 여기에 보여 드려요.</p>
+            <h3>상품 없음</h3>
+            <p className="market-route">운영자가 공개한 상품이 있으면 여기에 보여 드려요.</p>
           </div>
         </article>
       </section>

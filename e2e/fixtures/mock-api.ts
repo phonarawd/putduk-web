@@ -3,6 +3,7 @@ import {
   AUTHORIZE_URL,
   BENEFITS,
   DEPOSIT_ADDRESS,
+  EBAY_LEGACY_70,
   HOME_MONEY,
   KRW_GUIDE,
   LEDGER,
@@ -39,6 +40,10 @@ export type MockOptions = {
   depositAddress?: boolean;
   withdrawFailOnce?: boolean;
   withdrawFailCount?: number;
+  opportunities?: "default" | "empty" | "mixed-legacy" | "selected-a";
+  homeReadLegacy?: boolean;
+  opportunityDetail?: "ok" | "404";
+  participate?: "ok" | "daily-cap" | "daily-cap-code" | "blocked";
 };
 
 type Captured = {
@@ -174,14 +179,77 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
       return json(route, { ok: true, onboarding: "complete", onboardingStage: "B_complete", gender: stored ?? null });
     }
 
-    if (path === "/api/v1/me/home-read" && method === "GET") return json(route, { listFeed: OPPORTUNITY_LIST.items });
+    if (path === "/api/v1/me/home-read" && method === "GET") {
+      if (options.homeReadLegacy) return json(route, { listFeed: EBAY_LEGACY_70 });
+      return json(route, { opportunity: { itemCount: options.opportunities === "empty" ? 0 : 1 } });
+    }
     if (path === "/api/v1/me/home-money-read" && method === "GET") return json(route, HOME_MONEY);
     if (path === "/api/v1/me/trial-state" && method === "GET") return json(route, TRIAL_NONE);
     if (path === "/api/v1/me/current-fx/approx" && method === "POST") {
       return json(route, { principalKrwApprox: 18000, withdrawableProfitKrwApprox: 4700 });
     }
-    if (path === "/api/v1/opportunities" && method === "GET") return json(route, OPPORTUNITY_LIST);
-    if (path.startsWith("/api/v1/opportunities/") && method === "GET") return json(route, OPPORTUNITY_LIST.items[0]);
+    if (path === "/api/v1/opportunities" && method === "GET") {
+      if (options.opportunities === "empty") return json(route, { items: [] });
+      if (options.opportunities === "selected-a" && options.user !== "a") {
+        return json(route, { items: [] });
+      }
+      if (options.opportunities === "mixed-legacy") {
+        return json(route, { items: [...OPPORTUNITY_LIST.items, ...EBAY_LEGACY_70] });
+      }
+      return json(route, OPPORTUNITY_LIST);
+    }
+    if (path.startsWith("/api/v1/opportunities/") && path.endsWith("/preflight") && method === "POST") {
+      return json(route, { preflightToken: "qa-preflight-token" });
+    }
+    if (path.startsWith("/api/v1/opportunities/") && path.endsWith("/participate") && method === "POST") {
+      if (options.participate === "daily-cap") {
+        return json(
+          route,
+          {
+            code: "DAILY_MATCH_CAP",
+            toastCode: "DAILY_MATCH_CAP",
+            message: "오늘 참여 횟수를 모두 썼어요.",
+            statusCode: 403,
+          },
+          403,
+        );
+      }
+      if (options.participate === "daily-cap-code") {
+        return json(
+          route,
+          {
+            code: "DAILY_MATCH_CAP",
+            toastCode: "DAILY_MATCH_CAP",
+            message: "dailyUserMatchCap reached",
+            statusCode: 403,
+          },
+          403,
+        );
+      }
+      if (options.participate === "blocked") {
+        return json(
+          route,
+          {
+            message: {
+              code: "MATCH_BLOCKED",
+              toastCode: "MATCH_BLOCKED",
+              message: "지금은 매칭을 진행할 수 없어요. 고객센터에 문의해 주세요",
+              statusCode: 403,
+            },
+            error: "Forbidden",
+            statusCode: 403,
+          },
+          403,
+        );
+      }
+      return json(route, { ok: true, status: "accepted", tradeId: null });
+    }
+    if (path.startsWith("/api/v1/opportunities/") && method === "GET") {
+      if (options.opportunityDetail === "404") {
+        return json(route, { message: "opportunity not found", error: "Not Found", statusCode: 404 }, 404);
+      }
+      return json(route, { item: OPPORTUNITY_LIST.items[0] });
+    }
     if (path === "/api/v1/trades" && method === "GET") return json(route, { items: [] });
     if (path === "/api/v1/wallet/buckets" && method === "GET") return json(route, { items: [] });
 
