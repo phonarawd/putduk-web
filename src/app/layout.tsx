@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { GptProvider } from "@/lib/gpt/GptContext";
+import { AppProviders } from "@/lib/gpt/AppProviders";
 import { AppShell } from "@/components/gpt/AppShell";
 import { PwaRegister } from "@/components/gpt/PwaRegister";
 import "@/styles/gpt-fonts.css";
@@ -34,10 +34,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <link rel="preload" href="/fonts/pretendard-subset/PretendardVariable.subset.91.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       </head>
       <body>
-        <GptProvider>
+        <AppProviders>
           <AppShell>{children}</AppShell>
           <PwaRegister />
-        </GptProvider>
+        </AppProviders>
       </body>
     </html>
   );
