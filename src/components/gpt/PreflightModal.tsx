@@ -3,11 +3,11 @@
 import { useEffect, useRef } from "react";
 import { TrialCardArt } from "@/components/gpt/TrialCardArt";
 import { formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary, formatUsdt } from "@/lib/gpt/format";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useOpportunityFlow } from "@/lib/gpt/GptScopes";
 import { useModalFocus } from "@/lib/gpt/useModalFocus";
 
 export function PreflightModal() {
-  const { selected, preflightOpen, closePreflight, confirmStart } = useGpt();
+  const { selected, preflightOpen, closePreflight, confirmStart } = useOpportunityFlow();
   const containerRef = useRef<HTMLDivElement>(null);
   useModalFocus(preflightOpen, containerRef);
 
