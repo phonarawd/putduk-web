@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { formatRecordProfit, formatTime } from "@/lib/gpt/format";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useOpportunityFlow } from "@/lib/gpt/GptScopes";
 import { opportunityById } from "@/lib/gpt/opportunities";
 import { MSG } from "@/lib/messages";
 
@@ -20,8 +20,7 @@ function statusLabel(status: string) {
 }
 
 export default function MeRecordsPage() {
-  const { state } = useGpt();
-  const trades = state.trades;
+  const { trades, feed, recordsError, deskReady } = useOpportunityFlow();
 
   return (
     <RouteScreen>
@@ -33,7 +32,7 @@ export default function MeRecordsPage() {
       />
 
       <div id="historyList" className="history-list" aria-live="polite">
-        {state.recordsError ? (
+        {recordsError ? (
           <div className="history-empty">
             <span aria-hidden="true">!</span>
             <strong>기록을 가져오지 못했어요</strong>
@@ -43,12 +42,12 @@ export default function MeRecordsPage() {
           <div className="history-empty">
             <span aria-hidden="true">✓</span>
             <strong>아직 기록이 없어요</strong>
-            <p>{state.deskReady ? "첫 업무가 끝나면 여기에 모여요." : "기록을 확인하고 있어요."}</p>
+            <p>{deskReady ? "첫 업무가 끝나면 여기에 모여요." : "기록을 확인하고 있어요."}</p>
           </div>
         ) : (
           trades.map((trade) => {
-            const found = state.feed.find((item) => item.id === trade.opportunityId);
-            const opportunity = opportunityById(trade.opportunityId, state.feed);
+            const found = feed.find((item) => item.id === trade.opportunityId);
+            const opportunity = opportunityById(trade.opportunityId, feed);
             const done = /success|completed|settled/i.test(trade.status);
             const stopped = /safe_stop|cancelled|canceled|failed/i.test(trade.status);
             const profit = formatRecordProfit(trade.settledProfitUsdt ?? null, trade.settledProfitKrw);
