@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ReadyNotice } from "@/components/gpt/ReadyNotice";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi } from "@/lib/gpt/GptScopes";
 import { MSG } from "@/lib/messages";
 
 const SUPPORT_TOPICS = [
@@ -16,7 +16,7 @@ const SUPPORT_TOPICS = [
 
 export default function MeSupportPage() {
   const router = useRouter();
-  const { showToast } = useGpt();
+  const { showToast } = useCommonUi();
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [topic, setTopic] = useState("일반 문의");
   const [message, setMessage] = useState("");
