@@ -18,7 +18,7 @@ const activePosition = {
 
 test("live mining presentation은 마지막 서버 수익 이후 짧은 구간만 보간한다", () => {
   const result = presentLiveMiningProfit(activePosition, syncedAt, syncedMs + 30_000);
-  assert.equal(result.amount, "2.000347222222222222");
+  assert.equal(result.amount, "2.000347222222");
   assert.equal(result.source, "interpolated");
   assert.equal(result.stale, false);
 });
@@ -29,7 +29,7 @@ test("live mining presentation은 stale 한도를 넘으면 90초에서 멈춘�
     syncedAt,
     syncedMs + MINING_LIVE_MAX_INTERPOLATION_MS + 30_000,
   );
-  assert.equal(result.amount, "2.001041666666666666");
+  assert.equal(result.amount, "2.001041666667");
   assert.equal(result.stale, true);
 });
 
@@ -39,7 +39,7 @@ test("live mining presentation은 다음 정산 경계를 넘겨 보간하지 �
     syncedAt,
     syncedMs + 30_000,
   );
-  assert.equal(result.amount, "2.00011574074074074");
+  assert.equal(result.amount, "2.000115740741");
   assert.equal(result.stale, true);
   assert.equal(result.cappedAt, "2026-09-21T00:00:10.000Z");
 });
@@ -60,4 +60,14 @@ test("유효하지 않은 rate나 server sync가 있으면 추정값을 만들�
     "2",
   );
   assert.equal(presentLiveMiningProfit(activePosition, null, syncedMs + 30_000).amount, "2");
+});
+
+test("표시 계산이 유한하지 않으면 authoritative server amount로 되돌아간다", () => {
+  const result = presentLiveMiningProfit(
+    { ...activePosition, principalAmount: "999999999999999999" },
+    syncedAt,
+    Number.MAX_VALUE,
+  );
+  assert.equal(result.amount, "2");
+  assert.equal(result.source, "server");
 });
