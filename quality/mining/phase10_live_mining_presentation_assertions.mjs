@@ -43,7 +43,7 @@ for (const token of [
   "principalScaled * rateScaled * elapsedMs",
   "DECIMAL_FACTOR * MS_PER_DAY",
   "serverScaled + incrementalScaled",
-  'source: "interpolated"',
+  '"interpolated"',
   "Server responses remain authoritative",
 ]) {
   requireText(presentation, token, `bounded presentation rule ${token}`);
