@@ -19,6 +19,8 @@ export type SettlementStatus =
   | "FAILED"
   | "REVIEW_REQUIRED";
 
+export type MiningMutationKind = "start" | "increase" | "decrease" | "end";
+
 export interface MineView {
   mineId: string;
   status: MineStatus;
@@ -84,6 +86,7 @@ export interface LiveProfitSnapshot {
 
 export interface MiningState {
   mines: MineView[];
+  activeMine: MineView | null;
   positions: MiningPosition[];
   liveProfit: LiveProfitSnapshot;
   settlements: MiningSettlement[];
