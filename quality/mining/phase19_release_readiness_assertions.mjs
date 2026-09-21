@@ -81,21 +81,30 @@ for (const marker of [
   "a5aebf994a56a9cc10a816333aa9e23a4b4189e6",
   "ad395b4fa9f5d82c4dd2ac64d5eafa5c7ee4e8fd",
   "b4c1311dd042c0b5bfde8705971cf8b66df4a552",
-  "50c3316eedbc8acc2c20ad7837ebe90df5a9338f",
+  "74b80fd3963047c2e97fb9ed3004dbff664743b6",
   "1d690a8ffdc0f7233f58b5693b8bd6e21da23a23",
   "a79826aaeb7f97b70fae881f1d423ce0f70a49fe",
   "d6e279841aaa62b7b75f26a7b33d1768923d551b",
   "3b17a54c56d67f35047db37a0624b171eb485d39",
-  "74b80f999527ddb19b480e9ec0c959b4fa472d7d",
   "8630dbf7c197c37c9888fd66588e5976af56059c",
-  "BLOCKER-BE-ANCESTRY-01",
+  "20260920134053_mining_foundation_v1.sql",
+  "former `BLOCKER-BE-ANCESTRY-01`",
+  "RESOLVED / AUDIT CORRECTION",
   "BLOCKER-BE-ANCESTRY-02",
   "BLOCKER-CONTRACT-COMPLETENESS-01",
   "BLOCKER-STAGING-DB-01",
+  "BLOCKER-STAGING-E2E-01",
   "BLOCKER-PROD-MIGRATION-01",
   "Production untouched",
 ]) {
   must(audit.includes(marker), `release audit marker missing: ${marker}`);
+}
+
+for (const stale of [
+  "74b80f999527ddb19b480e9ec0c959b4fa472d7d",
+  "20260920224000_mining_foundation_v1.sql",
+]) {
+  must(!audit.includes(stale), `stale audit fact remains: ${stale}`);
 }
 
 console.log("PHASE19_RELEASE_READINESS_ASSERTIONS_PASS");
