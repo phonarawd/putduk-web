@@ -3,6 +3,11 @@
 import { useMemo } from "react";
 import { useGptSession } from "@/lib/gpt/GptScopes";
 import { useMining } from "@/lib/mining/MiningContext";
+import {
+  MINING_LIVE_RESYNC_MS,
+  presentLiveMiningProfit,
+} from "@/lib/mining/presentation";
+import { useMiningPresentationClock } from "@/lib/mining/useMiningPresentationClock";
 import type { MiningPosition, MiningSettlement, PositionStatus, SettlementStatus } from "@/lib/mining/types";
 import { useWallet } from "@/lib/wallet/WalletContext";
 import { formatKrw, formatUsdt } from "@/lib/gpt/format";
@@ -11,6 +16,7 @@ const amountFormatter = new Intl.NumberFormat("ko-KR", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 6,
 });
+const liveResyncSeconds = MINING_LIVE_RESYNC_MS / 1_000;
 
 function formatAssetAmount(value: string | null | undefined, assetCode: string | null | undefined) {
   if (value == null || value === "") return "표시할 금액이 없어요";
@@ -83,7 +89,20 @@ function StatCard({
   );
 }
 
-function PositionCard({ position, mineName }: { position: MiningPosition; mineName: string }) {
+function PositionCard({
+  position,
+  mineName,
+  syncedAt,
+  nowMs,
+}: {
+  position: MiningPosition;
+  mineName: string;
+  syncedAt: string | null;
+  nowMs: number | null;
+}) {
+  const liveProfit = presentLiveMiningProfit(position, syncedAt, nowMs);
+  const isInterpolated = liveProfit.source === "interpolated";
+
   return (
     <article className="rounded-[22px] border border-slate-200 bg-white p-5">
       <div className="flex items-start justify-between gap-3">
@@ -103,13 +122,24 @@ function PositionCard({ position, mineName }: { position: MiningPosition; mineNa
           </dd>
         </div>
         <div className="rounded-2xl bg-slate-50 p-3">
-          <dt className="text-xs font-semibold text-slate-500">채굴 수익</dt>
+          <dt className="text-xs font-semibold text-slate-500">
+            {isInterpolated ? "채굴 수익 · 표시용 예상" : "채굴 수익 · 서버 값"}
+          </dt>
           <dd className="mt-1 text-sm font-black text-slate-900">
-            {formatAssetAmount(position.accruedProfitAmount, position.assetCode)}
+            {formatAssetAmount(liveProfit.amount, position.assetCode)}
           </dd>
         </div>
       </dl>
-      <p className="mt-4 text-xs text-slate-500">다음 정산 {formatDate(position.nextSettlementAt)}</p>
+      <div className="mt-4 space-y-1 text-xs leading-5 text-slate-500">
+        <p>다음 정산 {formatDate(position.nextSettlementAt)}</p>
+        <p>
+          {liveProfit.stale
+            ? "서버 재동기화 대기 · 실제 수익과 정산은 서버 기준"
+            : isInterpolated
+              ? `서버 스냅샷 이후 표시용으로 흐르는 값 · ${liveResyncSeconds}초마다 재동기화`
+              : "서버가 계산한 최신 채굴 수익"}
+        </p>
+      </div>
     </article>
   );
 }
@@ -132,6 +162,7 @@ export function MiningHome() {
   const { displayName } = useGptSession();
   const mining = useMining();
   const wallet = useWallet();
+  const presentationNowMs = useMiningPresentationClock();
 
   const mineNames = useMemo(
     () => new Map(mining.mines.map((mine) => [mine.mineId, mine.displayName])),
@@ -145,17 +176,24 @@ export function MiningHome() {
     mining.summary?.activePositionCount === 1
       ? mining.positions.find((position) => position.status === "ACTIVE")
       : undefined;
+  const activePresentation = activePosition
+    ? presentLiveMiningProfit(activePosition, mining.liveProfit.syncedAt, presentationNowMs)
+    : null;
   const todayMiningValue =
     mining.summary?.activePositionCount === 0
       ? formatAssetAmount("0", summaryAsset)
-      : mining.summary?.activePositionCount === 1 && activePosition
-        ? formatAssetAmount(activePosition.accruedProfitAmount, activePosition.assetCode)
+      : mining.summary?.activePositionCount === 1 && activePosition && activePresentation
+        ? formatAssetAmount(activePresentation.amount, activePosition.assetCode)
         : "광산별 확인";
   const todayMiningDetail =
     mining.summary?.activePositionCount === 0
       ? "운용 중인 채굴이 없어요"
-      : mining.summary?.activePositionCount === 1 && activePosition
-        ? "현재 정산 구간의 서버 채굴 수익"
+      : mining.summary?.activePositionCount === 1 && activePosition && activePresentation
+        ? activePresentation.stale
+          ? "서버 재동기화 대기 · 실제 수익과 정산은 서버 기준"
+          : activePresentation.source === "interpolated"
+            ? `서버 스냅샷 기반 표시용 예상 · ${liveResyncSeconds}초마다 서버 재동기화`
+            : "현재 정산 구간의 서버 채굴 수익"
         : "서버 수익은 아래 채굴장별로 표시해요";
   const loading = !mining.ready || !wallet.ready;
   const withdrawablePrimary =
@@ -181,7 +219,12 @@ export function MiningHome() {
           <h1 id="mining-home-title" className="mt-2 text-3xl font-black tracking-[-0.05em] text-slate-950 sm:text-4xl">
             {displayName ? `${displayName}님의 채굴 홈` : "나의 채굴 홈"}
           </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">서버에 반영된 운용·수익·정산 상태를 한눈에 확인하세요.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            서버 스냅샷을 기준으로 운용 상태를 확인하고, 채굴 수익은 짧은 구간만 표시용으로 부드럽게 보여드려요.
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            서버 동기화 {formatDate(mining.liveProfit.syncedAt)} · 실제 수익·정산·출금 가능 금액은 서버 응답이 기준입니다.
+          </p>
         </div>
         <button
           type="button"
@@ -238,13 +281,15 @@ export function MiningHome() {
                 key={position.positionId}
                 position={position}
                 mineName={mineNames.get(position.mineId) ?? "퍼뜩 광산"}
+                syncedAt={mining.liveProfit.syncedAt}
+                nowMs={presentationNowMs}
               />
             ))}
           </div>
         ) : (
           <div className="rounded-[24px] border border-dashed border-slate-300 bg-white p-7 text-center">
             <strong className="text-base font-black text-slate-900">아직 운용 중인 채굴장이 없어요.</strong>
-            <p className="mt-2 text-sm text-slate-500">광산 운용 기능은 다음 단계에서 실제 서버 흐름과 연결됩니다.</p>
+            <p className="mt-2 text-sm text-slate-500">광산 메뉴에서 조건을 확인하고 실제 서버 운용을 시작할 수 있어요.</p>
           </div>
         )}
       </section>
