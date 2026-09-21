@@ -1,225 +1,262 @@
 "use client";
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { AmbassadorHero, AmbassadorMoment } from "@/components/gpt/AmbassadorVisual";
-import { HomeBanners } from "@/components/gpt/PublishedCmsList";
-import { OpportunitySection } from "@/components/gpt/OpportunitySection";
 import { ReadyNotice } from "@/components/gpt/ReadyNotice";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
-import { hasOwnPrincipal, trialGrantKrw } from "@/lib/api";
-import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { formatMoneyPrimary } from "@/lib/gpt/format";
+import { useGptSession } from "@/lib/gpt/GptScopes";
 import { MSG } from "@/lib/messages";
-import { principalSuggestion } from "@/lib/gpt/opportunities";
+import { useMining } from "@/lib/mining/MiningContext";
+import {
+  POSITION_STATUS_LABEL,
+  SETTLEMENT_STATUS_LABEL,
+  formatAssetAmount,
+  formatMiningTime,
+} from "@/lib/mining/presentation";
+import type { MiningPosition } from "@/lib/mining/types";
+import { useWallet } from "@/lib/wallet/WalletContext";
 
-function IntroScreen() {
+function MiningIntroScreen() {
   const router = useRouter();
+
   return (
-    <section id="introScreen" className="intro-screen">
-      <div className="shell intro-shell">
-        <div className="intro-copy">
-          <span className="intro-kicker">
-            <i></i> 내 자본으로 시작하는 리셀 업무
-          </span>
+    <section className="mining-intro-screen">
+      <div className="shell mining-intro-shell">
+        <div className="mining-intro-copy">
+          <span className="mining-kicker">PUTDUK MINE OS</span>
           <h1>
-            직접 사고팔지 않아도,
+            내 자본이 일하는
             <br />
-            <em>나만의 리셀 업무</em>가 시작됩니다.
+            <em>나만의 디지털 광산</em>
           </h1>
-          <p className="intro-lead">
-            퍼뜩은 내 지갑과 오늘 기회를 함께 보고, 필요한 금액만 잠가 시세 매칭 업무를 진행하는 리셀러 데스크입니다.
+          <p className="mining-intro-lead">
+            광산별 운용 현황과 서버 기준 채굴 수익, 최근 정산을 한 화면에서 확인하세요.
+            퍼뜩은 숫자를 임의로 만들지 않고 서버가 확정한 금융 상태를 그대로 보여 줍니다.
           </p>
 
-          <div className="capital-truth">
-            <span className="truth-symbol" aria-hidden="true">
-              ₮
-            </span>
+          <div className="mining-truth">
+            <span className="mining-truth-mark" aria-hidden="true">M</span>
             <div>
-              <strong>입금은 이용료가 아닙니다.</strong>
-              <p>
-                리셀 기회를 실행하기 위한 <b>내 운용 자본</b>이며, 선택한 금액만 잠깁니다.
-              </p>
+              <strong>수익과 정산의 기준은 서버입니다.</strong>
+              <p>채굴 현황, 운용 원금, 출금 가능 수익은 연결된 지갑·광산 API의 최신 값을 기준으로 표시합니다.</p>
             </div>
           </div>
 
-          <div className="hero-actions">
-            <button id="beginExperience" className="hero-button" type="button" onClick={() => router.push("/login")}>
-              로그인하고 데스크 열기 <span aria-hidden="true">→</span>
+          <div className="mining-intro-actions">
+            <button className="mining-primary-button" type="button" onClick={() => router.push("/login")}>
+              로그인하고 광산 열기
             </button>
-            <button className="intro-text-button" type="button" onClick={() => router.push("/signup")}>
+            <button className="mining-secondary-button" type="button" onClick={() => router.push("/signup")}>
               처음 오셨다면 회원가입
             </button>
           </div>
         </div>
 
-        <AmbassadorHero />
-
-        <section className="partner-wall" aria-labelledby="partner-title">
-          <div className="partner-wall-heading">
-            <span>공식 네트워크</span>
-            <strong id="partner-title">퍼뜩 공식 협력 네트워크</strong>
+        <aside className="mining-hero-panel" aria-label="퍼뜩 광산 이용 흐름">
+          <small>MINERAL LUXURY</small>
+          <strong>지갑에서 광산까지, 한 흐름으로 확인합니다.</strong>
+          <div className="mining-flow">
+            <article>
+              <span>01</span>
+              <div>
+                <strong>자본 확인</strong>
+                <em>내 지갑의 서버 기준 잔액</em>
+              </div>
+            </article>
+            <article>
+              <span>02</span>
+              <div>
+                <strong>광산 운용</strong>
+                <em>현재 운용 중인 광산과 원금</em>
+              </div>
+            </article>
+            <article>
+              <span>03</span>
+              <div>
+                <strong>채굴·정산 확인</strong>
+                <em>발생 수익과 최근 정산 상태</em>
+              </div>
+            </article>
           </div>
-          <div className="partner-logos" aria-label="eBay, Amazon, 쿠팡, KREAM, Chrono24">
-            <span className="partner-ebay">eBay</span>
-            <span className="partner-amazon">
-              amazon<i></i>
-            </span>
-            <span className="partner-coupang">coupang</span>
-            <span className="partner-kream">KREAM</span>
-            <span className="partner-chrono">Chrono24</span>
-          </div>
-        </section>
+        </aside>
       </div>
     </section>
   );
 }
 
-function HomeWorkspace() {
-  const router = useRouter();
-  const { state, selected, refreshQuotes } = useGpt();
-  const remainingTickets = state.trial.participationsRemaining;
+function mineName(position: MiningPosition, mines: ReturnType<typeof useMining>["mines"]): string {
+  return mines.find((mine) => mine.mineId === position.mineId)?.displayName ?? "광산";
+}
+
+function MiningHomeWorkspace() {
+  const { displayName } = useGptSession();
+  const mining = useMining();
+  const wallet = useWallet();
+
+  const activePositions = useMemo(
+    () => mining.positions.filter((position) => position.status !== "ENDED"),
+    [mining.positions],
+  );
+  const recentSettlements = useMemo(() => mining.settlements.slice(0, 3), [mining.settlements]);
+
+  const summaryReady = mining.ready && mining.summary !== null;
+  const activePrincipal = summaryReady
+    ? formatAssetAmount(mining.summary?.activePrincipalAmount, mining.summary?.assetCode ?? "USDT")
+    : null;
+  const withdrawable = wallet.ready
+    ? formatMoneyPrimary(wallet.withdrawable.profitUsdt, wallet.withdrawable.profitKrw)
+    : null;
+  const syncedAt = formatMiningTime(mining.liveProfit.syncedAt);
+
+  const refreshAll = async () => {
+    await Promise.all([mining.refresh(), wallet.refresh()]);
+  };
 
   return (
     <WorkspaceView>
-      <section className="app-view is-active" data-view="home" aria-labelledby="home-title">
-        <div className="view-intro">
+      <section className="app-view is-active mining-home" data-view="home" aria-labelledby="mining-home-title">
+        <div className="view-intro mining-home-head">
           <div>
-            <span className="view-kicker">리셀러 데스크</span>
-            <h1 id="home-title">지금 고를 기회</h1>
-            <p>
-              {state.displayName ? `${state.displayName}님, 조건이 맞는 기회만 확인하세요.` : "조건이 맞는 기회만 확인하세요."}
-            </p>
+            <span className="view-kicker">PUTDUK MINE OS</span>
+            <h1 id="mining-home-title">오늘의 채굴</h1>
+            <p>{displayName ? `${displayName}님, 서버가 확인한 광산 현황입니다.` : "서버가 확인한 광산 현황입니다."}</p>
           </div>
-          <button id="refreshQuotes" className="quiet-button" type="button" onClick={refreshQuotes}>
-            기회 다시 보기 <span aria-hidden="true">↻</span>
+          <button className="mining-refresh-button" type="button" onClick={() => void refreshAll()} disabled={mining.refreshing || wallet.refreshing}>
+            {mining.refreshing || wallet.refreshing ? "동기화 중" : "최신 상태 보기"}
           </button>
         </div>
 
-        <button id="askPeotteokHome" className="ask-ai-card" type="button" onClick={() => router.push("/ai")}>
-          <span className="ai-avatar small" aria-hidden="true">
-            <img src="/putduk-mark.svg" alt="" />
-          </span>
-          <span className="ask-ai-copy">
-            <small>내 자본과 오늘 일을 아는 개인 AI</small>
-            <strong>퍼뜩에게 물어보기</strong>
-            <em id="homeAiSuggestion">{principalSuggestion(state, selected)}</em>
-          </span>
-          <span className="ask-ai-arrow" aria-hidden="true">
-            →
-          </span>
-        </button>
-
-        <AmbassadorMoment />
-        <HomeBanners />
-
-        <section className="today-summary" aria-label="오늘의 기회와 자본 현황">
-          <article className="ticket-card">
-            <div className="summary-label">
-              <span>체험 남은 참여</span>
-              <b id="ticketSummary">
-                {state.trial.maxParticipations != null
-                  ? `전체 ${state.trial.maxParticipations}회 중`
-                  : "체험 참여 횟수"}
-              </b>
-            </div>
-            <div className="ticket-number">
-              <strong id="remainingTickets">
-                {!state.deskReady
-                  ? "확인 중"
-                  : remainingTickets != null
-                    ? remainingTickets
-                    : MSG.trialRemainingEmpty}
-              </strong>
-              <span>
-                {!state.deskReady
-                  ? "계정 값 확인"
-                  : remainingTickets != null
-                    ? "회 남음"
-                    : "등급 횟수와는 달라요"}
-              </span>
-            </div>
-            {state.trial.profitRemainingKrw != null ? (
-              <p id="bonusMini">
-                <b>체험 남은 수익 {formatKrw(state.trial.profitRemainingKrw)}</b>
-              </p>
-            ) : (
-              <p id="bonusMini">등급 횟수는 내 등급에서 확인해요</p>
-            )}
+        <div className="mining-summary-grid" aria-label="오늘 채굴 요약">
+          <article className="mining-summary-card is-accent">
+            <small>오늘 채굴</small>
+            <strong>
+              {!mining.ready
+                ? "확인 중"
+                : mining.error
+                  ? "확인 필요"
+                  : mining.summary
+                    ? mining.summary.activePositionCount > 0
+                      ? `${mining.summary.activePositionCount}곳 채굴 중`
+                      : "채굴 중인 광산 없음"
+                    : "표시할 정보 없음"}
+            </strong>
+            <p>{syncedAt ? `서버 동기화 ${syncedAt}` : "서버 기준 상태"}</p>
           </article>
 
-          <ProfileCapitalCard />
+          <article className="mining-summary-card">
+            <small>운용 중</small>
+            <strong>
+              {!mining.ready ? "확인 중" : mining.error ? "확인 필요" : activePrincipal ?? "표시할 정보 없음"}
+            </strong>
+            <p>현재 ACTIVE 운용 원금</p>
+          </article>
+
+          <article className="mining-summary-card">
+            <small>출금 가능</small>
+            <strong>
+              {!wallet.ready ? "확인 중" : wallet.error ? "확인 필요" : withdrawable ?? "표시할 정보 없음"}
+            </strong>
+            <p>지갑 서버가 반환한 출금 가능 수익</p>
+          </article>
+        </div>
+
+        {mining.error || wallet.error ? (
+          <p className="mining-home-message" role="status">
+            {mining.error ?? wallet.error} 숫자를 0으로 대신 표시하지 않았습니다. 최신 상태 보기를 다시 시도해 주세요.
+          </p>
+        ) : null}
+
+        <section id="mine-yard" className="mining-home-section" aria-labelledby="mine-yard-title">
+          <div className="mining-section-heading">
+            <div>
+              <h2 id="mine-yard-title">내 채굴장</h2>
+              <p>현재 운용 중이거나 처리 중인 광산만 보여 드립니다.</p>
+            </div>
+            <p>{mining.ready && !mining.error ? `${activePositions.length}개 운용` : "서버 상태 기준"}</p>
+          </div>
+
+          {!mining.ready ? (
+            <div className="mining-empty">내 채굴장을 확인하고 있어요.</div>
+          ) : mining.error ? (
+            <div className="mining-empty">광산 정보를 불러오지 못했습니다.</div>
+          ) : activePositions.length === 0 ? (
+            <div className="mining-empty">현재 운용 중인 광산이 없습니다.</div>
+          ) : (
+            <div className="mining-list">
+              {activePositions.map((position) => {
+                const accrued = formatAssetAmount(position.accruedProfitAmount, position.assetCode);
+                const principal = formatAssetAmount(position.principalAmount, position.assetCode);
+                const nextSettlement = formatMiningTime(position.nextSettlementAt);
+                return (
+                  <article key={position.positionId} className="mining-list-card">
+                    <div className="mining-list-card-main">
+                      <div className="mining-list-card-title">
+                        <strong>{mineName(position, mining.mines)}</strong>
+                        <span className="mining-state-pill">{POSITION_STATUS_LABEL[position.status]}</span>
+                      </div>
+                      <p>
+                        운용 원금 {principal ?? "표시할 정보 없음"}
+                        {nextSettlement ? ` · 다음 정산 ${nextSettlement}` : ""}
+                      </p>
+                    </div>
+                    <div className="mining-list-card-value">
+                      <strong>{accrued ?? "표시할 정보 없음"}</strong>
+                      <small>서버 기준 발생 수익</small>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
 
-        <OpportunitySection />
+        <section className="mining-home-section" aria-labelledby="recent-settlement-title">
+          <div className="mining-section-heading">
+            <div>
+              <h2 id="recent-settlement-title">최근 정산</h2>
+              <p>최근 서버 정산 결과 3건을 보여 드립니다.</p>
+            </div>
+          </div>
+
+          {!mining.ready ? (
+            <div className="mining-empty">최근 정산을 확인하고 있어요.</div>
+          ) : mining.error ? (
+            <div className="mining-empty">정산 정보를 불러오지 못했습니다.</div>
+          ) : recentSettlements.length === 0 ? (
+            <div className="mining-empty">아직 표시할 정산 내역이 없습니다.</div>
+          ) : (
+            <div className="mining-list">
+              {recentSettlements.map((settlement) => {
+                const amount = formatAssetAmount(settlement.profitAmount, settlement.assetCode);
+                const settledAt = formatMiningTime(settlement.periodEndAt);
+                return (
+                  <article key={settlement.settlementId} className="mining-list-card">
+                    <div className="mining-list-card-main">
+                      <div className="mining-list-card-title">
+                        <strong>{SETTLEMENT_STATUS_LABEL[settlement.status]}</strong>
+                        <span className="mining-state-pill">정산</span>
+                      </div>
+                      <p>{settledAt ?? "정산 시각 확인 중"}</p>
+                    </div>
+                    <div className="mining-list-card-value">
+                      <strong>{amount ?? "표시할 정보 없음"}</strong>
+                      <small>서버 정산 금액</small>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </section>
     </WorkspaceView>
   );
 }
 
-function ProfileCapitalCard() {
-  const { state } = useGpt();
-  const profitUsdt = state.profitUsdt;
-  const profitKrw = state.profitKrw;
-  const grantKrw = trialGrantKrw(state.trial);
-  const trialUsdt = state.trial.trialPrincipalUsdt;
-  const fxPending = state.trial.grantStatus === "failed_fx";
-  const trialActive = state.trial.grantStatus === "active";
-  const principalPrimary = formatMoneyPrimary(state.principalUsdt, state.principalKrw);
-  const principalSecondary = formatMoneySecondary(state.principalUsdt, state.principalKrw);
-  const trialPrimary = formatMoneyPrimary(trialUsdt, grantKrw);
-  const trialSecondary = formatMoneySecondary(trialUsdt, grantKrw);
-  const ready = state.deskReady;
-  const ownPrincipal = hasOwnPrincipal(state.principalUsdt, state.principalKrw);
-  const heroIsTrial = !ownPrincipal && grantKrw != null;
-  return (
-    <article className="capital-card">
-      <div className="summary-label">
-        <span>{heroIsTrial || fxPending ? "체험 원금 · 출금 불가" : "내 예치"}</span>
-      </div>
-      <strong id="availableCapital">
-        {!ready
-          ? "금액을 확인하고 있어요"
-          : fxPending
-            ? "준비 중"
-            : heroIsTrial
-              ? trialPrimary ?? "아직 표시할 금액이 없어요"
-              : principalPrimary ?? "아직 표시할 금액이 없어요"}
-      </strong>
-      {ready && !fxPending && heroIsTrial && trialSecondary ? (
-        <small id="availableUsdt">{trialSecondary}</small>
-      ) : ready && !heroIsTrial && principalSecondary ? (
-        <small id="availableUsdt">{principalSecondary}</small>
-      ) : (
-        <small>{fxPending ? "환율이 준비되면 원화로 보여 드려요" : "본인 예치와 체험은 따로 보여 드려요"}</small>
-      )}
-      {ready && trialActive && !heroIsTrial ? (
-        <div className="capital-card-bottom">
-          <span>체험 원금 · 출금 불가</span>
-          <b>
-            {trialPrimary ?? "아직 표시할 금액이 없어요"}
-            {trialSecondary ? ` · ${trialSecondary}` : ""}
-          </b>
-        </div>
-      ) : null}
-      {ready && heroIsTrial && ownPrincipal ? (
-        <div className="capital-card-bottom">
-          <span>내 예치</span>
-          <b>
-            {principalPrimary}
-            {principalSecondary ? ` · ${principalSecondary}` : ""}
-          </b>
-        </div>
-      ) : null}
-      <div className="capital-card-bottom">
-        <span>출금 가능 수익</span>
-        <b id="settledProfit">{ready ? formatSignedMoneyPrimary(profitUsdt, profitKrw) ?? "아직 표시할 금액이 없어요" : "금액을 확인하고 있어요"}</b>
-      </div>
-    </article>
-  );
-}
-
 export default function HomePage() {
-  const { state, sessionReady } = useGpt();
+  const { sessionReady, loggedIn } = useGptSession();
+
   if (!sessionReady) {
     return (
       <section className="route-screen shell" aria-live="polite">
@@ -227,5 +264,6 @@ export default function HomePage() {
       </section>
     );
   }
-  return state.loggedIn ? <HomeWorkspace /> : <IntroScreen />;
+
+  return loggedIn ? <MiningHomeWorkspace /> : <MiningIntroScreen />;
 }
