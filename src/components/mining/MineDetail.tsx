@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { useGptSession } from "@/lib/gpt/GptScopes";
 import { useMining } from "@/lib/mining/MiningContext";
@@ -172,6 +172,7 @@ function PositionCard({
 export function MineDetail({ mineId }: { mineId: string }) {
   const { loggedIn } = useGptSession();
   const mining = useMining();
+  const { loadMine, clearActiveMine } = mining;
   const [detailError, setDetailError] = useState<string | null>(null);
   const [startAmount, setStartAmount] = useState("");
   const [selectedOperation, setSelectedOperation] = useState<SelectedOperation | null>(null);
@@ -182,26 +183,22 @@ export function MineDetail({ mineId }: { mineId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    void mining.loadMine(mineId).catch((error: unknown) => {
+    setDetailError(null);
+    void loadMine(mineId).catch((error: unknown) => {
       if (cancelled) return;
       setDetailError(error instanceof Error ? error.message : "광산 상세 정보를 불러오지 못했어요.");
     });
     return () => {
       cancelled = true;
-      mining.clearActiveMine();
+      clearActiveMine();
     };
-  }, [mineId, mining.loadMine, mining.clearActiveMine]);
+  }, [mineId, loadMine, clearActiveMine]);
 
   const mine =
     mining.activeMine?.mineId === mineId
       ? mining.activeMine
       : mining.mines.find((item) => item.mineId === mineId) ?? null;
-
-  const positions = useMemo(
-    () => mining.positions.filter((position) => position.mineId === mineId),
-    [mining.positions, mineId],
-  );
-
+  const positions = mining.positions.filter((position) => position.mineId === mineId);
   const activePositions = positions.filter((position) => position.status === "ACTIVE");
   const mutationBusy = mining.mutationPending !== null;
 
@@ -247,8 +244,7 @@ export function MineDetail({ mineId }: { mineId: string }) {
     setConfirmation({
       kind: selectedOperation.kind,
       positionId: selectedOperation.position.positionId,
-      principalAmount:
-        selectedOperation.kind === "end" ? null : operationAmount.trim(),
+      principalAmount: selectedOperation.kind === "end" ? null : operationAmount.trim(),
       assetCode: selectedOperation.position.assetCode,
       idempotencyKey: newMiningIdempotencyKey(),
     });
