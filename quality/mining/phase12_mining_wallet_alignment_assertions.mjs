@@ -27,6 +27,7 @@ for (const token of [
   "withdrawable:",
   "trial:",
   "refresh: () => Promise<void>",
+  "void refresh();",
 ]) {
   requireText(walletContext, token, `WalletContext authority surface ${token}`);
 }
@@ -39,11 +40,13 @@ requireText(me, "useCommonUi()", "/me must consume scoped common UI state");
 forbidText(me, "loadMoneyRead", "/me must not own a duplicate wallet money reader");
 forbidText(me, "type MoneyRead", "/me must not own wallet response state");
 forbidText(me, "useGpt()", "/me must not reach through the full legacy context");
+forbidText(me, "wallet.refresh()", "/me initial wallet refresh lifecycle must remain in WalletContext");
 
 const walletStrip = read("src/components/gpt/WalletSummaryStrip.tsx");
 requireText(walletStrip, "useWallet()", "wallet summary must consume WalletContext");
 forbidText(walletStrip, "loadMoneyRead", "wallet summary must not own a duplicate money reader");
 forbidText(walletStrip, "type MoneyRead", "wallet summary must not own wallet response state");
+forbidText(walletStrip, "wallet.refresh()", "wallet summary refresh lifecycle must remain in WalletContext");
 forbidText(walletStrip.toLowerCase(), "supabase", "wallet summary must not access Supabase");
 
 const withdraw = read("src/app/wallet/withdraw/page.tsx");
