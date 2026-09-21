@@ -11,7 +11,7 @@ import {
   type RecognitionCredential,
 } from "@/lib/gpt/recognitionContent";
 import { FinanceAuthorityMarks } from "@/components/gpt/FinanceAuthorityMarks";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useGptSession } from "@/lib/gpt/GptScopes";
 
 function formatIssuedAt(value: string) {
   const [year, month, day] = value.split("-");
@@ -74,7 +74,7 @@ function RecognitionCertificate({ credential }: { credential: RecognitionCredent
 export function RecognitionView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { state } = useGpt();
+  const { loggedIn } = useGptSession();
   const initialId = searchParams.get("doc");
   const [selectedId, setSelectedId] = useState(() => recognitionCredential(initialId).id);
 
@@ -122,7 +122,7 @@ export function RecognitionView() {
             약관과 정보
           </button>{" "}
           화면과 같습니다.
-          {state.loggedIn ? (
+          {loggedIn ? (
             <>
               {" "}
               추가 문의는{" "}
