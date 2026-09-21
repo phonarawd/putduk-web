@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { GenderSelect } from "@/components/gpt/GenderSelect";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
@@ -31,13 +30,6 @@ export default function MePage() {
   const { resellerId, issuedAt, displayName, gender, logout } = useGptSession();
   const { chooseProfileGender } = useCommonUi();
   const wallet = useWallet();
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void wallet.refresh();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [wallet.refresh]);
 
   const moneyReady = wallet.ready;
   const principalUsdt = wallet.balance.principalUsdt;
