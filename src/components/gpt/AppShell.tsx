@@ -13,9 +13,8 @@ import { SiteFooter } from "./SiteFooter";
 import { SiteHeader } from "./SiteHeader";
 import { Toast } from "./Toast";
 
-// 자본/사전점검/실행 모달은 로그인 후 실제로 열 때만 필요하다. 비로그인 공개 화면(로그인·가입 등)은
+// 사전점검/실행 모달은 로그인 후 실제로 열 때만 필요하다. 비로그인 공개 화면(로그인·가입 등)은
 // 절대 열지 않으므로 초기 번들에서 빼고, 실제로 open 상태가 될 때만 청크를 가져온다. (로드 시점만 변경, 동작은 그대로)
-const CapitalModal = dynamic(() => import("./CapitalModal").then((mod) => mod.CapitalModal), { ssr: false });
 const PreflightModal = dynamic(() => import("./PreflightModal").then((mod) => mod.PreflightModal), { ssr: false });
 const ExecutionModal = dynamic(() => import("./ExecutionModal").then((mod) => mod.ExecutionModal), { ssr: false });
 
@@ -73,7 +72,7 @@ function AuthGate({ children }: { children: ReactNode }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { capitalModal, preflightOpen, activeExecution } = useGpt();
+  const { preflightOpen, activeExecution } = useGpt();
 
   return (
     <div className="app-frame">
@@ -90,7 +89,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <MobileNav />
       <Toast />
-      {capitalModal.open ? <CapitalModal /> : null}
       {preflightOpen ? <PreflightModal /> : null}
       {activeExecution ? <ExecutionModal /> : null}
     </div>
