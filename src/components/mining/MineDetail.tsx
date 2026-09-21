@@ -183,7 +183,6 @@ export function MineDetail({ mineId }: { mineId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    setDetailError(null);
     void loadMine(mineId).catch((error: unknown) => {
       if (cancelled) return;
       setDetailError(error instanceof Error ? error.message : "광산 상세 정보를 불러오지 못했어요.");
