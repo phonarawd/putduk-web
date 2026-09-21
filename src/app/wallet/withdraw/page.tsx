@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { WalletSummaryStrip } from "@/components/gpt/WalletSummaryStrip";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi } from "@/lib/gpt/GptScopes";
+import { useWallet } from "@/lib/wallet/WalletContext";
 import {
   getKycStatus,
   getWithdrawStepUpPolicy,
-  loadMoneyRead,
   newIdempotencyKey,
   readKycVerified,
   readStepUpMethod,
@@ -26,10 +26,9 @@ import { MSG, toastFromError } from "@/lib/messages";
 
 export default function WalletWithdrawPage() {
   const router = useRouter();
-  const { showToast } = useGpt();
+  const { showToast } = useCommonUi();
+  const wallet = useWallet();
   const [verified, setVerified] = useState(false);
-  const [profitUsdt, setProfitUsdt] = useState<number | null>(null);
-  const [profitKrw, setProfitKrw] = useState<number | null>(null);
   const [amount, setAmount] = useState("");
   const [destination, setDestination] = useState("");
   const [stepMethod, setStepMethod] = useState<"pin" | "email_otp" | null>(null);
@@ -41,20 +40,13 @@ export default function WalletWithdrawPage() {
   const [lockedAmount, setLockedAmount] = useState("");
   const [lockedDestination, setLockedDestination] = useState("");
   const [intentKey, setIntentKey] = useState(() => newIdempotencyKey());
+  const profitUsdt = wallet.withdrawable.profitUsdt;
+  const profitKrw = wallet.withdrawable.profitKrw;
 
   useEffect(() => {
     getKycStatus()
       .then((data) => setVerified(readKycVerified(data)))
       .catch(() => setVerified(false));
-    loadMoneyRead()
-      .then((money) => {
-        setProfitUsdt(money.profitUsdt);
-        setProfitKrw(money.profitKrw);
-      })
-      .catch(() => {
-        setProfitUsdt(null);
-        setProfitKrw(null);
-      });
     loadPolicy();
   }, []);
 
@@ -166,6 +158,7 @@ export default function WalletWithdrawPage() {
         stepUpToken,
       });
       rotateIntent("success");
+      await wallet.refresh();
       showToast(MSG.withdrawOk, "success");
       router.push("/wallet/history");
     } catch (error: unknown) {
@@ -190,7 +183,7 @@ export default function WalletWithdrawPage() {
               <strong>{profitUsdt != null ? "원화 환산 확인 중" : "아직 표시할 금액이 없어요"}</strong>
             )}
             {formatMoneySecondary(profitUsdt, profitKrw) ? <small>{formatMoneySecondary(profitUsdt, profitKrw)}</small> : null}
-            <small>체험 원금과 연습 잔액은 출금할 수 없어요.</small>
+            <small>출금 가능 수익은 서버 지갑 응답 기준이며, 체험 원금과 연습 잔액은 출금할 수 없어요.</small>
           </div>
           {!verified ? (
             <div className="kyc-needed">
