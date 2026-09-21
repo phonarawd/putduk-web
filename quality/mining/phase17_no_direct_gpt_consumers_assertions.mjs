@@ -8,7 +8,7 @@ const must = (condition, message) => {
 };
 
 const contract = JSON.parse(read("contracts/mining/mining-contract.v1.json"));
-must(contract.version === "2026-09-20.mine-v1", "mining contract version drift");
+must(contract.contractVersion === "2026-09-20.mine-v1", "mining contract version drift");
 
 const allowedDirectUse = new Set([
   "src/lib/gpt/GptContext.tsx",
