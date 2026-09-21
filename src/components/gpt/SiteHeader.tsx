@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useGptSession } from "@/lib/gpt/GptScopes";
 import {
   PRIMARY_NAV_ITEMS,
   navActiveKey,
@@ -10,7 +10,7 @@ import { useAppSurface } from "@/lib/gpt/useAppSurface";
 
 export function SiteHeader() {
   const router = useRouter();
-  const { state } = useGpt();
+  const { loggedIn, resellerId } = useGptSession();
   const { pathname, showNav } = useAppSurface();
   const current = navActiveKey(pathname);
 
@@ -47,14 +47,14 @@ export function SiteHeader() {
             id="headerLogin"
             className="reset-button"
             type="button"
-            hidden={state.loggedIn}
+            hidden={loggedIn}
             aria-label="로그인 화면으로 이동"
             onClick={() => router.push("/login")}
           >
             로그인
           </button>
-          <span id="headerReseller" className="header-reseller" hidden={!state.loggedIn || !state.resellerId}>
-            {state.resellerId}
+          <span id="headerReseller" className="header-reseller" hidden={!loggedIn || !resellerId}>
+            {resellerId}
           </span>
         </div>
       </div>
