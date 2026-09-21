@@ -4,15 +4,15 @@ import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { TrialCardArt } from "@/components/gpt/TrialCardArt";
 import { formatKrw, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary, formatUsdt } from "@/lib/gpt/format";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useOpportunityFlow } from "@/lib/gpt/GptScopes";
 import { canStartOpportunity } from "@/lib/gpt/opportunities";
 
 export function OpportunitySection() {
   const router = useRouter();
-  const { state, selected, opportunities, selectOpportunity, openPreflight } = useGpt();
+  const { trial, selectedId, selected, opportunities, selectOpportunity, openPreflight } = useOpportunityFlow();
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const selectedIndex = Math.max(0, opportunities.findIndex((item) => item.id === state.selectedId));
+  const selectedIndex = Math.max(0, opportunities.findIndex((item) => item.id === selectedId));
   const requiredPrimary =
     formatMoneyPrimary(selected.requiredUsdt, selected.requiredKrw) ??
     (selected.requiredUsdt != null ? formatUsdt(selected.requiredUsdt) : null);
@@ -30,9 +30,9 @@ export function OpportunitySection() {
     statusClass = "availability-chip needs-capital";
     statusText = "아직 없음";
     showStart = false;
-  } else if (canStartOpportunity(selected, state.trial)) {
+  } else if (canStartOpportunity(selected, trial)) {
     statusText = "참여 가능";
-  } else if (selected.trialEligible && state.trial.participationsRemaining === 0) {
+  } else if (selected.trialEligible && trial.participationsRemaining === 0) {
     statusClass = "availability-chip needs-capital";
     statusText = "횟수 없음";
     startDisabled = true;
@@ -205,8 +205,8 @@ export function OpportunitySection() {
       </div>
       <div id="opportunityRail" className="opportunity-rail" aria-live="polite">
         {opportunities.map((item) => {
-          const isSelected = item.id === state.selectedId;
-          const stateLabel = canStartOpportunity(item, state.trial)
+          const isSelected = item.id === selectedId;
+          const stateLabel = canStartOpportunity(item, trial)
             ? "참여 가능"
             : item.trialEligible
               ? ""
