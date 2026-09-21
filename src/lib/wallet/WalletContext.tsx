@@ -9,13 +9,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { loadMoneyRead, type MoneyRead } from "@/lib/api";
+import { hasMoneyValues, loadMoneyRead, type MoneyRead } from "@/lib/api";
 import { useGptSession } from "@/lib/gpt/GptScopes";
 
 interface WalletContextValue {
   ready: boolean;
   refreshing: boolean;
   error: string | null;
+  hasValues: boolean;
   balance: {
     assetCode: "USDT";
     principalUsdt: number | null;
@@ -28,6 +29,11 @@ interface WalletContextValue {
     principalKrw: number | null;
     practiceUsdt: number | null;
     practiceKrw: number | null;
+  };
+  trial: {
+    principalUsdt: number | null;
+    principalKrw: number | null;
+    lockedUsdt: number | null;
   };
   withdrawable: {
     profitUsdt: number | null;
@@ -83,6 +89,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       ready: sessionReady && (!loggedIn || money !== null || error !== null),
       refreshing,
       error,
+      hasValues: money ? hasMoneyValues(money) : false,
       balance: {
         assetCode: "USDT",
         principalUsdt: money?.principalUsdt ?? null,
@@ -95,6 +102,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         principalKrw: money?.principalKrw ?? null,
         practiceUsdt: money?.practiceUsdt ?? null,
         practiceKrw: money?.practiceKrw ?? null,
+      },
+      trial: {
+        principalUsdt: money?.trialPrincipalUsdt ?? null,
+        principalKrw: money?.trialPrincipalKrw ?? null,
+        lockedUsdt: money?.trialLockedUsdt ?? null,
       },
       withdrawable: {
         profitUsdt: money?.profitUsdt ?? null,
