@@ -1,6 +1,6 @@
 # MINE-019 — RELEASE INTEGRATION AUDIT
 
-Status: **AUDIT OPEN — RELEASE BLOCKED**  
+Status: **AUDIT COMPLETE — RELEASE BLOCKED**  
 Audit date: 2026-09-21  
 Scope: consumer/backend/admin/mining contract/database/staging release graph  
 Production mutation: **NONE**
@@ -265,8 +265,70 @@ The assertion locks:
 - required blocker markers
 - Production untouched statement
 
-## 14. Safety / closure condition
+## 14. Canonical verification
+
+Canonical consumer implementation/audit SHA:
+
+`606802f50860a2ce56f7e34bc1bd68b602fa7ea5`
+
+Isolated Render verifier:
+
+- service: `putduk-mine-phase04-contract-verify`
+- verification deploy: `dep-daojhrlg1s2s738kb6tg`
+- temporary verifier commit: `fbbaa18e708893432b16ae8f50447ad21dab7184`
+- Node.js: `22.14.0`
+- pnpm: `11.4.0`
+- Next.js: `16.3.4`
+
+Canonical result:
+
+```text
+PHASE04_API_ASSERTIONS_PASS
+PHASE19_VERIFY_HEAD=606802f50860a2ce56f7e34bc1bd68b602fa7ea5
+PHASE19_RELEASE_READINESS_ASSERTIONS_PASS
+PHASE19_ASSERTIONS_PASS
+PHASE19_TYPEGEN_PASS
+PHASE19_TYPECHECK_PASS
+PHASE19_LINT_PASS
+PHASE19_TEST_PASS
+PHASE19_BUILD_PASS
+PHASE19_VERIFY_OK
+PHASE04_CONTRACT_VERIFY_OK
+```
+
+Quality evidence:
+
+- tests: `21 passed / 0 failed`
+- lint: `0 errors / 15 pre-existing warnings`
+- Next production build: `36/36` static pages generated
+- Render verification deploy status: `live`
+
+The first wrapper attempt (`dep-daojh2ijnfac7397es30`) failed before PHASE19 assertions because an inner `corepack enable` tried to unlink read-only `/usr/bin/pnpm`. The verifier wrapper was corrected to reuse the already-activated pnpm installation; no product/code assertion failed in that attempt.
+
+### Historical verifier recovery
+
+After verification, the backend verifier branch was force-restored to:
+
+`a79826aaeb7f97b70fae881f1d423ce0f70a49fe`
+
+Recovery deploy:
+
+`dep-daojj63bc2fs73e9f280`
+
+Recovery evidence:
+
+```text
+VERIFY_HEAD=a79826aaeb7f97b70fae881f1d423ce0f70a49fe
+PHASE04_API_ASSERTIONS_PASS
+PHASE04_CONTRACT_VERIFY_OK
+Build successful
+status=live
+```
+
+No temporary verifier wrapper remains on the verifier branch.
+
+## 15. Safety / closure condition
 
 **Production untouched.**
 
-MINE-019 is complete only when this audit/assertion is canonically verified at an exact consumer SHA and the result is recorded. Completion of MINE-019 means **release integration audit completed**, not **release ready** and not **Production launched**.
+MINE-019 canonical verification is complete. Completion means **release integration audit completed**, not **release ready** and not **Production launched**. The blockers in section 10 remain open and must be resolved on non-Production integration/staging infrastructure before any release candidate freeze or Production launch request.
