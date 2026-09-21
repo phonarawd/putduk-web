@@ -19,6 +19,9 @@ export type SettlementStatus =
   | "FAILED"
   | "REVIEW_REQUIRED";
 
+export type TrialStatus = "NOT_STARTED" | "ACTIVE" | "COMPLETED" | "EXPIRED";
+export type TrialGrantStatus = "active" | "failed_fx";
+
 export type MiningMutationKind = "start" | "increase" | "decrease" | "end";
 
 export interface MineView {
@@ -67,6 +70,31 @@ export interface MiningSettlement {
   ledgerJournalId: string | null;
 }
 
+export interface MiningTrialGrant {
+  status: TrialGrantStatus;
+  amountKrw: number | null;
+  amountUsdt: string | null;
+  fxSnapshotId: string | null;
+  grantedAt: string | null;
+}
+
+export interface MiningTrialStatus {
+  status: TrialStatus;
+  trialSessionId: string | null;
+  mineId: string | null;
+  mineCode: string | null;
+  mineName: string | null;
+  principalAmount: string | null;
+  accruedProfitAmount: string;
+  startedAt: string | null;
+  completesAt: string | null;
+  completedAt: string | null;
+  grant: MiningTrialGrant | null;
+  maxParticipations: number;
+  participationsUsed: number;
+  remainingParticipations: number;
+}
+
 export interface LiveProfitPosition {
   positionId: string;
   mineId: string;
@@ -91,4 +119,5 @@ export interface MiningState {
   liveProfit: LiveProfitSnapshot;
   settlements: MiningSettlement[];
   summary: MiningSummary | null;
+  trial: MiningTrialStatus | null;
 }
