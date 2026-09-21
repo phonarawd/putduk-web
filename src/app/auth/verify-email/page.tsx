@@ -4,13 +4,14 @@ import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi, useGptSession } from "@/lib/gpt/GptScopes";
 import { resendSignupEmail, verifyClassicSignup } from "@/lib/api";
 import { MSG, toastFromError } from "@/lib/messages";
 
 export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verify-email">) {
   const router = useRouter();
-  const { state, markPasswordAuth, navigateAfterAuth, showToast } = useGpt();
+  const { email, markPasswordAuth, navigateAfterAuth } = useGptSession();
+  const { showToast } = useCommonUi();
   const query = use(searchParams);
   const linkToken =
     (typeof query.token === "string" && query.token) ||
@@ -46,7 +47,7 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
 
   async function onResend() {
     if (busy) return;
-    if (!state.email) {
+    if (!email) {
       showToast(MSG.emailNeed, "warning");
       return;
     }
@@ -56,7 +57,7 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
     }
     setBusy(true);
     try {
-      await resendSignupEmail(state.email, turnstileToken || undefined);
+      await resendSignupEmail(email, turnstileToken || undefined);
       setTurnstileToken("");
       setTurnstileReset((value) => value + 1);
       showToast(MSG.resendOk, "success");
@@ -89,7 +90,7 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
         <span className="view-kicker">가입 마지막 단계</span>
         <h1>인증 메일을 보냈어요</h1>
         <p>
-          <b>{state.email || "입력한 이메일"}</b>에서 인증 링크를 눌러 주세요.
+          <b>{email || "입력한 이메일"}</b>에서 인증 링크를 눌러 주세요.
           <br />
           링크를 누르면 바로 이어서 시작할 수 있어요.
         </p>
@@ -102,7 +103,7 @@ export default function VerifyEmailPage({ searchParams }: PageProps<"/auth/verif
         <button className="form-primary" type="button" disabled={busy} onClick={() => void verifyWith(token)}>
           인증을 마쳤어요
         </button>
-        {state.email ? (
+        {email ? (
           <>
             <TurnstileBox key={turnstileReset} action="email-resend" onToken={setTurnstileToken} />
             <button className="route-back-link" type="button" disabled={busy} onClick={() => void onResend()}>
