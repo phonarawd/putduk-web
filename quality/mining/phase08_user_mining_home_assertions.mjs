@@ -40,9 +40,21 @@ const home = read("src/components/mining/MiningHome.tsx");
 for (const label of ["오늘 채굴", "운용 중", "출금 가능", "내 채굴장", "최근 정산"]) {
   requireText(home, label, `required mining-home label ${label}`);
 }
-for (const token of ["useMining", "useWallet", "useGptSession", "summary?.profitAmount", "summary?.activePrincipalAmount", "activePositionCount", "withdrawable.profitKrw", "settlements", "positions"]) {
+for (const token of [
+  "useMining",
+  "useWallet",
+  "useGptSession",
+  "accruedProfitAmount",
+  "summary?.activePrincipalAmount",
+  "activePositionCount",
+  "withdrawable.profitKrw",
+  "settlements",
+  "positions",
+  '"광산별 확인"',
+]) {
   requireText(home, token, `server-backed home binding ${token}`);
 }
+forbidText(home, "summary?.profitAmount", "cumulative wallet profit must not be mislabeled as today mining");
 forbidText(home.toLowerCase(), "supabase", "mining home must not access Supabase directly");
 forbidText(home, "OpportunitySection", "mining home must not depend on reseller opportunities");
 forbidText(home, "useGpt()", "mining home must not reach legacy full GptContext");
