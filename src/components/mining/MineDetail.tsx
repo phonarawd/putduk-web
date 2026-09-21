@@ -6,7 +6,14 @@ import { ApiError } from "@/lib/api";
 import { useGptSession } from "@/lib/gpt/GptScopes";
 import { useMining } from "@/lib/mining/MiningContext";
 import { newMiningIdempotencyKey } from "@/lib/mining/api";
+import {
+  MINING_LIVE_RESYNC_MS,
+  presentLiveMiningProfit,
+} from "@/lib/mining/presentation";
 import type { MiningPosition, PositionStatus } from "@/lib/mining/types";
+import { useMiningPresentationClock } from "@/lib/mining/useMiningPresentationClock";
+
+const liveResyncSeconds = MINING_LIVE_RESYNC_MS / 1_000;
 
 type OperationKind = "start" | "increase" | "decrease" | "end";
 
@@ -97,11 +104,18 @@ function PositionCard({
   position,
   disabled,
   onSelect,
+  syncedAt,
+  nowMs,
 }: {
   position: MiningPosition;
   disabled: boolean;
   onSelect: (kind: SelectedOperation["kind"], position: MiningPosition) => void;
+  syncedAt: string | null;
+  nowMs: number | null;
 }) {
+  const liveProfit = presentLiveMiningProfit(position, syncedAt, nowMs);
+  const isInterpolated = liveProfit.source === "interpolated";
+
   return (
     <article className="rounded-[24px] border border-slate-200 bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -118,9 +132,11 @@ function PositionCard({
 
       <dl className="mt-4 grid gap-2 sm:grid-cols-2">
         <div className="rounded-2xl bg-slate-50 p-3">
-          <dt className="text-xs font-semibold text-slate-500">서버 채굴 수익</dt>
+          <dt className="text-xs font-semibold text-slate-500">
+            {isInterpolated ? "채굴 수익 · 표시용 예상" : "채굴 수익 · 서버 값"}
+          </dt>
           <dd className="mt-1 break-words text-sm font-black text-slate-900">
-            {amountLabel(position.accruedProfitAmount, position.assetCode)}
+            {amountLabel(liveProfit.amount, position.assetCode)}
           </dd>
         </div>
         <div className="rounded-2xl bg-slate-50 p-3">
@@ -134,6 +150,13 @@ function PositionCard({
       <div className="mt-4 space-y-1 text-xs leading-5 text-slate-500">
         <p>기준 시각 {formatDate(position.baselineAt)}</p>
         <p>다음 정산 {formatDate(position.nextSettlementAt)}</p>
+        <p>
+          {liveProfit.stale
+            ? "서버 재동기화 대기 · 실제 수익과 정산은 서버 기준"
+            : isInterpolated
+              ? `서버 스냅샷 이후 표시용으로 흐르는 값 · ${liveResyncSeconds}초마다 재동기화`
+              : "서버가 계산한 최신 채굴 수익"}
+        </p>
         {position.endedAt ? <p>종료 시각 {formatDate(position.endedAt)}</p> : null}
       </div>
 
@@ -173,6 +196,7 @@ export function MineDetail({ mineId }: { mineId: string }) {
   const { loggedIn } = useGptSession();
   const mining = useMining();
   const { loadMine, clearActiveMine } = mining;
+  const presentationNowMs = useMiningPresentationClock();
   const [detailError, setDetailError] = useState<string | null>(null);
   const [startAmount, setStartAmount] = useState("");
   const [selectedOperation, setSelectedOperation] = useState<SelectedOperation | null>(null);
@@ -367,7 +391,7 @@ export function MineDetail({ mineId }: { mineId: string }) {
           </div>
         </dl>
         <p className="mt-4 text-xs leading-5 text-slate-500">
-          운용 가능 여부와 금액 조건은 요청 시 서버가 최종 확인합니다. 화면은 수익률이나 채굴 수익을 재계산하지 않습니다.
+          운용 가능 여부와 금액 조건은 서버가 최종 확인합니다. 실시간처럼 흐르는 수익 표시는 마지막 서버 스냅샷 이후의 짧은 구간만 보간하며 실제 수익·정산·지갑 금액은 서버 응답이 기준입니다.
         </p>
       </header>
 
@@ -410,6 +434,8 @@ export function MineDetail({ mineId }: { mineId: string }) {
                   position={position}
                   disabled={mutationBusy}
                   onSelect={selectOperation}
+                  syncedAt={mining.liveProfit.syncedAt}
+                  nowMs={presentationNowMs}
                 />
               ))}
             </div>
@@ -503,7 +529,7 @@ export function MineDetail({ mineId }: { mineId: string }) {
                     className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-base font-bold text-slate-950 outline-none transition focus:border-blue-500 disabled:bg-slate-100"
                   />
                   <p className="mt-2 text-xs leading-5 text-slate-500">
-                    변경 후 운용 가능 범위는 서버가 최종 확인합니다. 화면에서 결과 금액을 계산하지 않습니다.
+                    변경 후 운용 가능 범위는 서버가 최종 확인합니다. 화면에서 authoritative 결과 금액을 만들지 않습니다.
                   </p>
                 </>
               ) : (
