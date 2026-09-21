@@ -3,11 +3,11 @@
 import { useGpt } from "./GptContext";
 
 /**
- * PHASE07 public session surface.
+ * Public session surface.
  *
  * GptContext still carries legacy reseller-desk state for compatibility while
- * PHASE08+ moves screens onto domain contexts. New mining/wallet code should
- * consume this scoped hook instead of reaching into the full legacy state.
+ * domain consumers move onto scoped hooks. Mining/wallet code must consume
+ * their domain contexts instead of reaching into the full legacy state.
  */
 export function useGptSession() {
   const gpt = useGpt();
@@ -35,10 +35,12 @@ export function useGptSession() {
   };
 }
 
-/** PUTDUK AI owns conversation state only; it does not own mining money. */
+/** PUTDUK AI owns conversation state only; it does not own mining or wallet money. */
 export function usePutdukAi() {
   const gpt = useGpt();
   return {
+    conversations: gpt.state.conversations,
+    activeConversationId: gpt.state.activeConversationId,
     currentConversation: gpt.currentConversation,
     typing: gpt.typing,
     sendAiQuestion: gpt.sendAiQuestion,
@@ -48,7 +50,7 @@ export function usePutdukAi() {
   };
 }
 
-/** Common UI feedback/settings that are shared across domain screens. */
+/** Common UI feedback/settings shared across domain screens. */
 export function useCommonUi() {
   const gpt = useGpt();
   return {
@@ -61,5 +63,33 @@ export function useCommonUi() {
     toggleWalletAlerts: gpt.toggleWalletAlerts,
     togglePreferKrwFirst: gpt.togglePreferKrwFirst,
     toggleCelebrateOn: gpt.toggleCelebrateOn,
+  };
+}
+
+/**
+ * Opportunity/trial/execution surface.
+ *
+ * Values here are server-derived opportunity/trial/trade state owned by the
+ * GPT desk flow. Wallet balances are intentionally excluded; WalletContext
+ * remains the consumer money authority.
+ */
+export function useOpportunityFlow() {
+  const gpt = useGpt();
+  return {
+    trial: gpt.state.trial,
+    feed: gpt.state.feed,
+    selectedId: gpt.state.selectedId,
+    selected: gpt.selected,
+    opportunities: gpt.opportunities,
+    selectOpportunity: gpt.selectOpportunity,
+    refreshQuotes: gpt.refreshQuotes,
+    preflightOpen: gpt.preflightOpen,
+    openPreflight: gpt.openPreflight,
+    closePreflight: gpt.closePreflight,
+    confirmStart: gpt.confirmStart,
+    activeExecution: gpt.activeExecution,
+    celebrate: gpt.celebrate,
+    closeExecution: gpt.closeExecution,
+    selectNextOpportunity: gpt.selectNextOpportunity,
   };
 }
