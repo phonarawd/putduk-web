@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 // GPT 데스크 UI 이식 - 전역 연습 상태 엔진
 // 원본: _gpt_src/dist/app.js 의 state/실행 로직을 React Context로 옮긴 것.
@@ -20,24 +20,18 @@ import {
   ApiError,
   emptyTrial,
   executeTradeTick,
-  fillMissingKrw,
-  getHomeMoneyRead,
-  getHomeRead,
   getOpportunity,
   getSession,
   getTrialState,
-  getWalletBuckets,
   isOpportunityNotFound,
   listOpportunities,
   listTrades,
   logout as logoutSession,
-  mergeApiRows,
   needsCompleteProfile,
   newIdempotencyKey,
   participateOpportunity,
   preflightOpportunity,
   readListFeed,
-  readMoney,
   readOpportunity,
   readParticipateTradeId,
   readPeotteokConversationId,
@@ -110,12 +104,6 @@ interface ToastState {
   key: number;
 }
 
-interface CapitalModalState {
-  open: boolean;
-  mode: "replace" | "topup";
-  selection: number;
-}
-
 type ViewName = keyof typeof VIEW_PATHS;
 
 interface GptContextValue {
@@ -149,13 +137,6 @@ interface GptContextValue {
   selectOpportunity: (id: string) => void;
   refreshQuotes: () => void;
 
-  // 가상 자본 모달
-  capitalModal: CapitalModalState;
-  openCapitalModal: (mode?: "replace" | "topup", suggestedAmount?: number) => void;
-  closeCapitalModal: () => void;
-  setCapitalSelection: (amount: number) => void;
-  confirmCapital: () => void;
-
   // 참여 전 확인 + 실행
   preflightOpen: boolean;
   openPreflight: () => void;
@@ -173,7 +154,7 @@ interface GptContextValue {
   createConversation: () => void;
   selectConversation: (id: string) => void;
 
-  // 프로필/지갑
+  // 프로필/설정
   chooseProfileGender: (value: Gender) => void;
   toggleNotifications: () => void;
   toggleBenefitNews: () => void;
@@ -201,11 +182,6 @@ export function GptProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
-  const [capitalModal, setCapitalModal] = useState<CapitalModalState>({
-    open: false,
-    mode: "replace",
-    selection: 500000,
-  });
   const [preflightOpen, setPreflightOpen] = useState(false);
   const preflightOpenedAtRef = useRef(0);
 
@@ -232,25 +208,19 @@ export function GptProvider({ children }: { children: ReactNode }) {
     toastTimerRef.current = window.setTimeout(() => setToast(null), 3400);
   }, []);
 
-  // 1초마다 갱신되는 시각 - "시세 다시 확인 필요" 같은 신선도 상태가 시간이 지나면 저절로 바뀌도록 한다.
+  // 서버가 내려준 trial/feed/trade 상태만 GPT desk store에 유지한다.
   const tickets = useMemo(() => ticketState(state), [state]);
   const opportunities = useMemo(() => allOpportunityViews(state), [state]);
   const selected = useMemo(() => selectedOpportunity(state), [state]);
 
   const reloadDesk = useCallback(async () => {
-    const [home, homeMoney, opps, trial, buckets, trades] = await Promise.allSettled([
-      getHomeRead(),
-      getHomeMoneyRead(),
+    const [opps, trial, trades] = await Promise.allSettled([
       listOpportunities(),
       getTrialState(),
-      getWalletBuckets(),
       listTrades(),
     ]);
-    const homeVal = home.status === "fulfilled" ? home.value : null;
-    const homeMoneyVal = homeMoney.status === "fulfilled" ? homeMoney.value : null;
     const oppVal = opps.status === "fulfilled" ? opps.value : null;
     const trialVal = trial.status === "fulfilled" ? readTrialState(trial.value) : emptyTrial();
-    const bucketVal = buckets.status === "fulfilled" ? buckets.value : null;
     const tradeRows = trades.status === "fulfilled" ? readTrades(trades.value) : [];
     let fallback = readListFeed(oppVal, trialVal.trialEligibleOpportunityIds);
     const prevSelected = getSnapshot().selectedId;
@@ -288,21 +258,12 @@ export function GptProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-    const money = await fillMissingKrw(readMoney(mergeApiRows(homeMoneyVal, homeVal, oppVal), bucketVal, trialVal));
     setStoreState((prev) => ({
       ...prev,
       trial: trialVal,
       feed: fallback,
       trades: trades.status === "fulfilled" ? tradeRows : prev.trades,
       recordsError: trades.status === "rejected",
-      principalUsdt: money.principalUsdt,
-      principalKrw: money.principalKrw,
-      lockedUsdt: money.lockedUsdt,
-      lockedKrw: money.lockedKrw,
-      profitUsdt: money.profitUsdt,
-      profitKrw: money.profitKrw,
-      practiceUsdt: money.practiceUsdt,
-      practiceKrw: money.practiceKrw,
       deskReady: true,
       selectedId: fallback.some((item) => item.id === prev.selectedId)
         ? prev.selectedId
@@ -471,14 +432,14 @@ export function GptProvider({ children }: { children: ReactNode }) {
         showToast(MSG.aiBusy, "warning");
         return;
       }
-      const ready = ensureConversation(state);
-      const conversation = ready.conversations.find((item) => item.id === ready.activeConversationId);
+      const readyState = ensureConversation(state);
+      const conversation = readyState.conversations.find((item) => item.id === readyState.activeConversationId);
       if (!conversation) return;
       const conversationId = conversation.id;
       const serverConversationId = conversation.serverConversationId;
       setStoreState({
-        ...ready,
-        conversations: ready.conversations.map((item) =>
+        ...readyState,
+        conversations: readyState.conversations.map((item) =>
           item.id === conversationId
             ? {
                 ...item,
@@ -670,24 +631,6 @@ export function GptProvider({ children }: { children: ReactNode }) {
         showToast(payload.message, payload.kind);
       });
   }, [reloadDesk, showToast]);
-
-  // ---------- 가상 자본 모달 ----------
-  const openCapitalModal = useCallback(() => {
-    router.push("/wallet/deposit");
-  }, [router]);
-
-  const closeCapitalModal = useCallback(() => {
-    setCapitalModal((prev) => ({ ...prev, open: false }));
-  }, []);
-
-  const setCapitalSelection = useCallback((amount: number) => {
-    setCapitalModal((prev) => ({ ...prev, selection: amount }));
-  }, []);
-
-  const confirmCapital = useCallback(() => {
-    setCapitalModal((prev) => ({ ...prev, open: false }));
-    router.push("/wallet/deposit");
-  }, [router]);
 
   // ---------- 참여 전 확인 + 실행 ----------
   const openPreflight = useCallback(() => {
@@ -904,7 +847,7 @@ export function GptProvider({ children }: { children: ReactNode }) {
     closeExecution("home");
   }, [opportunities, closeExecution]);
 
-  // ---------- 프로필 / 지갑 ----------
+  // ---------- 프로필 / 설정 ----------
   const chooseProfileGender = useCallback(
     (value: Gender) => {
       if (value !== "male" && value !== "female") return;
@@ -996,11 +939,6 @@ export function GptProvider({ children }: { children: ReactNode }) {
     navigateAfterAuth,
     selectOpportunity,
     refreshQuotes,
-    capitalModal,
-    openCapitalModal,
-    closeCapitalModal,
-    setCapitalSelection,
-    confirmCapital,
     preflightOpen,
     openPreflight,
     closePreflight,
