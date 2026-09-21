@@ -86,7 +86,8 @@ requireText(walletContext, "loadMoneyRead", "WalletContext must remain consumer 
 requireText(walletContext, "withdrawable:", "WalletContext must retain withdrawable authority");
 
 const srcRoot = path.join(root, "src");
-const offenders = [];
+const moneyOffenders = [];
+const capitalModalOffenders = [];
 function walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
@@ -98,13 +99,19 @@ function walk(dir) {
     const relative = path.relative(root, full).replaceAll(path.sep, "/");
     const source = fs.readFileSync(full, "utf8");
     if (/state\.(?:principalUsdt|principalKrw|lockedUsdt|lockedKrw|profitUsdt|profitKrw|practiceUsdt|practiceKrw)\b/.test(source)) {
-      offenders.push(relative);
+      moneyOffenders.push(relative);
+    }
+    if (/\b(?:capitalModal|openCapitalModal|closeCapitalModal|setCapitalSelection|confirmCapital)\b/.test(source)) {
+      capitalModalOffenders.push(relative);
     }
   }
 }
 walk(srcRoot);
-if (offenders.length) {
-  throw new Error(`PHASE13 assertion failed: legacy money shadow consumers remain: ${offenders.join(", ")}`);
+if (moneyOffenders.length) {
+  throw new Error(`PHASE13 assertion failed: legacy money shadow consumers remain: ${moneyOffenders.join(", ")}`);
+}
+if (capitalModalOffenders.length) {
+  throw new Error(`PHASE13 assertion failed: dead virtual-capital consumers remain: ${capitalModalOffenders.join(", ")}`);
 }
 
 console.log("PHASE13_LEGACY_MONEY_SHADOW_REMOVAL_ASSERTIONS_PASS");
