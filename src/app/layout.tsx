@@ -30,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko" data-scroll-behavior="smooth">
       <head>
         <link rel="preload" href="/fonts/pretendard-subset/PretendardVariable.subset.90.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/pretendard-subset/PretendardVariable.subset.91.woff2" as="font" type="font" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/pretendard-subset/PretendardVariable.subset.91.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       </head>
       <body>
         <AppProviders>
