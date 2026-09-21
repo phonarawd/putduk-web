@@ -3,11 +3,10 @@
 import { useGpt } from "./GptContext";
 
 /**
- * Public session surface.
+ * Public session/profile surface.
  *
- * GptContext still carries legacy reseller-desk state for compatibility while
- * domain consumers move onto scoped hooks. Mining/wallet code must consume
- * their domain contexts instead of reaching into the full legacy state.
+ * Mining/wallet code must consume their domain contexts instead of reaching
+ * into the full legacy GPT state.
  */
 export function useGptSession() {
   const gpt = useGpt();
@@ -21,7 +20,9 @@ export function useGptSession() {
     resellerId: gpt.state.resellerId,
     issuedAt: gpt.state.issuedAt,
     displayName: gpt.state.displayName,
+    birthday: gpt.state.birthday,
     gender: gpt.state.gender,
+    phone: gpt.state.phone,
     authMethod: gpt.state.authMethod,
     profileCompleted: gpt.state.profileCompleted,
     markPasswordAuth: gpt.markPasswordAuth,
@@ -50,12 +51,18 @@ export function usePutdukAi() {
   };
 }
 
-/** Common UI feedback/settings shared across domain screens. */
+/** Common UI feedback and device-local presentation preferences. */
 export function useCommonUi() {
   const gpt = useGpt();
   return {
     toast: gpt.toast,
     showToast: gpt.showToast,
+    notificationsEnabled: gpt.state.notificationsEnabled,
+    benefitNews: gpt.state.benefitNews,
+    settlementAlerts: gpt.state.settlementAlerts,
+    walletAlerts: gpt.state.walletAlerts,
+    preferKrwFirst: gpt.state.preferKrwFirst,
+    celebrateOn: gpt.state.celebrateOn,
     chooseProfileGender: gpt.chooseProfileGender,
     toggleNotifications: gpt.toggleNotifications,
     toggleBenefitNews: gpt.toggleBenefitNews,
@@ -67,7 +74,7 @@ export function useCommonUi() {
 }
 
 /**
- * Opportunity/trial/execution surface.
+ * Opportunity/trial/execution/record surface.
  *
  * Values here are server-derived opportunity/trial/trade state owned by the
  * GPT desk flow. Wallet balances are intentionally excluded; WalletContext
@@ -79,6 +86,9 @@ export function useOpportunityFlow() {
     trial: gpt.state.trial,
     feed: gpt.state.feed,
     selectedId: gpt.state.selectedId,
+    trades: gpt.state.trades,
+    recordsError: gpt.state.recordsError,
+    deskReady: gpt.state.deskReady,
     selected: gpt.selected,
     opportunities: gpt.opportunities,
     selectOpportunity: gpt.selectOpportunity,
