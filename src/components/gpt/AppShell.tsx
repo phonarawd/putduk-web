@@ -4,7 +4,7 @@ import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { isGatedPath } from "@/lib/gpt/constants";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi, useGptSession, useOpportunityFlow } from "@/lib/gpt/GptScopes";
 import { MSG } from "@/lib/messages";
 import { OfflineNotice } from "./OfflineNotice";
 import { ReadyNotice } from "./ReadyNotice";
@@ -35,11 +35,12 @@ function readOffline(): boolean {
 function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { ready, sessionReady, sessionUnreachable, state, setPendingRoute, showToast } = useGpt();
+  const { ready, sessionReady, sessionUnreachable, loggedIn, profileCompleted, setPendingRoute } = useGptSession();
+  const { showToast } = useCommonUi();
   const netOffline = useSyncExternalStore(subscribeOnline, readOffline, () => false);
   const gated = isGatedPath(pathname);
-  const blocked = gated && !state.loggedIn;
-  const needsProfile = state.loggedIn && !state.profileCompleted && pathname !== "/auth/complete-profile";
+  const blocked = gated && !loggedIn;
+  const needsProfile = loggedIn && !profileCompleted && pathname !== "/auth/complete-profile";
   const offlineNow = netOffline || sessionUnreachable;
 
   useEffect(() => {
@@ -72,7 +73,7 @@ function AuthGate({ children }: { children: ReactNode }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { preflightOpen, activeExecution } = useGpt();
+  const { preflightOpen, activeExecution } = useOpportunityFlow();
 
   return (
     <div className="app-frame">
