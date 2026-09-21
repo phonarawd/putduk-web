@@ -1,18 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
 import { formatMoneyPrimary, formatMoneySecondary } from "@/lib/gpt/format";
 import { useWallet } from "@/lib/wallet/WalletContext";
 
 export function WalletSummaryStrip() {
   const wallet = useWallet();
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void wallet.refresh();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [wallet.refresh]);
 
   if (!wallet.ready) return null;
 
