@@ -9,7 +9,7 @@ import { WalletSummaryStrip } from "@/components/gpt/WalletSummaryStrip";
 import { copyTextToClipboard } from "@/lib/gpt/clipboard";
 import { KRW_QUICK_AMOUNTS } from "@/lib/gpt/constants";
 import { parseMoney } from "@/lib/gpt/format";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi } from "@/lib/gpt/GptScopes";
 import {
   getKrwDepositInstructions,
   getMyDepositAddress,
@@ -31,7 +31,7 @@ type GuideState = "loading" | "success" | "empty" | "error";
 
 function KrwDepositPanel() {
   const router = useRouter();
-  const { showToast } = useGpt();
+  const { showToast } = useCommonUi();
   const [amount, setAmount] = useState(0);
   const [depositor, setDepositor] = useState("");
   const [busy, setBusy] = useState(false);
@@ -160,7 +160,7 @@ function KrwDepositPanel() {
 
 function UsdtDepositPanel() {
   const router = useRouter();
-  const { showToast } = useGpt();
+  const { showToast } = useCommonUi();
   const [address, setAddress] = useState<string | null>(null);
   const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [network, setNetwork] = useState<string | null>(null);
