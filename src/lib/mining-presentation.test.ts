@@ -62,11 +62,11 @@ test("유효하지 않은 rate나 server sync가 있으면 추정값을 만들�
   assert.equal(presentLiveMiningProfit(activePosition, null, syncedMs + 30_000).amount, "2");
 });
 
-test("표시 계산이 유한하지 않으면 authoritative server amount로 되돌아간다", () => {
+test("표시 계산 입력이 유한하지 않으면 authoritative server amount로 되돌아간다", () => {
   const result = presentLiveMiningProfit(
-    { ...activePosition, principalAmount: "999999999999999999" },
+    { ...activePosition, principalAmount: "1".padEnd(400, "0") },
     syncedAt,
-    Number.MAX_VALUE,
+    syncedMs + 30_000,
   );
   assert.equal(result.amount, "2");
   assert.equal(result.source, "server");
