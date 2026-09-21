@@ -24,6 +24,7 @@ import {
   listMyMiningSettlements,
   startMiningPosition,
 } from "./api";
+import { MINING_LIVE_RESYNC_MS } from "./presentation";
 import type {
   MineView,
   MiningPosition,
@@ -224,6 +225,49 @@ export function MiningProvider({ children }: { children: ReactNode }) {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [sessionReady, loggedIn, userId, refresh]);
+
+  useEffect(() => {
+    if (!sessionReady || !loggedIn) return;
+    let disposed = false;
+    let inFlight = false;
+
+    const syncLivePositions = async () => {
+      if (
+        disposed ||
+        inFlight ||
+        document.visibilityState !== "visible" ||
+        mutationLockRef.current
+      ) {
+        return;
+      }
+      inFlight = true;
+      try {
+        const nextPositions = await listMyMiningPositions();
+        if (disposed) return;
+        setPositions(nextPositions);
+        setSyncedAt(new Date().toISOString());
+      } catch {
+        // Keep the last authoritative server snapshot. Presentation interpolation is
+        // bounded separately and stops when the snapshot becomes stale.
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const timer = window.setInterval(() => {
+      void syncLivePositions();
+    }, MINING_LIVE_RESYNC_MS);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void syncLivePositions();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [sessionReady, loggedIn, userId]);
 
   const liveProfit = useMemo(
     () => createLiveProfitSnapshot(positions, syncedAt),
