@@ -4,9 +4,8 @@ export const MINING_LIVE_TICK_MS = 1_000;
 export const MINING_LIVE_RESYNC_MS = 30_000;
 export const MINING_LIVE_MAX_INTERPOLATION_MS = 90_000;
 
-const DECIMAL_SCALE = 18;
-const DECIMAL_FACTOR = 10n ** BigInt(DECIMAL_SCALE);
-const MS_PER_DAY = 86_400_000n;
+const MS_PER_DAY = 86_400_000;
+const MAX_PRESENTATION_FRACTION_DIGITS = 12;
 
 type PresentationPosition = Pick<
   MiningPosition | LiveProfitPosition,
@@ -26,22 +25,18 @@ export type LiveMiningPresentation = {
   cappedAt: string | null;
 };
 
-function parseDecimal18(raw: string | null | undefined): bigint | null {
+function parsePresentationDecimal(raw: string | null | undefined): number | null {
   if (raw == null) return null;
   const value = raw.trim();
   if (!/^(?:0|[1-9]\d*)(?:\.\d{1,18})?$/.test(value)) return null;
-  const [whole, fraction = ""] = value.split(".");
-  return BigInt(whole) * DECIMAL_FACTOR + BigInt(fraction.padEnd(DECIMAL_SCALE, "0"));
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function formatDecimal18(value: bigint): string {
-  const normalized = value < 0n ? 0n : value;
-  const whole = normalized / DECIMAL_FACTOR;
-  const fraction = (normalized % DECIMAL_FACTOR)
-    .toString()
-    .padStart(DECIMAL_SCALE, "0")
-    .replace(/0+$/, "");
-  return fraction ? `${whole}.${fraction}` : whole.toString();
+function formatPresentationAmount(value: number): string | null {
+  if (!Number.isFinite(value) || value < 0) return null;
+  const fixed = value.toFixed(MAX_PRESENTATION_FRACTION_DIGITS);
+  return fixed.replace(/\.?0+$/, "") || "0";
 }
 
 function parseIsoMs(value: string | null): number | null {
@@ -77,15 +72,15 @@ export function presentLiveMiningProfit(
     };
   }
 
-  const serverScaled = parseDecimal18(serverAmount);
-  const principalScaled = parseDecimal18(position.principalAmount);
-  const rateScaled = parseDecimal18(position.currentDailyRate);
+  const serverValue = parsePresentationDecimal(serverAmount);
+  const principal = parsePresentationDecimal(position.principalAmount);
+  const rate = parsePresentationDecimal(position.currentDailyRate);
   if (
-    serverScaled == null ||
-    principalScaled == null ||
-    rateScaled == null ||
-    principalScaled <= 0n ||
-    rateScaled <= 0n
+    serverValue == null ||
+    principal == null ||
+    rate == null ||
+    principal <= 0 ||
+    rate <= 0
   ) {
     return {
       amount: serverAmount,
@@ -119,16 +114,25 @@ export function presentLiveMiningProfit(
   }
 
   // Presentation only: extend the latest server-computed accrued amount for a short,
-  // bounded interval. This value never mutates mining domain state, wallet balances,
-  // settlements, or mutation payloads. Server responses remain authoritative.
-  const elapsedMs = BigInt(Math.floor(effectiveElapsedMs));
-  const incrementalScaled =
-    (principalScaled * rateScaled * elapsedMs) / (DECIMAL_FACTOR * MS_PER_DAY);
-  const cappedAtMs = syncedMs + Math.floor(effectiveElapsedMs);
+  // bounded interval. This is intentionally approximate and never mutates mining
+  // domain state, wallet balances, settlements, or mutation payloads. Server responses
+  // remain authoritative for all financial truth.
+  const incremental = (principal * rate * effectiveElapsedMs) / MS_PER_DAY;
+  const presentedAmount = formatPresentationAmount(serverValue + incremental);
+  if (presentedAmount == null) {
+    return {
+      amount: serverAmount,
+      source: "server",
+      stale,
+      syncedAt,
+      cappedAt: null,
+    };
+  }
 
+  const cappedAtMs = syncedMs + Math.floor(effectiveElapsedMs);
   return {
-    amount: formatDecimal18(serverScaled + incrementalScaled),
-    source: incrementalScaled > 0n ? "interpolated" : "server",
+    amount: presentedAmount,
+    source: incremental > 0 ? "interpolated" : "server",
     stale,
     syncedAt,
     cappedAt: new Date(cappedAtMs).toISOString(),
