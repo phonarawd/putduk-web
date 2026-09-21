@@ -13,19 +13,28 @@ import {
   toE164,
 } from "@/lib/api";
 import { isStageBDisplayName, isStageBPhoneE164 } from "@/lib/contract-readers";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi, useGptSession } from "@/lib/gpt/GptScopes";
 import { validBirthday, validEmail, validPhone } from "@/lib/gpt/validate";
 import { MSG, toastFromError } from "@/lib/messages";
 
 export default function CompleteProfilePage() {
   const router = useRouter();
-  const { state, completeGoogleProfile, cancelGoogleOnboarding, navigateAfterAuth, showToast } = useGpt();
+  const {
+    email: sessionEmailValue,
+    displayName: sessionDisplayName,
+    birthday: sessionBirthday,
+    phone: sessionPhone,
+    completeGoogleProfile,
+    cancelGoogleOnboarding,
+    navigateAfterAuth,
+  } = useGptSession();
+  const { showToast } = useCommonUi();
 
-  const [email, setEmail] = useState(state.email);
-  const [displayName, setDisplayName] = useState(state.displayName);
-  const [birthday, setBirthday] = useState(state.birthday);
+  const [email, setEmail] = useState(sessionEmailValue);
+  const [displayName, setDisplayName] = useState(sessionDisplayName);
+  const [birthday, setBirthday] = useState(sessionBirthday);
   const [phone, setPhone] = useState(() => {
-    const digits = state.phone.replace(/[^0-9]/g, "");
+    const digits = sessionPhone.replace(/[^0-9]/g, "");
     return validPhone(digits) ? digits : "";
   });
   const [busy, setBusy] = useState(false);
