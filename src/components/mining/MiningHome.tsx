@@ -141,6 +141,22 @@ export function MiningHome() {
   const visiblePositions = mining.positions.slice(0, 3);
   const recentSettlements = mining.settlements.slice(0, 3);
   const summaryAsset = mining.summary?.assetCode ?? "USDT";
+  const activePosition =
+    mining.summary?.activePositionCount === 1
+      ? mining.positions.find((position) => position.status === "ACTIVE")
+      : undefined;
+  const todayMiningValue =
+    mining.summary?.activePositionCount === 0
+      ? formatAssetAmount("0", summaryAsset)
+      : mining.summary?.activePositionCount === 1 && activePosition
+        ? formatAssetAmount(activePosition.accruedProfitAmount, activePosition.assetCode)
+        : "광산별 확인";
+  const todayMiningDetail =
+    mining.summary?.activePositionCount === 0
+      ? "운용 중인 채굴이 없어요"
+      : mining.summary?.activePositionCount === 1 && activePosition
+        ? "현재 정산 구간의 서버 채굴 수익"
+        : "서버 수익은 아래 채굴장별로 표시해요";
   const loading = !mining.ready || !wallet.ready;
   const withdrawablePrimary =
     wallet.withdrawable.profitKrw != null
@@ -186,8 +202,8 @@ export function MiningHome() {
       <section className="grid gap-3 md:grid-cols-3" aria-label="채굴 요약">
         <StatCard
           label="오늘 채굴"
-          value={formatAssetAmount(mining.summary?.profitAmount, summaryAsset)}
-          detail="서버가 집계한 채굴 수익"
+          value={todayMiningValue}
+          detail={todayMiningDetail}
           loading={!mining.ready}
         />
         <StatCard
