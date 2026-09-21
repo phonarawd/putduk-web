@@ -35,19 +35,23 @@ for (const token of [
   "MINING_LIVE_TICK_MS = 1_000",
   "MINING_LIVE_RESYNC_MS = 30_000",
   "MINING_LIVE_MAX_INTERPOLATION_MS = 90_000",
-  "DECIMAL_FACTOR = 10n ** BigInt(DECIMAL_SCALE)",
+  "MAX_PRESENTATION_FRACTION_DIGITS = 12",
   "baselineMs > syncedMs",
   "nextSettlementMs",
   "Math.min(",
   "MINING_LIVE_MAX_INTERPOLATION_MS",
-  "principalScaled * rateScaled * elapsedMs",
-  "DECIMAL_FACTOR * MS_PER_DAY",
-  "serverScaled + incrementalScaled",
+  "principal * rate * effectiveElapsedMs",
+  "MS_PER_DAY",
+  "serverValue + incremental",
+  "Number.isFinite",
   '"interpolated"',
-  "Server responses remain authoritative",
+  "Server responses",
+  "authoritative for all financial truth",
 ]) {
   requireText(presentation, token, `bounded presentation rule ${token}`);
 }
+forbidText(presentation, "BigInt(", "presentation must stay compatible with current TS target");
+forbidPattern(presentation, /\d+n\b/, "presentation must not use BigInt literals");
 forbidText(presentation, "apiFetch(", "presentation math must not call backend directly");
 forbidText(presentation.toLowerCase(), "supabase", "presentation math must not access Supabase");
 forbidText(presentation, "setPositions(", "presentation math must never mutate mining domain state");
@@ -117,6 +121,7 @@ for (const token of [
   "90초에서 멈춘다",
   "다음 정산 경계를 넘겨 보간하지 않는다",
   "비활성 position은 서버 accruedProfitAmount를 그대로 표시한다",
+  "authoritative server amount로 되돌아간다",
 ]) {
   requireText(presentationTest, token, `presentation test coverage ${token}`);
 }
