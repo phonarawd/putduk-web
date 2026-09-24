@@ -470,6 +470,7 @@ export function MineDetail({ mineId }: { mineId: string }) {
               </Link>
             </div>
           ) : (
+            <>
             <div className="rounded-[24px] border border-amber-200 bg-amber-50/70 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -536,7 +537,6 @@ export function MineDetail({ mineId }: { mineId: string }) {
                 </button>
               ) : null}
             </div>
-          ) : (
             <div className="rounded-[24px] border border-slate-200 bg-white p-5">
               <p className="text-xs font-black tracking-[0.14em] text-blue-600">START MINING</p>
               <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-slate-950">채굴 시작</h2>
@@ -572,6 +572,7 @@ export function MineDetail({ mineId }: { mineId: string }) {
                 {mine.status === "ACTIVE" ? "조건 확인" : "현재 신규 운용 불가"}
               </button>
             </div>
+            </>
           )}
 
           {selectedOperation ? (
