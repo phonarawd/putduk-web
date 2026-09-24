@@ -1,6 +1,9 @@
 name: deploy-web
 
 on:
+  push:
+    branches:
+      - chore/putduk-com-production-domain
   workflow_dispatch:
 
 permissions:
@@ -23,5 +26,5 @@ jobs:
       - name: Deploy putduk-web to Cloudflare Workers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: "9dc502d4ef06b3b5374591de6e6933ca"
         run: pnpm deploy
