@@ -6,7 +6,7 @@ import { GoogleContinueButton } from "@/components/gpt/GoogleContinueButton";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi, useGptSession } from "@/lib/gpt/GptScopes";
 import { login } from "@/lib/api";
 import { MSG, toastFromError } from "@/lib/messages";
 
@@ -16,7 +16,8 @@ function passwordPoints(value: string) {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { markPasswordAuth, navigateAfterAuth, showToast } = useGpt();
+  const { markPasswordAuth, navigateAfterAuth } = useGptSession();
+  const { showToast } = useCommonUi();
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");

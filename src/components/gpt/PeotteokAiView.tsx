@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatTime } from "@/lib/gpt/format";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { usePutdukAi } from "@/lib/gpt/GptScopes";
 import { WorkspaceView } from "./WorkspaceView";
 
 const PROMPT_CHIPS = [
@@ -19,7 +19,7 @@ const PROMPT_CHIPS = [
 // /ai 와 /me/peotteok 이 함께 쓰는 퍼뜩AI 채팅 화면. (원본 data-view="ai" 그대로)
 export function PeotteokAiView() {
   const router = useRouter();
-  const { state, currentConversation, typing, sendAiQuestion, createConversation, selectConversation } = useGpt();
+  const { conversations, activeConversationId, currentConversation, typing, sendAiQuestion, createConversation, selectConversation } = usePutdukAi();
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -62,14 +62,14 @@ export function PeotteokAiView() {
               <small>눌러서 이어가기</small>
             </div>
             <div id="conversationList" className="conversation-list">
-              {state.conversations.length === 0 ? <p className="settings-note">아직 이전 대화가 없어요.</p> : null}
-              {state.conversations.map((item) => (
+              {conversations.length === 0 ? <p className="settings-note">아직 이전 대화가 없어요.</p> : null}
+              {conversations.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  className={"conversation-item" + (item.id === state.activeConversationId ? " is-active" : "")}
+                  className={"conversation-item" + (item.id === activeConversationId ? " is-active" : "")}
                   aria-label={`${item.title || "새 대화"} 이어가기`}
-                  aria-pressed={item.id === state.activeConversationId}
+                  aria-pressed={item.id === activeConversationId}
                   onClick={() => selectConversation(item.id)}
                 >
                   <strong>{item.title || "새 대화"}</strong>

@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { googleAuthorizeUrl, startGoogle } from "@/lib/api";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi } from "@/lib/gpt/GptScopes";
 import { MSG, toastFromError } from "@/lib/messages";
 
 export function GoogleContinueButton({ disabled = false }: { disabled?: boolean }) {
-  const { showToast } = useGpt();
+  const { showToast } = useCommonUi();
   const [busy, setBusy] = useState(false);
 
   async function onClick() {

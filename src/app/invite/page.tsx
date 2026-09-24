@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
 import { copyTextToClipboard } from "@/lib/gpt/clipboard";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi } from "@/lib/gpt/GptScopes";
 import { getReferralMe, readReferral } from "@/lib/api";
 import { MSG } from "@/lib/messages";
 
 export default function InvitePage() {
-  const { showToast } = useGpt();
+  const { showToast } = useCommonUi();
   const [code, setCode] = useState<string | null>(null);
   const [referralLink, setReferralLink] = useState("");
   const [inviteCountUnlimited, setInviteCountUnlimited] = useState<boolean | null>(null);

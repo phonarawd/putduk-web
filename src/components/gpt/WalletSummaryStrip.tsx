@@ -1,34 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { hasMoneyValues, loadMoneyRead, type MoneyRead } from "@/lib/api";
 import { formatMoneyPrimary, formatMoneySecondary } from "@/lib/gpt/format";
+import { useWallet } from "@/lib/wallet/WalletContext";
 
 export function WalletSummaryStrip() {
-  const [money, setMoney] = useState<MoneyRead | null>(null);
-  const [ready, setReady] = useState(false);
+  const wallet = useWallet();
 
-  useEffect(() => {
-    let cancelled = false;
-    loadMoneyRead()
-      .then((next) => {
-        if (cancelled) return;
-        setMoney(next);
-        setReady(true);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setMoney(null);
-        setReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  if (!wallet.ready) return null;
 
-  if (!ready) return null;
-
-  if (!money || !hasMoneyValues(money)) {
+  if (!wallet.hasValues) {
     return (
       <section className="plain-notice">
         <strong>아직 표시할 금액이 없어요.</strong>
@@ -37,41 +17,56 @@ export function WalletSummaryStrip() {
     );
   }
 
+  const principalUsdt = wallet.balance.principalUsdt;
+  const principalKrw = wallet.balance.principalKrw;
+  const profitUsdt = wallet.withdrawable.profitUsdt;
+  const profitKrw = wallet.withdrawable.profitKrw;
+  const practiceUsdt = wallet.deposit.practiceUsdt;
+  const practiceKrw = wallet.deposit.practiceKrw;
+  const trialPrincipalUsdt = wallet.trial.principalUsdt;
+  const trialPrincipalKrw = wallet.trial.principalKrw;
+
   return (
     <section className="route-wallet-strip">
       <div>
         <span>내 예치</span>
-        <strong>{formatMoneyPrimary(money.principalUsdt, money.principalKrw) ?? "아직 표시할 금액이 없어요"}</strong>
-        {formatMoneySecondary(money.principalUsdt, money.principalKrw) ? (
-          <small>{formatMoneySecondary(money.principalUsdt, money.principalKrw)}</small>
+        <strong>{formatMoneyPrimary(principalUsdt, principalKrw) ?? "아직 표시할 금액이 없어요"}</strong>
+        {formatMoneySecondary(principalUsdt, principalKrw) ? (
+          <small>{formatMoneySecondary(principalUsdt, principalKrw)}</small>
         ) : null}
       </div>
-      {money.trialPrincipalKrw != null || money.trialPrincipalUsdt != null ? (
+      {trialPrincipalKrw != null || trialPrincipalUsdt != null ? (
         <div>
           <span>체험 원금 · 출금 불가</span>
           <strong>
-            {formatMoneyPrimary(money.trialPrincipalUsdt, money.trialPrincipalKrw) ?? "아직 표시할 금액이 없어요"}
-            {formatMoneySecondary(money.trialPrincipalUsdt, money.trialPrincipalKrw)
-              ? ` · ${formatMoneySecondary(money.trialPrincipalUsdt, money.trialPrincipalKrw)}`
+            {formatMoneyPrimary(trialPrincipalUsdt, trialPrincipalKrw) ?? "아직 표시할 금액이 없어요"}
+            {formatMoneySecondary(trialPrincipalUsdt, trialPrincipalKrw)
+              ? ` · ${formatMoneySecondary(trialPrincipalUsdt, trialPrincipalKrw)}`
               : ""}
           </strong>
         </div>
       ) : null}
       <div>
         <span>출금 가능 수익</span>
-        <strong>{formatMoneyPrimary(money.profitUsdt, money.profitKrw) ?? "아직 표시할 금액이 없어요"}</strong>
-        {formatMoneySecondary(money.profitUsdt, money.profitKrw) ? <small>{formatMoneySecondary(money.profitUsdt, money.profitKrw)}</small> : null}
+        <strong>{formatMoneyPrimary(profitUsdt, profitKrw) ?? "아직 표시할 금액이 없어요"}</strong>
+        {formatMoneySecondary(profitUsdt, profitKrw) ? <small>{formatMoneySecondary(profitUsdt, profitKrw)}</small> : null}
       </div>
-      {money.lockedUsdt != null || money.lockedKrw != null ? (
+      {wallet.balance.lockedUsdt != null || wallet.balance.lockedKrw != null ? (
         <div>
           <span>진행 중 잠금</span>
-          <strong>{formatMoneyPrimary(money.lockedUsdt, money.lockedKrw) ?? "아직 표시할 금액이 없어요"}</strong>
+          <strong>{formatMoneyPrimary(wallet.balance.lockedUsdt, wallet.balance.lockedKrw) ?? "아직 표시할 금액이 없어요"}</strong>
         </div>
       ) : null}
-      {money.practiceUsdt != null || money.practiceKrw != null ? (
+      {wallet.trial.lockedUsdt != null ? (
+        <div>
+          <span>체험 진행 중 잠금 · 출금 불가</span>
+          <strong>{formatMoneyPrimary(wallet.trial.lockedUsdt, null) ?? "아직 표시할 금액이 없어요"}</strong>
+        </div>
+      ) : null}
+      {practiceUsdt != null || practiceKrw != null ? (
         <div>
           <span>연습 · 사용 불가</span>
-          <strong>{formatMoneyPrimary(money.practiceUsdt, money.practiceKrw) ?? "아직 표시할 금액이 없어요"}</strong>
+          <strong>{formatMoneyPrimary(practiceUsdt, practiceKrw) ?? "아직 표시할 금액이 없어요"}</strong>
         </div>
       ) : null}
     </section>

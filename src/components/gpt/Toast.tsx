@@ -1,6 +1,6 @@
 "use client";
 
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi } from "@/lib/gpt/GptScopes";
 
 const KIND_CLASS: Record<string, string> = {
   success: " is-success",
@@ -11,7 +11,7 @@ const KIND_CLASS: Record<string, string> = {
 };
 
 export function Toast() {
-  const { toast } = useGpt();
+  const { toast } = useCommonUi();
   const kindClass = toast ? KIND_CLASS[toast.kind] || "" : "";
   const className = "toast" + (toast ? " is-visible" + kindClass : "");
   return (

@@ -7,7 +7,7 @@ import { GoogleContinueButton } from "@/components/gpt/GoogleContinueButton";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi, useGptSession } from "@/lib/gpt/GptScopes";
 import type { Gender } from "@/lib/gpt/types";
 import { birthDateFromPrefix, isAdultBirthDate, isIsoDate, signup, toE164 } from "@/lib/api";
 import { validBirthday, validEmail, validPhone, validUsername } from "@/lib/gpt/validate";
@@ -19,7 +19,8 @@ function passwordPoints(value: string) {
 
 export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   const router = useRouter();
-  const { submitClassicSignupProfile, showToast } = useGpt();
+  const { submitClassicSignupProfile } = useGptSession();
+  const { showToast } = useCommonUi();
   const query = use(searchParams);
   const ref = typeof query.ref === "string" ? query.ref : "";
 

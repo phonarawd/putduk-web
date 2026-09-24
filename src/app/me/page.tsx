@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GenderSelect } from "@/components/gpt/GenderSelect";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
 import { formatIssued, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
-import { useGpt } from "@/lib/gpt/GptContext";
-import { hasMoneyValues, loadMoneyRead, type MoneyRead } from "@/lib/api";
+import { useCommonUi, useGptSession } from "@/lib/gpt/GptScopes";
+import { useWallet } from "@/lib/wallet/WalletContext";
 import { MSG } from "@/lib/messages";
 
 const MENU_ITEMS = [
@@ -28,28 +27,18 @@ const MENU_ITEMS = [
 
 export default function MePage() {
   const router = useRouter();
-  const { state, chooseProfileGender, logout } = useGpt();
-  const [money, setMoney] = useState<MoneyRead | null>(null);
-  const [moneyReady, setMoneyReady] = useState(false);
+  const { resellerId, issuedAt, displayName, gender, logout } = useGptSession();
+  const { chooseProfileGender } = useCommonUi();
+  const wallet = useWallet();
 
-  useEffect(() => {
-    loadMoneyRead()
-      .then((next) => {
-        setMoney(next);
-        setMoneyReady(true);
-      })
-      .catch(() => {
-        setMoney(null);
-        setMoneyReady(true);
-      });
-  }, []);
-
-  const principalUsdt = money?.principalUsdt ?? null;
-  const profitUsdt = money?.profitUsdt ?? null;
-  const profitKrw = money?.profitKrw ?? null;
-  const practiceUsdt = money?.practiceUsdt ?? null;
-  const practiceKrw = money?.practiceKrw ?? null;
-  const trialVisible = money?.trialPrincipalUsdt != null || money?.trialPrincipalKrw != null;
+  const moneyReady = wallet.ready;
+  const principalUsdt = wallet.balance.principalUsdt;
+  const principalKrw = wallet.balance.principalKrw;
+  const profitUsdt = wallet.withdrawable.profitUsdt;
+  const profitKrw = wallet.withdrawable.profitKrw;
+  const practiceUsdt = wallet.deposit.practiceUsdt;
+  const practiceKrw = wallet.deposit.practiceKrw;
+  const trialVisible = wallet.trial.principalUsdt != null || wallet.trial.principalKrw != null;
 
   return (
     <WorkspaceView>
@@ -70,8 +59,8 @@ export default function MePage() {
             </div>
             <div className="profile-pass-main">
               <small>리셀러 ID</small>
-              <strong id="profileResellerId">{state.resellerId || MSG.resellerIdEmpty}</strong>
-              <span id="profileIssued">{state.issuedAt ? formatIssued(state.issuedAt) : ""}</span>
+              <strong id="profileResellerId">{resellerId || MSG.resellerIdEmpty}</strong>
+              <span id="profileIssued">{issuedAt ? formatIssued(issuedAt) : ""}</span>
             </div>
             <div className="pass-bottom">
               <span>퍼뜩 매칭 데스크</span>
@@ -83,24 +72,24 @@ export default function MePage() {
             <div className="wallet-overview-head">
               <div>
                 <span>내 운용 지갑</span>
-                <strong id="profileTotal">{moneyReady ? formatMoneyPrimary(principalUsdt, money?.principalKrw ?? null) ?? "아직 표시할 금액이 없어요" : ""}</strong>
+                <strong id="profileTotal">{moneyReady ? formatMoneyPrimary(principalUsdt, principalKrw) ?? "아직 표시할 금액이 없어요" : ""}</strong>
               </div>
             </div>
-            {moneyReady && money && hasMoneyValues(money) ? (
+            {moneyReady && wallet.hasValues ? (
               <>
                 <div className="wallet-lines wallet-lines-four">
                   <div>
                     <span>내 예치</span>
-                    <b id="profileCapital">{formatMoneyPrimary(principalUsdt, money.principalKrw)}</b>
-                    {formatMoneySecondary(principalUsdt, money.principalKrw) ? <small>{formatMoneySecondary(principalUsdt, money.principalKrw)}</small> : null}
+                    <b id="profileCapital">{formatMoneyPrimary(principalUsdt, principalKrw)}</b>
+                    {formatMoneySecondary(principalUsdt, principalKrw) ? <small>{formatMoneySecondary(principalUsdt, principalKrw)}</small> : null}
                   </div>
                   {trialVisible ? (
                     <div>
                       <span>체험 원금 · 출금 불가</span>
                       <b>
-                        {formatMoneyPrimary(money.trialPrincipalUsdt, money.trialPrincipalKrw) ?? "아직 표시할 금액이 없어요"}
-                        {formatMoneySecondary(money.trialPrincipalUsdt, money.trialPrincipalKrw)
-                          ? ` · ${formatMoneySecondary(money.trialPrincipalUsdt, money.trialPrincipalKrw)}`
+                        {formatMoneyPrimary(wallet.trial.principalUsdt, wallet.trial.principalKrw) ?? "아직 표시할 금액이 없어요"}
+                        {formatMoneySecondary(wallet.trial.principalUsdt, wallet.trial.principalKrw)
+                          ? ` · ${formatMoneySecondary(wallet.trial.principalUsdt, wallet.trial.principalKrw)}`
                           : ""}
                       </b>
                     </div>
@@ -110,10 +99,16 @@ export default function MePage() {
                     <b id="profileProfit">{formatSignedMoneyPrimary(profitUsdt, profitKrw) ?? "아직 표시할 금액이 없어요"}</b>
                     {formatMoneySecondary(profitUsdt, profitKrw) ? <small>{formatMoneySecondary(profitUsdt, profitKrw)}</small> : null}
                   </div>
-                  {money.lockedUsdt != null || money.lockedKrw != null ? (
+                  {wallet.balance.lockedUsdt != null || wallet.balance.lockedKrw != null ? (
                     <div>
                       <span>진행 중 잠금</span>
-                      <b id="profileLocked">{formatMoneyPrimary(money.lockedUsdt, money.lockedKrw)}</b>
+                      <b id="profileLocked">{formatMoneyPrimary(wallet.balance.lockedUsdt, wallet.balance.lockedKrw)}</b>
+                    </div>
+                  ) : null}
+                  {wallet.trial.lockedUsdt != null ? (
+                    <div>
+                      <span>체험 진행 중 잠금 · 출금 불가</span>
+                      <b>{formatMoneyPrimary(wallet.trial.lockedUsdt, null)}</b>
                     </div>
                   ) : null}
                   {practiceUsdt != null || practiceKrw != null ? (
@@ -123,7 +118,7 @@ export default function MePage() {
                     </div>
                   ) : null}
                 </div>
-                <p id="profileCapitalHint">체험 원금과 연습 잔액은 출금할 수 없어요.</p>
+                <p id="profileCapitalHint">예치·진행 중 잠금·출금 가능 수익은 서버 지갑 기준으로 각각 표시해요. 체험 원금과 연습 잔액은 출금할 수 없어요.</p>
               </>
             ) : moneyReady ? (
               <p id="profileCapitalHint">로그인 후 지갑 정보가 있으면 여기에 보여 드려요.</p>
@@ -161,13 +156,13 @@ export default function MePage() {
         <section className="profile-edit-card">
           <div>
             <span className="view-kicker">내 표시 정보</span>
-            <h2 id="profileDisplayName">{state.displayName || MSG.resellerIdEmpty}</h2>
+            <h2 id="profileDisplayName">{displayName || MSG.resellerIdEmpty}</h2>
             <p>이름은 데스크에 보이는 표시 이름이며 본인확인 실명이 아니에요.</p>
           </div>
           <GenderSelect
             variant="compact"
             group="profile"
-            value={state.gender}
+            value={gender}
             onChange={(value) => chooseProfileGender(value)}
           />
         </section>

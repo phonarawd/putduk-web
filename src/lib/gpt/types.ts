@@ -129,14 +129,6 @@ export interface GptState {
   gender: Gender;
   phone: string;
   kycStatus: "not_started" | "verified";
-  principalUsdt: number | null;
-  principalKrw: number | null;
-  lockedUsdt: number | null;
-  lockedKrw: number | null;
-  profitUsdt: number | null;
-  profitKrw: number | null;
-  practiceUsdt: number | null;
-  practiceKrw: number | null;
   trial: TrialState;
   feed: LiveOpportunity[];
   deskReady: boolean;

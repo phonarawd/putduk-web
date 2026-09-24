@@ -4,13 +4,17 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { TrialCardArt } from "@/components/gpt/TrialCardArt";
 import { EXECUTION_STEPS } from "@/lib/gpt/constants";
 import { formatKrw, formatSignedKrw, formatUsdt } from "@/lib/gpt/format";
-import { isTerminal, useGpt } from "@/lib/gpt/GptContext";
+import { useOpportunityFlow } from "@/lib/gpt/GptScopes";
 import { opportunityById } from "@/lib/gpt/opportunities";
 import type { ActiveExecution } from "@/lib/gpt/types";
 import { useModalFocus } from "@/lib/gpt/useModalFocus";
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function isTerminal(status: ActiveExecution["status"]): boolean {
+  return status === "success" || status === "safe_stop";
 }
 
 function ResultAmount({ execution }: { execution: ActiveExecution }) {
@@ -44,7 +48,7 @@ function ResultAmount({ execution }: { execution: ActiveExecution }) {
 }
 
 export function ExecutionModal() {
-  const { state, activeExecution, celebrate, closeExecution, selectNextOpportunity } = useGpt();
+  const { feed, activeExecution, celebrate, closeExecution, selectNextOpportunity } = useOpportunityFlow();
   const containerRef = useRef<HTMLDivElement>(null);
   const open = Boolean(activeExecution);
   useModalFocus(open, containerRef);
@@ -68,7 +72,7 @@ export function ExecutionModal() {
     );
   }
 
-  const opportunity = opportunityById(activeExecution.opportunityId, state.feed);
+  const opportunity = opportunityById(activeExecution.opportunityId, feed);
   const terminal = isTerminal(activeExecution.status);
   const success = activeExecution.status === "success";
   const safe = activeExecution.status === "safe_stop";

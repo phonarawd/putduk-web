@@ -4,10 +4,17 @@ import { PublishedCmsList } from "@/components/gpt/PublishedCmsList";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { SettingRow } from "@/components/gpt/SettingRow";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi } from "@/lib/gpt/GptScopes";
 
 export default function MeInboxPage() {
-  const { state, toggleNotifications, toggleSettlementAlerts, toggleWalletAlerts } = useGpt();
+  const {
+    notificationsEnabled,
+    settlementAlerts,
+    walletAlerts,
+    toggleNotifications,
+    toggleSettlementAlerts,
+    toggleWalletAlerts,
+  } = useCommonUi();
 
   return (
     <RouteScreen>
@@ -21,19 +28,19 @@ export default function MeInboxPage() {
         <SettingRow
           title="기회 알림"
           copy="마감 임박과 새 기회를 이 기기에서 강조해요."
-          checked={state.notificationsEnabled}
+          checked={notificationsEnabled}
           onToggle={toggleNotifications}
         />
         <SettingRow
           title="정산 알림"
           copy="수익이 들어오면 이 기기에서 강조해요."
-          checked={state.settlementAlerts}
+          checked={settlementAlerts}
           onToggle={toggleSettlementAlerts}
         />
         <SettingRow
           title="입출금 알림"
           copy="신청과 반영 상태가 바뀌면 이 기기에서 강조해요."
-          checked={state.walletAlerts}
+          checked={walletAlerts}
           onToggle={toggleWalletAlerts}
         />
         <p className="settings-note">이 설정은 이 기기에만 저장돼요. 위에 보이는 알림은 운영자가 게시한 글입니다.</p>

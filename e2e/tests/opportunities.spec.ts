@@ -1,105 +1,98 @@
 import { expect, test } from "@playwright/test";
-import { MSG } from "../../src/lib/messages.ts";
 import { becomeUser, openPage } from "../helpers/auth.ts";
 
-const SHOT_DIR = "/opt/cursor/artifacts/screenshots";
+test.describe("Mine OS customer flow", () => {
+  test("로그인 후 광산 목록은 서버 Mine만 표시한다", async ({ page }) => {
+    await openPage(page, { user: "a", mining: "default" });
+    await becomeUser(page);
+    await page.goto("/work");
 
-test("로그인 후 기회 목록은 opportunities 응답만 그리고 eBay 레거시 70건은 다시 안 뜬다", async ({ page }) => {
-  const oppGets: string[] = [];
-  page.on("request", (request) => {
-    const url = request.url();
-    if (request.method() === "GET" && /\/api\/v1\/opportunities\/?$/.test(new URL(url).pathname)) {
-      oppGets.push(url);
-    }
+    await expect(page.locator("#mine-catalog-title")).toHaveText("광산");
+    await expect(page.getByText("금 광산")).toBeVisible();
+    await expect(page.getByText("운용 가능")).toBeVisible();
+    await expect(page.getByText("USDT")).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "광산 보기" })).toHaveAttribute("href", "/work/mine-gold-qa");
   });
-  await openPage(page, { user: "a", homeReadLegacy: true });
-  await becomeUser(page);
-  await page.goto("/work");
-  await expect(page.locator("#featuredTitle")).toHaveText("점검용 기회");
-  await expect(page.getByText("eBay legacy 1")).toHaveCount(0);
-  await expect(page.getByText("eBay legacy 70")).toHaveCount(0);
-  await expect(page.locator("#opportunityRail .opportunity-mini")).toHaveCount(1);
-  expect(oppGets.some((url) => url.startsWith("https://api.hiptk.app/api/v1/opportunities"))).toBeTruthy();
-  await page.screenshot({ path: `${SHOT_DIR}/work-operator-only.png`, fullPage: true });
-});
 
-test("빈 목록이면 상품 없음이고 샘플을 넣지 않는다", async ({ page }) => {
-  await openPage(page, { user: "a", opportunities: "empty" });
-  await becomeUser(page);
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "상품 없음" })).toBeVisible();
-  await expect(page.getByText("eBay legacy")).toHaveCount(0);
-  await expect(page.getByText("자동 매칭 상품")).toHaveCount(0);
-  await expect(page.locator("#startMatch")).toBeHidden();
-  await page.screenshot({ path: `${SHOT_DIR}/home-empty-none.png`, fullPage: true });
-  await page.goto("/work");
-  await expect(page.getByRole("heading", { name: "상품 없음" })).toBeVisible();
-  await expect(page.locator(".view-count")).toHaveText("0개");
-  await page.screenshot({ path: `${SHOT_DIR}/work-empty-none.png`, fullPage: true });
-});
+  test("광산이 없으면 빈 상태를 표시하고 레거시 상품을 만들지 않는다", async ({ page }) => {
+    await openPage(page, { user: "a", mining: "empty" });
+    await becomeUser(page);
+    await page.goto("/work");
 
-test("상세 404면 목록에서 숨기고 상품 없음으로 둔다", async ({ page }) => {
-  await openPage(page, { user: "a", opportunityDetail: "404" });
-  await becomeUser(page);
-  await page.goto("/work");
-  await expect(page.getByRole("heading", { name: "상품 없음" })).toBeVisible();
-  await expect(page.locator("#featuredTitle")).toHaveCount(0);
-  await page.screenshot({ path: `${SHOT_DIR}/work-detail-404.png`, fullPage: true });
-});
+    await expect(page.getByText("현재 공개된 광산이 없어요.")).toBeVisible();
+    await expect(page.getByText("eBay legacy")).toHaveCount(0);
+    await expect(page.getByText("자동 매칭 상품")).toHaveCount(0);
+  });
 
-test("지정 회원이 아니면 그 상품이 목록에 안 보인다", async ({ page }) => {
-  await openPage(page, { user: "b", opportunities: "selected-a" });
-  await becomeUser(page);
-  await page.goto("/work");
-  await expect(page.getByRole("heading", { name: "상품 없음" })).toBeVisible();
-  await expect(page.getByText("점검용 기회")).toHaveCount(0);
-  await page.screenshot({ path: `${SHOT_DIR}/work-not-selected-member.png`, fullPage: true });
-});
+  test("광산 상세는 서버 조건과 내 운용을 표시한다", async ({ page }) => {
+    await openPage(page, { user: "a", mining: "default" });
+    await becomeUser(page);
+    await page.goto("/work/mine-gold-qa");
 
-test("opportunities에 레거시가 섞여 와도 operator만 그린다", async ({ page }) => {
-  await openPage(page, { user: "a", opportunities: "mixed-legacy" });
-  await becomeUser(page);
-  await page.goto("/work");
-  await expect(page.locator("#featuredTitle")).toHaveText("점검용 기회");
-  await expect(page.getByText("eBay legacy")).toHaveCount(0);
-  await expect(page.locator("#opportunityRail .opportunity-mini")).toHaveCount(1);
-});
+    await expect(page.locator("#mine-detail-title")).toHaveText("금 광산");
+    await expect(page.getByText("현재 일일율 · 서버 값")).toBeVisible();
+    await expect(page.getByText("100.000000 USDT")).toBeVisible();
+    await expect(page.getByText("운용 중")).toBeVisible();
+    await expect(page.getByText("금액 늘리기")).toBeVisible();
+    await expect(page.getByText("금액 줄이기")).toBeVisible();
+    await expect(page.getByText("운용 종료")).toBeVisible();
+  });
 
-test("참여 성공은 백엔드 접수 문구와 같다", async ({ page }) => {
-  await openPage(page, { user: "a", participate: "ok" });
-  await becomeUser(page);
-  await page.goto("/work");
-  await page.locator("#startMatch").click();
-  await page.locator("#preflightConfirm").click();
-  await expect(page.locator("#toast")).toContainText(MSG.participateOk);
-  await page.screenshot({ path: `${SHOT_DIR}/work-participate-ok.png`, fullPage: true });
-});
+  test("채굴 시작은 금액 확인 후 동일 요청 키로 서버에 전송한다", async ({ page }) => {
+    await openPage(page, { user: "a", mining: "default" });
+    await becomeUser(page);
+    await page.goto("/work/mine-gold-qa");
 
-test("참여 거절은 백엔드 한글 메시지와 같다", async ({ page }) => {
-  await openPage(page, { user: "a", participate: "daily-cap" });
-  await becomeUser(page);
-  await page.goto("/work");
-  await page.locator("#startMatch").click();
-  await page.locator("#preflightConfirm").click();
-  await expect(page.locator("#toast")).toContainText("오늘 참여 횟수를 모두 썼어요.");
-  await page.screenshot({ path: `${SHOT_DIR}/work-daily-cap.png`, fullPage: true });
-});
+    const amount = page.locator("#mining-start-amount");
+    await amount.fill("250");
+    await page.getByRole("button", { name: "조건 확인" }).click();
 
-test("toastCode만 오면 일일 캡 문구로 보여 준다", async ({ page }) => {
-  await openPage(page, { user: "a", participate: "daily-cap-code" });
-  await becomeUser(page);
-  await page.goto("/work");
-  await page.locator("#startMatch").click();
-  await page.locator("#preflightConfirm").click();
-  await expect(page.locator("#toast")).toContainText(MSG.dailyMatchCap);
-});
+    await expect(page.getByText("채굴 시작 확인")).toBeVisible();
+    const request = page.waitForRequest((req) => req.url().endsWith("/api/v1/mining/positions/start"));
+    await page.getByRole("button", { name: "채굴 시작" }).click();
+    const sent = await request;
+    expect(sent.method()).toBe("POST");
+    expect(sent.headers()["idempotency-key"]).toBeTruthy();
+    expect(sent.postDataJSON()).toMatchObject({
+      mineId: "mine-gold-qa",
+      principalAmount: "250",
+      assetCode: "USDT",
+    });
+  });
 
-test("정지 거절은 백엔드 한글 메시지와 같다", async ({ page }) => {
-  await openPage(page, { user: "a", participate: "blocked" });
-  await becomeUser(page);
-  await page.goto("/work");
-  await page.locator("#startMatch").click();
-  await page.locator("#preflightConfirm").click();
-  await expect(page.locator("#toast")).toContainText(MSG.matchBlocked);
-  await page.screenshot({ path: `${SHOT_DIR}/work-match-blocked.png`, fullPage: true });
+  test("운용 금액 변경은 서버 응답을 기준으로 처리한다", async ({ page }) => {
+    await openPage(page, { user: "a", mining: "default" });
+    await becomeUser(page);
+    await page.goto("/work/mine-gold-qa");
+
+    await page.getByRole("button", { name: "금액 늘리기" }).first().click();
+    await page.locator("#mining-change-amount").fill("20");
+    await page.getByRole("button", { name: "조건 확인" }).click();
+    await expect(page.getByText("금액 늘리기 확인")).toBeVisible();
+
+    const request = page.waitForRequest((req) => req.url().endsWith("/increase"));
+    await page.locator("[aria-live=\"polite\"]").getByRole("button", { name: "금액 늘리기" }).click();
+    const sent = await request;
+    expect(sent.headers()["idempotency-key"]).toBeTruthy();
+    expect(sent.postDataJSON()).toMatchObject({
+      positionId: "position-qa-1",
+      principalAmount: "20",
+      assetCode: "USDT",
+    });
+  });
+
+  test("종료는 화면에서 임의로 완료 처리하지 않고 서버 상태를 요청한다", async ({ page }) => {
+    await openPage(page, { user: "a", mining: "default" });
+    await becomeUser(page);
+    await page.goto("/work/mine-gold-qa");
+
+    await page.getByRole("button", { name: "운용 종료" }).first().click();
+    await expect(page.getByText("운용 종료 확인")).toBeVisible();
+
+    const request = page.waitForRequest((req) => req.url().endsWith("/end"));
+    await page.locator("[aria-live=\"polite\"]").getByRole("button", { name: "운용 종료" }).click();
+    const sent = await request;
+    expect(sent.headers()["idempotency-key"]).toBeTruthy();
+    expect(sent.postDataJSON()).toMatchObject({ positionId: "position-qa-1" });
+  });
 });

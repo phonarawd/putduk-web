@@ -1,0 +1,130 @@
+/* PUTDUK MINE OS — member surface */
+.mine-client-shell {
+  --mine-client-bg: #f7f3e8;
+  --mine-client-paper: #fffdf8;
+  --mine-client-ink: #171a18;
+  --mine-client-muted: #68675f;
+  --mine-client-line: #ded7c7;
+  --mine-client-accent: #a7782d;
+  --mine-client-accent-soft: #f0e5cf;
+  --mine-client-green: #2f6a50;
+  --mine-client-green-soft: #e8f1eb;
+  --mine-client-danger: #8f4036;
+  --mine-client-danger-soft: #f7e8e4;
+  position: relative;
+  isolation: isolate;
+  color: var(--mine-client-ink);
+}
+
+.mine-client-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 280px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 96%, rgba(167,120,45,.08) 96% 96.4%, transparent 96.4%),
+    linear-gradient(0deg, transparent 0 92%, rgba(30,32,29,.045) 92% 92.5%, transparent 92.5%),
+    radial-gradient(circle at 76% 0%, rgba(167,120,45,.16), transparent 28rem);
+}
+
+.mine-client-shell .text-blue-600,
+.mine-client-shell .text-blue-700 {
+  color: var(--mine-client-accent) !important;
+}
+
+.mine-client-shell .text-emerald-700 {
+  color: var(--mine-client-green) !important;
+}
+
+.mine-client-shell .bg-blue-50 {
+  background: var(--mine-client-accent-soft) !important;
+}
+
+.mine-client-shell .bg-emerald-50 {
+  background: var(--mine-client-green-soft) !important;
+}
+
+.mine-client-shell .bg-rose-50 {
+  background: var(--mine-client-danger-soft) !important;
+}
+
+.mine-client-shell .border-blue-100,
+.mine-client-shell .border-blue-200 {
+  border-color: #d9c49b !important;
+}
+
+.mine-client-shell .border-slate-200,
+.mine-client-shell .border-slate-300 {
+  border-color: var(--mine-client-line) !important;
+}
+
+.mine-client-shell [class*="bg-white"] {
+  background: var(--mine-client-paper) !important;
+}
+
+.mine-client-shell [class*="bg-slate-50"] {
+  background: #f0ede4 !important;
+}
+
+.mine-client-shell [class*="text-slate-950"],
+.mine-client-shell [class*="text-slate-900"] {
+  color: var(--mine-client-ink) !important;
+}
+
+.mine-client-shell [class*="text-slate-700"],
+.mine-client-shell [class*="text-slate-600"] {
+  color: var(--mine-client-muted) !important;
+}
+
+.mine-client-shell [class*="shadow-"] {
+  box-shadow: 0 14px 34px rgba(43, 39, 29, .07) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mine-client-shell {
+    --mine-client-bg: #171918;
+    --mine-client-paper: #212422;
+    --mine-client-ink: #f0eee8;
+    --mine-client-muted: #aaa79e;
+    --mine-client-line: #393b38;
+    --mine-client-accent: #d7ac62;
+    --mine-client-accent-soft: #3b3123;
+    --mine-client-green: #9bc7ad;
+    --mine-client-green-soft: #25372d;
+    --mine-client-danger: #e39a8f;
+    --mine-client-danger-soft: #402a27;
+  }
+
+  .mine-client-shell::before {
+    background:
+      linear-gradient(90deg, transparent 0 96%, rgba(215,172,98,.08) 96% 96.4%, transparent 96.4%),
+      linear-gradient(0deg, transparent 0 92%, rgba(255,255,255,.035) 92% 92.5%, transparent 92.5%),
+      radial-gradient(circle at 76% 0%, rgba(215,172,98,.1), transparent 28rem);
+  }
+
+  .mine-client-shell [class*="bg-slate-50"] {
+    background: #1b1f1d !important;
+  }
+
+  .mine-client-shell [class*="bg-slate-100"] {
+    background: #262a27 !important;
+  }
+
+  .mine-client-shell [class*="text-slate-500"] {
+    color: #aaa79e !important;
+  }
+
+  .mine-client-shell input,
+  .mine-client-shell textarea,
+  .mine-client-shell select {
+    background: #202320 !important;
+    color: var(--mine-client-ink) !important;
+    border-color: var(--mine-client-line) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .mine-client-shell::before { height: 220px; }
+}

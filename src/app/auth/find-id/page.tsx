@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
 import { TurnstileBox, hasTurnstileSiteKey } from "@/components/gpt/TurnstileBox";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi } from "@/lib/gpt/GptScopes";
 import { findId, readFoundUsername } from "@/lib/api";
 import { validEmail } from "@/lib/gpt/validate";
 import { MSG, toastFromError } from "@/lib/messages";
 
 export default function FindIdPage() {
   const router = useRouter();
-  const { showToast } = useGpt();
+  const { showToast } = useCommonUi();
   const [email, setEmail] = useState("");
   const [found, setFound] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -70,10 +70,10 @@ export default function FindIdPage() {
               onChange={(event) => setEmail(event.target.value)}
             />
           </label>
-            <TurnstileBox key={turnstileReset} action="find-id" onToken={setTurnstileToken} />
-            <button className="form-primary" type="submit" disabled={busy}>
-              아이디 확인하기
-            </button>
+          <TurnstileBox key={turnstileReset} action="find-id" onToken={setTurnstileToken} />
+          <button className="form-primary" type="submit" disabled={busy}>
+            아이디 확인하기
+          </button>
         </form>
         <button className="route-back-link" type="button" onClick={() => router.push("/login")}>
           로그인으로 돌아가기

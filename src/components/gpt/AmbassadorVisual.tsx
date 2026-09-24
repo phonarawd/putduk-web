@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useOpportunityFlow } from "@/lib/gpt/GptScopes";
 
 const AMBASSADOR_LABEL = "퍼뜩 공식 앰버서더";
 
@@ -133,12 +133,11 @@ function scrollToOpportunity() {
 // 로그인 후 홈: 오늘 기회(02) 또는 자본·잠금·안전 중단(03) 중 상황과 맞는 한 장만.
 export function AmbassadorMoment() {
   const router = useRouter();
-  const { selected, capitalModal, activeExecution } = useGpt();
+  const { selected, activeExecution } = useOpportunityFlow();
   const { failed, onError } = useImageFailed();
 
   const showTrust =
     !selected.affordable ||
-    capitalModal.open ||
     (activeExecution != null &&
       (activeExecution.status === "running" ||
         activeExecution.status === "rechecking" ||

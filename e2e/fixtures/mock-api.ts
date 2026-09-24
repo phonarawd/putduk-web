@@ -16,6 +16,10 @@ import {
   googleStartDto,
   kycDto,
   sessionDto,
+  MINE_QA,
+  MINING_SUMMARY_QA,
+  MINING_POSITION_QA,
+  MINING_SETTLEMENT_QA,
 } from "./dto.ts";
 
 export type MockUser = "a" | "b" | "none";
@@ -44,6 +48,7 @@ export type MockOptions = {
   homeReadLegacy?: boolean;
   opportunityDetail?: "ok" | "404";
   participate?: "ok" | "daily-cap" | "daily-cap-code" | "blocked";
+  mining?: "default" | "empty";
 };
 
 type Captured = {
@@ -177,6 +182,51 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
         gender ??
         (options.user && options.user !== "none" ? sessionGender.get(userOf(options.user).userId) ?? null : null);
       return json(route, { ok: true, onboarding: "complete", onboardingStage: "B_complete", gender: stored ?? null });
+    }
+
+    if (path === "/api/v1/mines" && method === "GET") {
+      return json(route, { items: options.mining === "empty" ? [] : [MINE_QA] });
+    }
+    if (path === `/api/v1/mines/${MINE_QA.mineId}` && method === "GET") {
+      return json(route, MINE_QA);
+    }
+    if (path === "/api/v1/mining/me/summary" && method === "GET") {
+      return json(route, options.mining === "empty" ? {
+        assetCode: "USDT",
+        principalAmount: "0.000000",
+        profitAmount: "0.000000",
+        lockedPrincipalAmount: "0.000000",
+        activePrincipalAmount: "0.000000",
+        activePositionCount: 0,
+        settledProfitAmount: "0.000000",
+        lastSettledAt: null,
+      } : MINING_SUMMARY_QA);
+    }
+    if (path === "/api/v1/mining/me/positions" && method === "GET") {
+      return json(route, { items: options.mining === "empty" ? [] : [MINING_POSITION_QA] });
+    }
+    if (path === "/api/v1/mining/me/positions/" + MINING_POSITION_QA.positionId && method === "GET") {
+      return json(route, MINING_POSITION_QA);
+    }
+    if (path === "/api/v1/mining/me/settlements" && method === "GET") {
+      return json(route, { items: options.mining === "empty" ? [] : [MINING_SETTLEMENT_QA] });
+    }
+    if (path === "/api/v1/mining/positions/start" && method === "POST") {
+      return json(route, {
+        ...MINING_POSITION_QA,
+        positionId: "position-qa-new",
+        status: "START_PENDING",
+        principalAmount: typeof body.principalAmount === "string" ? body.principalAmount : "10.000000",
+      }, 201);
+    }
+    if (path.endsWith("/increase") && method === "POST") {
+      return json(route, { ...MINING_POSITION_QA, principalAmount: "120.000000" });
+    }
+    if (path.endsWith("/decrease") && method === "POST") {
+      return json(route, { ...MINING_POSITION_QA, principalAmount: "80.000000" });
+    }
+    if (path.endsWith("/end") && method === "POST") {
+      return json(route, { ...MINING_POSITION_QA, status: "END_PENDING" });
     }
 
     if (path === "/api/v1/me/home-read" && method === "GET") {

@@ -1,6 +1,6 @@
 # 퍼뜩 (putduk-web)
 
-이 레포는 **퍼뜩 리셀러 데스크의 소비자 웹 UI**만 담당합니다. 백엔드와 데이터베이스를 이 레포에 만들지 않습니다.
+이 레포는 **퍼뜩 회원용 채굴·운용 웹 UI**를 담당합니다. 광산 조회, 내 운용, 채굴 수익 표시, 정산 기록, 지갑 연결 화면을 제공하며 백엔드와 데이터베이스는 이 레포에 만들지 않습니다.
 
 ## 백엔드 연결
 
@@ -21,8 +21,10 @@
 
 - 앱 이름: 퍼뜩
 - 개인 AI: 퍼뜩AI
-- 하단 탭: 홈 / 기회 / 퍼뜩AI / 초대 / 나
-- `/work`는 기회 목록입니다.
+- 주요 메뉴: 홈 / 광산 / 내 운용 / 지갑 / 퍼뜩AI / 내 정보
+- `/work`는 공개 광산 목록입니다.
+- `/activity`는 내 운용 기록입니다.
+- `/wallet/*`는 지갑 영역입니다.
 - 완료한 업무와 정산은 `/me/records`에서 확인합니다.
 - 큰 금액은 원화(₩), USDT는 보조 표기입니다.
 - 서버가 제공한 원화·FX 값이 없으면 원화 숫자를 만들어 표시하지 않습니다.
@@ -57,3 +59,10 @@ pnpm lhci                              # Lighthouse (5화면 × 3회, median 판
 - pre-commit: staged된 ts/tsx만 lint + 전체 typecheck (목표 30초대, 저사양 PC 실측 약 35초)
 - pre-push: 단위 테스트 + Chromium 스모크(auth+qr, 목표 3분)
 - PR에는 항상 `.github/workflows/pr-quality.yml` 전체 게이트가 따로 돈다.
+
+## 2026-09-25 Mine OS Release
+
+- Production Supabase는 backend의 SSOT이며 이 레포가 직접 접근하지 않습니다.
+- 이번 UI 릴리스는 기존 Mining API/Context 계약을 유지합니다.
+- 메뉴 기준: 홈 / 광산 / 내 운용 / 지갑 / 퍼뜩AI / 내 정보.
+- `/work`, `/activity`, `/wallet/*`는 서버 응답을 그대로 표시합니다.

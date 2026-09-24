@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useGptSession } from "@/lib/gpt/GptScopes";
 
 const LEGAL_MENU = [
   { path: "/legal/recognition", title: "공식 인정·운영 확인서", copy: "운영 주체, 플랫폼 운영과 금융·공공 기준 확인서" },
@@ -15,7 +15,7 @@ const LEGAL_MENU = [
 
 export default function LegalPage() {
   const router = useRouter();
-  const { state } = useGpt();
+  const { loggedIn } = useGptSession();
 
   return (
     <RouteScreen>
@@ -23,7 +23,7 @@ export default function LegalPage() {
         kicker="정책과 고지"
         title="약관과 정보"
         copy="퍼뜩을 이용할 때 알아야 할 내용을 쉬운 문장으로 정리했어요."
-        backPath={state.loggedIn ? "/me" : "/"}
+        backPath={loggedIn ? "/me" : "/"}
       />
       <section className="legal-menu">
         {LEGAL_MENU.map((item) => (

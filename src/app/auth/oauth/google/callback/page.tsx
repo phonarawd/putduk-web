@@ -4,7 +4,7 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { googleCallbackOnce, needsCompleteProfile, sessionEmail } from "@/lib/api";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi, useGptSession } from "@/lib/gpt/GptScopes";
 import { MSG, userFacingError } from "@/lib/messages";
 
 function readQueryValue(value: string | string[] | undefined): string {
@@ -17,7 +17,8 @@ export default function GoogleCallbackPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const router = useRouter();
-  const { markGoogleAuth, showToast } = useGpt();
+  const { markGoogleAuth } = useGptSession();
+  const { showToast } = useCommonUi();
   const query = use(searchParams);
   const code = readQueryValue(query.code);
   const state = readQueryValue(query.state);

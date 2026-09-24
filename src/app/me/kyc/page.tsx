@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteScreen } from "@/components/gpt/RouteScreen";
 import { RouteTop } from "@/components/gpt/RouteTop";
-import { useGpt } from "@/lib/gpt/GptContext";
+import { useCommonUi } from "@/lib/gpt/GptScopes";
 import {
   ApiError,
   getKycStatus,
@@ -56,7 +56,7 @@ function FilePreview({ file }: { file: File | null }) {
 
 export default function MeKycPage() {
   const router = useRouter();
-  const { showToast } = useGpt();
+  const { showToast } = useCommonUi();
   const [page, setPage] = useState<PageStatus>("loading");
   const [reason, setReason] = useState("");
   const [legalName, setLegalName] = useState("");
