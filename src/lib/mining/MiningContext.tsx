@@ -17,12 +17,14 @@ import {
   decreaseMiningPosition,
   endMiningPosition,
   getMine,
+  getMiningTrialStatus,
   getMyMiningSummary,
   increaseMiningPosition,
   listMines,
   listMyMiningPositions,
   listMyMiningSettlements,
   startMiningPosition,
+  startMiningTrial,
 } from "./api";
 import { MINING_LIVE_RESYNC_MS } from "./presentation";
 import type {
@@ -31,6 +33,7 @@ import type {
   MiningSettlement,
   MiningState,
   MiningSummary,
+  MiningTrialStatus,
 } from "./types";
 
 type StartPositionMutation = {
@@ -52,6 +55,11 @@ type EndPositionMutation = {
   idempotencyKey: string;
 };
 
+type StartTrialMutation = {
+  mineId: string;
+  idempotencyKey: string;
+};
+
 interface MiningContextValue extends MiningState {
   ready: boolean;
   refreshing: boolean;
@@ -64,6 +72,7 @@ interface MiningContextValue extends MiningState {
   increasePosition: (input: PrincipalPositionMutation) => Promise<MiningPosition>;
   decreasePosition: (input: PrincipalPositionMutation) => Promise<MiningPosition>;
   endPosition: (input: EndPositionMutation) => Promise<MiningPosition>;
+  startTrial: (input: StartTrialMutation) => Promise<MiningTrialStatus>;
 }
 
 const MiningContext = createContext<MiningContextValue | null>(null);
@@ -82,6 +91,7 @@ export function MiningProvider({ children }: { children: ReactNode }) {
   const [positions, setPositions] = useState<MiningPosition[]>([]);
   const [settlements, setSettlements] = useState<MiningSettlement[]>([]);
   const [summary, setSummary] = useState<MiningSummary | null>(null);
+  const [trial, setTrial] = useState<MiningTrialStatus | null>(null);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,16 +112,18 @@ export function MiningProvider({ children }: { children: ReactNode }) {
         setPositions([]);
         setSettlements([]);
         setSummary(null);
+        setTrial(null);
         setSyncedAt(new Date().toISOString());
         setError(null);
         setReady(true);
         return;
       }
 
-      const [nextSummary, nextPositions, nextSettlements] = await Promise.all([
+      const [nextSummary, nextPositions, nextSettlements, nextTrial] = await Promise.all([
         getMyMiningSummary(),
         listMyMiningPositions(),
         listMyMiningSettlements(),
+        getMiningTrialStatus(),
       ]);
       setMines(mineItems);
       setActiveMine((current) =>
@@ -120,6 +132,7 @@ export function MiningProvider({ children }: { children: ReactNode }) {
       setSummary(nextSummary);
       setPositions(nextPositions);
       setSettlements(nextSettlements);
+      setTrial(nextTrial);
       setSyncedAt(new Date().toISOString());
       setError(null);
       setReady(true);
@@ -218,6 +231,31 @@ export function MiningProvider({ children }: { children: ReactNode }) {
     [runMutation],
   );
 
+  const startTrial = useCallback(
+    async (input: StartTrialMutation): Promise<MiningTrialStatus> => {
+      if (mutationLockRef.current) {
+        throw new Error("다른 채굴 요청을 처리 중이에요.");
+      }
+      const key = `trial:${input.mineId}`;
+      mutationLockRef.current = key;
+      setMutationPending(key);
+      try {
+        const nextTrial = await startMiningTrial(
+          { mineId: input.mineId },
+          input.idempotencyKey,
+        );
+        setTrial(nextTrial);
+        setSyncedAt(new Date().toISOString());
+        await Promise.all([refresh(), refreshWallet()]);
+        return nextTrial;
+      } finally {
+        mutationLockRef.current = null;
+        setMutationPending(null);
+      }
+    },
+    [refresh, refreshWallet],
+  );
+
   useEffect(() => {
     if (!sessionReady) return;
     const timer = window.setTimeout(() => {
@@ -282,6 +320,7 @@ export function MiningProvider({ children }: { children: ReactNode }) {
       liveProfit,
       settlements,
       summary,
+      trial,
       ready,
       refreshing,
       error,
@@ -293,6 +332,7 @@ export function MiningProvider({ children }: { children: ReactNode }) {
       increasePosition,
       decreasePosition,
       endPosition,
+      startTrial,
     }),
     [
       mines,
@@ -301,6 +341,7 @@ export function MiningProvider({ children }: { children: ReactNode }) {
       liveProfit,
       settlements,
       summary,
+      trial,
       ready,
       refreshing,
       error,
@@ -312,6 +353,7 @@ export function MiningProvider({ children }: { children: ReactNode }) {
       increasePosition,
       decreasePosition,
       endPosition,
+      startTrial,
     ],
   );
 
