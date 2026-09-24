@@ -59,7 +59,7 @@ export default function LoginPage() {
     <RouteScreen>
       <div className="auth-layout">
         <section className="auth-card">
-          <RouteTop kicker="퍼뜩 시작" title="로그인" copy="아이디 또는 이메일로 들어와 주세요." backPath="/" />
+          <RouteTop kicker="PUTDUK MINE OS" title="로그인" copy="아이디 또는 이메일로 들어와 주세요." backPath="/" />
           <form className="stack-form" data-form="login" noValidate onSubmit={onSubmit}>
             <label className="form-field">
               <span>아이디 또는 이메일</span>
@@ -92,13 +92,9 @@ export default function LoginPage() {
           </form>
           <GoogleContinueButton disabled={busy} />
           <div className="auth-links">
-            <button type="button" onClick={() => router.push("/auth/find-id")}>
-              아이디 찾기
-            </button>
+            <button type="button" onClick={() => router.push("/auth/find-id")}>아이디 찾기</button>
             <i></i>
-            <button type="button" onClick={() => router.push("/auth/reset-password")}>
-              비밀번호 재설정
-            </button>
+            <button type="button" onClick={() => router.push("/auth/reset-password")}>비밀번호 재설정</button>
           </div>
           <p className="auth-switch">
             아직 계정이 없으신가요?{" "}
@@ -111,8 +107,8 @@ export default function LoginPage() {
           <span className="ai-avatar" aria-hidden="true">
             <img src="/putduk-mark.svg" alt="" />
           </span>
-          <h2>다시 만나서 반가워요</h2>
-          <p>로그인하면 퍼뜩이 내 금액과 오늘 기회를 보고 이어서 답해 드려요.</p>
+          <h2>광산을 다시 열어볼까요?</h2>
+          <p>로그인하면 퍼뜩이 내 광산 운용, 채굴 결과와 정산 상태를 서버 기준으로 보여 드려요.</p>
         </aside>
       </div>
     </RouteScreen>

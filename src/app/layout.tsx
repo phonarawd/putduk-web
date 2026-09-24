@@ -6,10 +6,11 @@ import "@/styles/gpt-fonts.css";
 import "@/styles/gpt.css";
 import "@/styles/gpt-ambassador.css";
 import "@/styles/mining.css";
+import "@/styles/mining-home.css";
 
 export const metadata: Metadata = {
-  title: "퍼뜩 채굴 운영 플랫폼",
-  description: "광산 운용·채굴 수익·정산·지갑 상태를 한곳에서 확인하는 퍼뜩",
+  title: "퍼뜩 마인 OS",
+  description: "내 광산 운용, 채굴 현황, 출금 가능 수익과 최근 정산을 한눈에 확인하는 퍼뜩 마인 OS",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -29,8 +30,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" data-scroll-behavior="smooth">
       <head>
-        {/* 모든 화면 공통 헤더/푸터/내비에서 가장 많이 쓰는 두 조각만 미리 가져온다.
-            (조각 90=한글 고빈도, 91=라틴/숫자/기호+고빈도 한글. 소스 스캔 기준 상위 2개, 나머지는 필요할 때만) */}
         <link rel="preload" href="/fonts/pretendard-subset/PretendardVariable.subset.90.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/pretendard-subset/PretendardVariable.subset.91.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       </head>

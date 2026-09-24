@@ -5,6 +5,7 @@ import type {
   MiningPosition,
   MiningSettlement,
   MiningSummary,
+  MiningTrialStatus,
 } from "./types";
 
 export const MINING_USER_ROUTES = {
@@ -13,6 +14,8 @@ export const MINING_USER_ROUTES = {
   positions: "/api/v1/mining/me/positions",
   settlements: "/api/v1/mining/me/settlements",
   startPosition: "/api/v1/mining/positions/start",
+  trial: "/api/v1/mining/trial",
+  startTrial: "/api/v1/mining/trial/start",
 } as const;
 
 type ItemList<T> = { items: T[] };
@@ -23,6 +26,10 @@ type PrincipalMutationInput = {
 };
 
 type StartPositionInput = PrincipalMutationInput & {
+  mineId: string;
+};
+
+type StartTrialInput = {
   mineId: string;
 };
 
@@ -73,6 +80,21 @@ export async function listMyMiningSettlements(limit = 100): Promise<MiningSettle
     `${MINING_USER_ROUTES.settlements}?limit=${Math.min(Math.max(Math.trunc(limit), 1), 100)}`,
   );
   return asItemList(data).items;
+}
+
+export function getMiningTrialStatus(): Promise<MiningTrialStatus> {
+  return apiFetch<MiningTrialStatus>(MINING_USER_ROUTES.trial);
+}
+
+export function startMiningTrial(
+  input: StartTrialInput,
+  idempotencyKey: string,
+): Promise<MiningTrialStatus> {
+  return apiFetch<MiningTrialStatus>(MINING_USER_ROUTES.startTrial, {
+    method: "POST",
+    headers: idempotencyHeaders(idempotencyKey),
+    body: JSON.stringify({ mineId: input.mineId }),
+  });
 }
 
 export function startMiningPosition(

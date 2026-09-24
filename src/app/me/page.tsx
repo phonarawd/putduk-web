@@ -3,21 +3,21 @@
 import { useRouter } from "next/navigation";
 import { GenderSelect } from "@/components/gpt/GenderSelect";
 import { WorkspaceView } from "@/components/gpt/WorkspaceView";
-import { formatIssued, formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
+import { formatMoneyPrimary, formatMoneySecondary, formatSignedMoneyPrimary } from "@/lib/gpt/format";
 import { useCommonUi, useGptSession } from "@/lib/gpt/GptScopes";
 import { useWallet } from "@/lib/wallet/WalletContext";
 import { MSG } from "@/lib/messages";
 
 const MENU_ITEMS = [
-  { icon: "₩", title: "입금", small: "운용 자본 넣기", path: "/wallet/deposit" },
-  { icon: "↗", title: "출금", small: "수익 출금", path: "/wallet/withdraw" },
+  { icon: "₩", title: "입금", small: "광산 운용 자본 넣기", path: "/wallet/deposit" },
+  { icon: "↗", title: "출금", small: "출금 가능한 수익", path: "/wallet/withdraw" },
   { icon: "≡", title: "입출금 내역", small: "신청과 반영 기록", path: "/wallet/history" },
-  { icon: "✓", title: "내 기록", small: "완료한 기회와 정산", path: "/me/records" },
+  { icon: "✓", title: "채굴 활동", small: "채굴 운용과 정산", path: "/activity" },
   { icon: "✓", title: "본인확인", small: "출금 전 확인", path: "/me/kyc" },
-  { icon: "♢", title: "알림", small: "기회와 정산 소식", path: "/me/inbox" },
+  { icon: "♢", title: "알림", small: "광산과 정산 소식", path: "/me/inbox" },
   { icon: "📢", title: "공지사항", small: "퍼뜩의 새 소식", path: "/me/notices" },
-  { icon: "⚙", title: "설정", small: "내 데스크 환경", path: "/me/settings" },
-  { icon: "◎", title: "내 등급", small: "계정에 정해진 기준", path: "/me/membership" },
+  { icon: "⚙", title: "설정", small: "내 계정 환경", path: "/me/settings" },
+  { icon: "◎", title: "계정 기준", small: "계정에 정해진 기준", path: "/me/membership" },
   { icon: "★", title: "혜택", small: "현재 받을 혜택", path: "/me/benefits" },
   { icon: "🎉", title: "이벤트", small: "지금 진행 중인 이벤트", path: "/me/events" },
   { icon: "?", title: "고객지원", small: "도움이 필요할 때", path: "/me/support" },
@@ -27,7 +27,7 @@ const MENU_ITEMS = [
 
 export default function MePage() {
   const router = useRouter();
-  const { resellerId, issuedAt, displayName, gender, logout } = useGptSession();
+  const { issuedAt, displayName, gender, logout } = useGptSession();
   const { chooseProfileGender } = useCommonUi();
   const wallet = useWallet();
 
@@ -45,25 +45,25 @@ export default function MePage() {
       <section className="app-view is-active" data-view="me" aria-labelledby="me-title">
         <div className="view-intro">
           <div>
-            <span className="view-kicker">리셀러 카드와 지갑</span>
+            <span className="view-kicker">PUTDUK MINE OS</span>
             <h1 id="me-title">나</h1>
-            <p>내 정보, 운용 자본, 출금과 설정을 한곳에서 확인하세요.</p>
+            <p>내 계정, 운용 자본, 출금과 설정을 한곳에서 확인하세요.</p>
           </div>
         </div>
 
         <section className="profile-grid">
           <article className="profile-pass">
             <div className="pass-top">
-              <span>퍼뜩 리셀러</span>
+              <span>PUTDUK MINE OS</span>
               <i></i>
             </div>
             <div className="profile-pass-main">
-              <small>리셀러 ID</small>
-              <strong id="profileResellerId">{resellerId || MSG.resellerIdEmpty}</strong>
-              <span id="profileIssued">{issuedAt ? formatIssued(issuedAt) : ""}</span>
+              <small>광산 계정</small>
+              <strong id="profileMineAccount">{displayName || "광산 계정"}</strong>
+              <span id="profileIssued">{issuedAt ? new Date(issuedAt).toLocaleDateString("ko-KR") : ""}</span>
             </div>
             <div className="pass-bottom">
-              <span>퍼뜩 매칭 데스크</span>
+              <span>MINE OS</span>
               <span>활동 중</span>
             </div>
           </article>
@@ -126,8 +126,8 @@ export default function MePage() {
           </article>
         </section>
 
-        <button className="text-action route-wide-action" type="button" onClick={() => router.push("/me/records")}>
-          내 기록 보기
+        <button className="text-action route-wide-action" type="button" onClick={() => router.push("/activity")}>
+          채굴 활동 보기
         </button>
 
         <section className="me-menu" aria-label="나의 메뉴">
@@ -156,8 +156,8 @@ export default function MePage() {
         <section className="profile-edit-card">
           <div>
             <span className="view-kicker">내 표시 정보</span>
-            <h2 id="profileDisplayName">{displayName || MSG.resellerIdEmpty}</h2>
-            <p>이름은 데스크에 보이는 표시 이름이며 본인확인 실명이 아니에요.</p>
+            <h2 id="profileDisplayName">{displayName || "광산 계정"}</h2>
+            <p>이름은 화면에 보이는 표시 이름이며 본인확인 실명이 아니에요.</p>
           </div>
           <GenderSelect
             variant="compact"
@@ -169,17 +169,9 @@ export default function MePage() {
 
         <section className="profile-network">
           <div>
-            <span className="view-kicker">공식 네트워크</span>
-            <h2>퍼뜩 공식 협력 네트워크</h2>
-          </div>
-          <div className="partner-logos compact" aria-label="eBay, Amazon, 쿠팡, KREAM, Chrono24">
-            <span className="partner-ebay">eBay</span>
-            <span className="partner-amazon">
-              amazon<i></i>
-            </span>
-            <span className="partner-coupang">coupang</span>
-            <span className="partner-kream">KREAM</span>
-            <span className="partner-chrono">Chrono24</span>
+            <span className="view-kicker">MINE OS 운영</span>
+            <h2>광산 운용 상태는 서버 기준입니다.</h2>
+            <p>광산 운용, 채굴 결과, 정산과 출금 가능 금액은 연결된 서버 응답을 기준으로 표시합니다.</p>
           </div>
         </section>
 

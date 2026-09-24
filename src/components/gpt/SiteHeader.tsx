@@ -10,24 +10,24 @@ import { useAppSurface } from "@/lib/gpt/useAppSurface";
 
 export function SiteHeader() {
   const router = useRouter();
-  const { loggedIn, resellerId } = useGptSession();
+  const { loggedIn, displayName } = useGptSession();
   const { pathname, showNav } = useAppSurface();
   const current = navActiveKey(pathname);
 
   return (
     <header className="site-header">
       <div className="shell header-inner">
-        <button id="brandHome" className="brand" type="button" aria-label="퍼뜩 홈으로 이동" onClick={() => router.push("/")}>
+        <button id="brandHome" className="brand" type="button" aria-label="홈 화면으로 이동" onClick={() => router.push("/")}>
           <span className="brand-mark" aria-hidden="true">
             <img src="/putduk-mark.svg" alt="" />
           </span>
           <span className="brand-copy">
             <b>퍼뜩</b>
-            <small>채굴 운영 플랫폼</small>
+            <small>MINE OS</small>
           </span>
         </button>
 
-        <nav id="desktopNav" className="desktop-nav" aria-label="퍼뜩 주요 메뉴" hidden={!showNav}>
+        <nav id="desktopNav" className="desktop-nav" aria-label="주요 메뉴" hidden={!showNav}>
           {PRIMARY_NAV_ITEMS.map((item) => (
             <button
               key={item.key}
@@ -53,8 +53,8 @@ export function SiteHeader() {
           >
             로그인
           </button>
-          <span id="headerReseller" className="header-reseller" hidden={!loggedIn || !resellerId}>
-            {resellerId}
+          <span id="headerMineAccount" className="header-reseller" hidden={!loggedIn}>
+            {displayName || "광산 계정"}
           </span>
         </div>
       </div>

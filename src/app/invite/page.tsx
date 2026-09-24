@@ -44,7 +44,7 @@ export default function InvitePage() {
     if (!referralLink) return;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "퍼뜩 초대", text: "퍼뜩 리셀러 데스크에서 함께 시작해요.", url: referralLink });
+        await navigator.share({ title: "퍼뜩 초대", text: "퍼뜩 MINE OS에서 함께 시작해요.", url: referralLink });
         showToast(MSG.inviteShare, "success");
         return;
       } catch {
@@ -109,7 +109,7 @@ export default function InvitePage() {
           <article>
             <span>2</span>
             <div>
-              <strong>친구가 시작을 이어가요</strong>
+              <strong>친구가 광산 탐색을 시작해요</strong>
               <small>화면에서 단계를 완료 처리하지 않아요</small>
             </div>
           </article>
@@ -117,15 +117,15 @@ export default function InvitePage() {
             <span>3</span>
             <div>
               <strong>혜택 숫자는 여기에서 확정하지 않아요</strong>
-              <small>첫 수익이 났다고 보너스를 더하지 않아요</small>
+              <small>서버가 확정한 상태만 보여 드려요</small>
             </div>
           </article>
         </section>
         <section className="referral-demo-card invite-trust-card">
           <div>
             <span>혜택 안내</span>
-            <strong id="referralStateText">추천 혜택은 바로 큰돈이 들어오는 구조가 아니에요.</strong>
-            <small>첫 체험만 마쳤다고 매칭 횟수가 생기지 않아요.</small>
+            <strong id="referralStateText">추천 혜택은 서버가 확정한 내용만 보여 드려요.</strong>
+            <small>친구가 가입했다고 화면에서 별도 보너스를 계산하지 않아요.</small>
           </div>
           {referralLink ? (
             <button id="shareReferral" className="secondary-accent-button" type="button" onClick={shareReferral}>
