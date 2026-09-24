@@ -28,7 +28,7 @@ export {
   type PublishedCmsItem,
 } from "./contract-readers";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://api.hiptk.app";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://api.putduk.com";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
