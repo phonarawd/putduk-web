@@ -67,7 +67,7 @@ test.describe("Mine OS customer flow", () => {
 
     await page.getByRole("button", { name: "금액 늘리기" }).first().click();
     await page.locator("#mining-change-amount").fill("20");
-    await page.getByRole("button", { name: "조건 확인" }).click();
+    await page.getByRole("button", { name: "조건 확인" }).last().click();
     await expect(page.getByText("금액 늘리기 확인")).toBeVisible();
 
     const request = page.waitForRequest((req) => req.url().endsWith("/increase"));
@@ -87,6 +87,8 @@ test.describe("Mine OS customer flow", () => {
     await page.goto("/work/mine-gold-qa");
 
     await page.getByRole("button", { name: "운용 종료" }).first().click();
+    await expect(page.getByRole("button", { name: "종료 조건 확인" })).toBeVisible();
+    await page.getByRole("button", { name: "종료 조건 확인" }).click();
     await expect(page.getByText("운용 종료 확인")).toBeVisible();
 
     const request = page.waitForRequest((req) => req.url().endsWith("/end"));
