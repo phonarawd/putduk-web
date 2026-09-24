@@ -17,17 +17,17 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="shell header-inner">
-        <button id="brandHome" className="brand" type="button" aria-label="홈 화면으로 이동" onClick={() => router.push("/")}>
+        <button id="brandHome" className="brand" type="button" aria-label="퍼뜩 홈으로 이동" onClick={() => router.push("/")}>
           <span className="brand-mark" aria-hidden="true">
             <img src="/putduk-mark.svg" alt="" />
           </span>
           <span className="brand-copy">
             <b>퍼뜩</b>
-            <small>리셀러 데스크</small>
+            <small>채굴 운영 플랫폼</small>
           </span>
         </button>
 
-        <nav id="desktopNav" className="desktop-nav" aria-label="주요 메뉴" hidden={!showNav}>
+        <nav id="desktopNav" className="desktop-nav" aria-label="퍼뜩 주요 메뉴" hidden={!showNav}>
           {PRIMARY_NAV_ITEMS.map((item) => (
             <button
               key={item.key}
