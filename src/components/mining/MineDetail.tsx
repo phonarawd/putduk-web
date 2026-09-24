@@ -10,7 +10,7 @@ import {
   MINING_LIVE_RESYNC_MS,
   presentLiveMiningProfit,
 } from "@/lib/mining/presentation";
-import type { MiningPosition, PositionStatus } from "@/lib/mining/types";
+import type { MiningPosition, PositionStatus, TrialStatus } from "@/lib/mining/types";
 import { useMiningPresentationClock } from "@/lib/mining/useMiningPresentationClock";
 
 const liveResyncSeconds = MINING_LIVE_RESYNC_MS / 1_000;
@@ -47,6 +47,19 @@ function positionStatusLabel(status: PositionStatus): string {
       return "운용 종료 중";
     case "ENDED":
       return "운용 종료";
+  }
+}
+
+function trialStatusLabel(status: TrialStatus): string {
+  switch (status) {
+    case "NOT_STARTED":
+      return "체험 시작 전";
+    case "ACTIVE":
+      return "체험 진행 중";
+    case "COMPLETED":
+      return "체험 완료";
+    case "EXPIRED":
+      return "체험 만료";
   }
 }
 
@@ -455,6 +468,73 @@ export function MineDetail({ mineId }: { mineId: string }) {
               <Link href="/login" className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-slate-950 px-4 text-sm font-black text-white">
                 로그인
               </Link>
+            </div>
+          ) : (
+            <div className="rounded-[24px] border border-amber-200 bg-amber-50/70 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black tracking-[0.14em] text-amber-700">TRIAL MINING</p>
+                  <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-slate-950">24시간 체험 채굴</h2>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-amber-800">
+                  {trialStatusLabel(mining.trial?.status ?? "NOT_STARTED")}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                체험 원금과 수익 계산은 서버가 관리합니다. 체험 종료 시점과 수익 상한도 서버 설정을 기준으로 처리합니다.
+              </p>
+              {mining.trial?.grant?.amountKrw ? (
+                <div className="mt-4 rounded-2xl border border-amber-100 bg-white p-3">
+                  <p className="text-xs font-semibold text-slate-500">체험 원금 기준</p>
+                  <p className="mt-1 text-sm font-black text-slate-950">
+                    {mining.trial.grant.amountKrw.toLocaleString("ko-KR")} KRW
+                  </p>
+                </div>
+              ) : null}
+              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-2xl bg-white p-3">
+                  <p className="font-semibold text-slate-500">남은 횟수</p>
+                  <p className="mt-1 text-sm font-black text-slate-950">
+                    {mining.trial?.remainingParticipations ?? 0}회
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white p-3">
+                  <p className="font-semibold text-slate-500">체험 종료</p>
+                  <p className="mt-1 text-sm font-black text-slate-950">
+                    {formatDate(mining.trial?.completesAt ?? null)}
+                  </p>
+                </div>
+              </div>
+              {mining.trial?.status === "ACTIVE" ? (
+                <p className="mt-4 rounded-2xl border border-amber-100 bg-white px-3 py-3 text-xs leading-5 text-amber-900">
+                  현재 이 계정에 진행 중인 체험 채굴이 있습니다. 실제 수익·정산 결과는 서버가 확정합니다.
+                </p>
+              ) : mining.trial?.status === "NOT_STARTED" &&
+                (mining.trial?.remainingParticipations ?? 0) > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!mine) return;
+                    setNotice(null);
+                    setSuccessMessage(null);
+                    void mining
+                      .startTrial({
+                        mineId: mine.mineId,
+                        idempotencyKey: newMiningIdempotencyKey(),
+                      })
+                      .then(() => {
+                        setSuccessMessage("체험 채굴을 시작했어요. 서버가 체험 시작 시각을 기준으로 관리합니다.");
+                      })
+                      .catch((error: unknown) => {
+                        setNotice(mutationNotice(error));
+                      });
+                  }}
+                  disabled={mutationBusy || mine.status !== "ACTIVE"}
+                  className="mt-4 h-11 w-full rounded-2xl bg-amber-700 px-4 text-sm font-black text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  {mine.status === "ACTIVE" ? "체험 채굴 시작" : "현재 신규 운용 불가"}
+                </button>
+              ) : null}
             </div>
           ) : (
             <div className="rounded-[24px] border border-slate-200 bg-white p-5">
