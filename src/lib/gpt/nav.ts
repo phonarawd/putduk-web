@@ -2,7 +2,7 @@ export const PRIMARY_NAV_ITEMS = [
   { key: "home", label: "홈", path: "/" },
   { key: "work", label: "광산", path: "/work" },
   { key: "activity", label: "내 운용", path: "/activity" },
-  { key: "wallet", label: "지갑", path: "/wallet" },
+  { key: "wallet", label: "지갑", path: "/wallet/deposit" },
   { key: "ai", label: "퍼뜩AI", path: "/ai" },
   { key: "me", label: "내 정보", path: "/me" },
 ] as const;
