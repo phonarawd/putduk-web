@@ -108,7 +108,7 @@ export async function installApiMock(page: Page, options: MockOptions = {}): Pro
   let kycLive: Exclude<KycMode, "error" | "slow"> = options.kyc === "error" || options.kyc === "slow" || !options.kyc ? "none" : options.kyc;
 
   await page.context().route(
-    (url) => url.hostname === "api.hiptk.app" || url.pathname.startsWith("/api/v1/"),
+    (url) => url.hostname === "api.hiptk.app" || url.hostname === "api.putduk.com" || url.pathname.startsWith("/api/v1/"),
     async (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") {
