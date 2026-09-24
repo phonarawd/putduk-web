@@ -10,9 +10,10 @@ import { useAppSurface } from "@/lib/gpt/useAppSurface";
 
 const NAV_ICONS: Record<PrimaryNavKey, string | null> = {
   home: "⌂",
-  work: "↗",
+  work: "◆",
+  activity: "↗",
+  wallet: "₩",
   ai: null,
-  invite: "＋",
   me: "●",
 };
 
@@ -22,7 +23,7 @@ export function MobileNav() {
   const current = navActiveKey(pathname);
 
   return (
-    <nav id="mobileNav" className="mobile-nav" aria-label="주요 메뉴" hidden={!showNav}>
+    <nav id="mobileNav" className="mobile-nav" aria-label="퍼뜩 주요 메뉴" hidden={!showNav}>
       {PRIMARY_NAV_ITEMS.map((item) => {
         const icon = NAV_ICONS[item.key];
 
