@@ -348,7 +348,7 @@ export function MineDetail({ mineId }: { mineId: string }) {
   }
 
   return (
-    <section className="mx-auto w-full max-w-[1180px] px-4 pb-14 pt-4 sm:px-6 lg:px-8" aria-labelledby="mine-detail-title">
+    <section className="mine-client-shell mx-auto w-full max-w-[1180px] px-4 pb-14 pt-4 sm:px-6 lg:px-8" aria-labelledby="mine-detail-title">
       <div className="py-4">
         <Link href="/work" className="text-sm font-bold text-slate-500 transition hover:text-slate-900">
           ← 광산 목록
