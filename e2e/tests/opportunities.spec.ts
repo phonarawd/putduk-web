@@ -65,13 +65,13 @@ test.describe("Mine OS customer flow", () => {
     await becomeUser(page);
     await page.goto("/work/mine-gold-qa");
 
-    await page.getByRole("button", { name: "금액 늘리기" }).click();
+    await page.getByRole("button", { name: "금액 늘리기" }).first().click();
     await page.locator("#mining-change-amount").fill("20");
     await page.getByRole("button", { name: "조건 확인" }).click();
     await expect(page.getByText("금액 늘리기 확인")).toBeVisible();
 
     const request = page.waitForRequest((req) => req.url().endsWith("/increase"));
-    await page.getByRole("button", { name: "금액 늘리기" }).click();
+    await page.locator("[aria-live=\"polite\"]").getByRole("button", { name: "금액 늘리기" }).click();
     const sent = await request;
     expect(sent.headers()["idempotency-key"]).toBeTruthy();
     expect(sent.postDataJSON()).toMatchObject({
@@ -86,11 +86,11 @@ test.describe("Mine OS customer flow", () => {
     await becomeUser(page);
     await page.goto("/work/mine-gold-qa");
 
-    await page.getByRole("button", { name: "운용 종료" }).click();
+    await page.getByRole("button", { name: "운용 종료" }).first().click();
     await expect(page.getByText("운용 종료 확인")).toBeVisible();
 
     const request = page.waitForRequest((req) => req.url().endsWith("/end"));
-    await page.getByRole("button", { name: "운용 종료" }).click();
+    await page.locator("[aria-live=\"polite\"]").getByRole("button", { name: "운용 종료" }).click();
     const sent = await request;
     expect(sent.headers()["idempotency-key"]).toBeTruthy();
     expect(sent.postDataJSON()).toMatchObject({ positionId: "position-qa-1" });
