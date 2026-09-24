@@ -97,39 +97,20 @@ function KrwDepositPanel() {
       <label className="form-field money-field">
         <span>입금할 금액</span>
         <div>
-          <input
-            id="depositAmount"
-            name="amount"
-            inputMode="numeric"
-            required
-            value={amount ? amount.toLocaleString("ko-KR") : ""}
-            onChange={(event) => setAmount(parseMoney(event.target.value))}
-          />
+          <input id="depositAmount" name="amount" inputMode="numeric" required value={amount ? amount.toLocaleString("ko-KR") : ""} onChange={(event) => setAmount(parseMoney(event.target.value))} />
           <b>원</b>
         </div>
       </label>
       <div className="capital-presets" role="group" aria-label="빠른 금액">
         {KRW_QUICK_AMOUNTS.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            className={amount === preset ? "is-selected" : ""}
-            onClick={() => setAmount(preset)}
-          >
+          <button key={preset} type="button" className={amount === preset ? "is-selected" : ""} onClick={() => setAmount(preset)}>
             {(preset / 10000).toLocaleString("ko-KR")}만원
           </button>
         ))}
       </div>
       <label className="form-field">
         <span>입금자 이름</span>
-        <input
-          name="depositor"
-          autoComplete="name"
-          placeholder="송금할 때 쓰는 이름"
-          required
-          value={depositor}
-          onChange={(event) => setDepositor(event.target.value)}
-        />
+        <input name="depositor" autoComplete="name" placeholder="송금할 때 쓰는 이름" required value={depositor} onChange={(event) => setDepositor(event.target.value)} />
       </label>
       <div className="account-preview">
         <span>입금 안내</span>
@@ -145,15 +126,11 @@ function KrwDepositPanel() {
         {guideState === "error" ? (
           <>
             <strong>{MSG.depositGuideFail}</strong>
-            <button type="button" className="text-action" onClick={loadGuide}>
-              {MSG.withdrawPolicyRetry}
-            </button>
+            <button type="button" className="text-action" onClick={loadGuide}>{MSG.withdrawPolicyRetry}</button>
           </>
         ) : null}
       </div>
-      <button className="form-primary" type="submit" disabled={busy}>
-        원화 입금 신청
-      </button>
+      <button className="form-primary" type="submit" disabled={busy}>원화 입금 신청</button>
     </form>
   );
 }
@@ -197,15 +174,11 @@ function UsdtDepositPanel() {
       </div>
       {address ? (
         <div className="usdt-deposit-grid">
-          <div className="qr-preview" data-qr-payload={qrPayload || address}>
-            <DepositQr payload={qrPayload || address} />
-          </div>
+          <div className="qr-preview" data-qr-payload={qrPayload || address}><DepositQr payload={qrPayload || address} /></div>
           <div className="address-card">
             <span>테더 입금 주소</span>
             <strong id="usdtAddress">{address}</strong>
-            <button type="button" onClick={onCopy}>
-              주소 복사
-            </button>
+            <button type="button" onClick={onCopy}>주소 복사</button>
             {network ? <small>{network}</small> : null}
           </div>
         </div>
@@ -248,7 +221,7 @@ export default function WalletDepositPage() {
 
   return (
     <RouteScreen>
-      <RouteTop kicker="운용 자본" title="입금" copy="입금은 이용료가 아니라 내 리셀 업무에 쓰는 운용 자본이에요." backPath="/me" />
+      <RouteTop kicker="광산 운용 자본" title="입금" copy="입금은 이용료가 아니라 내 광산 운용을 위한 자본이에요." backPath="/me" />
       <WalletSummaryStrip />
       <section className="form-page-card wallet-form-card">
         <div className="segmented-tabs" role="tablist" aria-label="입금 방법" onKeyDown={onTabListKeyDown}>
@@ -256,9 +229,7 @@ export default function WalletDepositPage() {
             <button
               key={tab.id}
               id={tab.id}
-              ref={(node) => {
-                tabRefs.current[index] = node;
-              }}
+              ref={(node) => { tabRefs.current[index] = node; }}
               type="button"
               role="tab"
               aria-selected={mode === tab.mode}
@@ -272,13 +243,7 @@ export default function WalletDepositPage() {
           ))}
         </div>
         {DEPOSIT_TABS.map((tab) => (
-          <div
-            key={tab.panelId}
-            id={tab.panelId}
-            role="tabpanel"
-            aria-labelledby={tab.id}
-            hidden={mode !== tab.mode}
-          >
+          <div key={tab.panelId} id={tab.panelId} role="tabpanel" aria-labelledby={tab.id} hidden={mode !== tab.mode}>
             {tab.mode === "krw" ? <KrwDepositPanel /> : <UsdtDepositPanel />}
           </div>
         ))}
