@@ -27,7 +27,7 @@ export function MineCatalog() {
   const mining = useMining();
 
   return (
-    <section className="mx-auto w-full max-w-[1180px] px-4 pb-12 pt-3 sm:px-6 lg:px-8" aria-labelledby="mine-catalog-title">
+    <section className="mine-client-shell mx-auto w-full max-w-[1180px] px-4 pb-12 pt-3 sm:px-6 lg:px-8" aria-labelledby="mine-catalog-title">
       <header className="flex flex-col gap-4 py-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <span className="text-xs font-black tracking-[0.16em] text-blue-600">MINING CATALOG</span>
