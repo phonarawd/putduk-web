@@ -59,3 +59,10 @@ pnpm lhci                              # Lighthouse (5화면 × 3회, median 판
 - pre-commit: staged된 ts/tsx만 lint + 전체 typecheck (목표 30초대, 저사양 PC 실측 약 35초)
 - pre-push: 단위 테스트 + Chromium 스모크(auth+qr, 목표 3분)
 - PR에는 항상 `.github/workflows/pr-quality.yml` 전체 게이트가 따로 돈다.
+
+## 2026-09-25 Mine OS Release
+
+- Production Supabase는 backend의 SSOT이며 이 레포가 직접 접근하지 않습니다.
+- 이번 UI 릴리스는 기존 Mining API/Context 계약을 유지합니다.
+- 메뉴 기준: 홈 / 광산 / 내 운용 / 지갑 / 퍼뜩AI / 내 정보.
+- `/work`, `/activity`, `/wallet/*`는 서버 응답을 그대로 표시합니다.
