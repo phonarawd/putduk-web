@@ -5,10 +5,11 @@ import { PwaRegister } from "@/components/gpt/PwaRegister";
 import "@/styles/gpt-fonts.css";
 import "@/styles/gpt.css";
 import "@/styles/gpt-ambassador.css";
+import "@/styles/mining.css";
 
 export const metadata: Metadata = {
-  title: "퍼뜩 리셀러 데스크",
-  description: "내 자본과 오늘 기회를 한눈에 확인하는 퍼뜩 리셀러 데스크",
+  title: "퍼뜩 채굴 운영 플랫폼",
+  description: "광산 운용·채굴 수익·정산·지갑 상태를 한곳에서 확인하는 퍼뜩",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: "#f7f3e8",
   viewportFit: "cover",
 };
 
