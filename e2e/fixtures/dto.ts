@@ -223,3 +223,50 @@ export function kycDto(kycStatus: "none" | "pending" | "approved" | "rejected", 
     rejectReason: kycStatus === "rejected" ? rejectReason || "서류가 흐려요" : undefined,
   };
 }
+
+
+export const MINE_QA = {
+  mineId: "mine-gold-qa",
+  status: "ACTIVE",
+  displayName: "금 광산",
+  description: "퍼뜩 운영센터가 관리하는 금 채굴 운용입니다.",
+  assetCode: "USDT",
+  minPrincipalAmount: "10.000000",
+  maxPrincipalAmount: "10000.000000",
+  currentDailyRate: "0.001000000000",
+};
+
+export const MINING_SUMMARY_QA = {
+  assetCode: "USDT",
+  principalAmount: "100.000000",
+  profitAmount: "1.250000",
+  lockedPrincipalAmount: "0.000000",
+  activePrincipalAmount: "100.000000",
+  activePositionCount: 1,
+  settledProfitAmount: "0.750000",
+  lastSettledAt: "2026-09-24T12:00:00.000Z",
+};
+
+export const MINING_POSITION_QA = {
+  positionId: "position-qa-1",
+  mineId: MINE_QA.mineId,
+  status: "ACTIVE",
+  principalAmount: "100.000000",
+  assetCode: "USDT",
+  currentDailyRate: "0.001000000000",
+  accruedProfitAmount: "1.250000",
+  baselineAt: "2026-09-24T00:00:00.000Z",
+  nextSettlementAt: "2026-09-25T00:00:00.000Z",
+  endedAt: null,
+};
+
+export const MINING_SETTLEMENT_QA = {
+  settlementId: "settlement-qa-1",
+  positionId: MINING_POSITION_QA.positionId,
+  status: "LEDGER_POSTED",
+  periodStartAt: "2026-09-23T00:00:00.000Z",
+  periodEndAt: "2026-09-24T00:00:00.000Z",
+  profitAmount: "0.750000",
+  assetCode: "USDT",
+  ledgerJournalId: "journal-mining-qa-1",
+};
